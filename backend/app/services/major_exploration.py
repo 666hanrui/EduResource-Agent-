@@ -9,13 +9,14 @@ from __future__ import annotations
 import re
 import hashlib
 from html import escape
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
+from ..data.major_catalog import DEFAULT_TEMPLATE, TEMPLATES, CareerProfile, MajorTemplate
 from ..schemas.exploration import (
     CareerDirection,
+    CareerRequirementProfile,
     CoachResponse,
     CoachSuggestion,
     CoachTone,
@@ -70,57 +71,6 @@ DIMENSION_GROUPS = {
     "problem_solving": "成长与职业素养",
 }
 
-
-@dataclass(frozen=True)
-class MajorTemplate:
-    aliases: tuple[str, ...]
-    foundations: tuple[str, ...]
-    core: tuple[str, ...]
-    directions: tuple[str, ...]
-    practice: tuple[str, ...]
-    careers: tuple[str, ...]
-    tools: tuple[str, ...]
-
-
-TEMPLATES: tuple[MajorTemplate, ...] = (
-    MajorTemplate(
-        aliases=("计算机", "软件", "人工智能", "数据科学", "网络工程", "信息安全"),
-        foundations=("程序设计基础", "离散数学", "高等数学", "计算机导论"),
-        core=("数据结构", "计算机组成原理", "操作系统", "数据库系统", "计算机网络"),
-        directions=("Web 开发", "数据分析", "AI 应用", "软件测试", "信息安全"),
-        practice=("命令行与 Git", "小型管理系统", "算法练习", "开源项目阅读"),
-        careers=("软件工程师", "数据分析师", "AI 应用工程师", "测试工程师", "产品经理"),
-        tools=("Python", "Java", "SQL", "Git"),
-    ),
-    MajorTemplate(
-        aliases=("电子", "通信", "自动化", "物联网", "电气"),
-        foundations=("高等数学", "大学物理", "电路基础", "工程制图"),
-        core=("模拟电子技术", "数字电子技术", "信号与系统", "嵌入式系统", "通信原理"),
-        directions=("嵌入式开发", "智能硬件", "通信网络", "工业自动化", "物联网应用"),
-        practice=("单片机实验", "传感器采集", "电路仿真", "硬件调试记录"),
-        careers=("嵌入式工程师", "硬件工程师", "自动化工程师", "通信工程师", "物联网工程师"),
-        tools=("C 语言", "Keil", "Matlab", "Arduino"),
-    ),
-    MajorTemplate(
-        aliases=("经管", "管理", "工商", "市场", "会计", "金融"),
-        foundations=("管理学原理", "经济学基础", "统计学", "会计学基础"),
-        core=("市场营销", "组织行为学", "财务管理", "商业分析", "运营管理"),
-        directions=("产品运营", "市场分析", "财务分析", "人力资源", "商业数据分析"),
-        practice=("商业案例拆解", "问卷调研", "数据看板", "竞品分析报告"),
-        careers=("产品运营", "商业分析师", "市场专员", "财务分析师", "人力资源专员"),
-        tools=("Excel", "SQL", "Power BI", "问卷工具"),
-    ),
-)
-
-DEFAULT_TEMPLATE = MajorTemplate(
-    aliases=(),
-    foundations=("专业导论", "高等数学", "大学英语", "信息检索"),
-    core=("专业核心概论", "研究方法", "数据分析基础", "项目实践"),
-    directions=("专业应用方向", "数字化交叉方向", "行业研究方向", "产品与运营方向"),
-    practice=("课程笔记整理", "案例拆解", "小组展示", "资料检索报告"),
-    careers=("行业研究助理", "产品运营", "项目助理", "数据分析助理", "专业方向实习生"),
-    tools=("Excel", "Markdown", "AI 检索", "演示文稿"),
-)
 
 _STORE = SQLiteExplorationStore()
 
@@ -876,34 +826,62 @@ def _build_directions(
 ) -> list[CareerDirection]:
     score_by_key = {item.key: item.score for item in scores}
     directions: list[CareerDirection] = []
-    for idx, title in enumerate(template.careers[:5]):
-        direction_seed = template.directions[idx % len(template.directions)]
-        interest_bonus = 10 if any(i in title or i in direction_seed for i in interests) else 0
-        fit = min(92, 48 + idx * 3 + interest_bonus + score_by_key.get("learning_ability", 40) // 5)
+    for idx, profile in enumerate(template.career_profiles[:5]):
+        interest_bonus = 10 if any(i in profile.title or i in profile.direction for i in interests) else 0
+        weighted_score = _weighted_fit_score(score_by_key, profile)
+        fit = min(94, 42 + idx * 2 + interest_bonus + weighted_score // 3)
+        related_core = _first_matching_knowledge(profile.core_skills, template.core, fallback=template.core[idx % len(template.core)])
         directions.append(
             CareerDirection(
-                id=f"direction-{_slug(title)}",
-                title=title,
+                id=f"direction-{_slug(profile.title)}",
+                title=profile.title,
+                exploration_domain=profile.direction,
                 fit_score=fit,
                 why_explore=[
-                    f"与 {direction_seed} 方向相关，适合用低成本任务验证兴趣。",
-                    "当前阶段不需要立刻确定职业，可先观察学习投入感和任务完成感。",
+                    f"与 {profile.direction} 方向相关，适合用低成本任务验证兴趣。",
+                    f"典型任务包括：{'、'.join(profile.typical_tasks[:2])}。",
+                    f"建议先收集证据：{profile.evidence_suggestions[0]}。",
                 ],
-                required_dimensions=[
-                    "professional_skills",
-                    "professional_background",
-                    "learning_ability",
-                    "problem_solving",
-                ],
+                required_dimensions=list(profile.dimension_weights.keys()),
                 first_probe_task_id="task-mini-project" if idx < 3 else "task-interest-reflection",
                 related_knowledge_ids=[
-                    f"direction-{_slug(direction_seed)}",
-                    f"core-{_slug(template.core[idx % len(template.core)])}",
+                    f"direction-{_slug(profile.direction)}",
+                    f"core-{_slug(related_core)}",
                 ],
+                requirement_profile=CareerRequirementProfile(
+                    core_skills=list(profile.core_skills),
+                    typical_tasks=list(profile.typical_tasks),
+                    dimension_weights=dict(profile.dimension_weights),
+                    evidence_suggestions=list(profile.evidence_suggestions),
+                ),
             )
         )
     directions.sort(key=lambda item: item.fit_score, reverse=True)
     return directions
+
+
+def _weighted_fit_score(score_by_key: dict[str, int], profile: CareerProfile) -> int:
+    total_weight = sum(profile.dimension_weights.values())
+    if total_weight <= 0:
+        return 45
+    weighted = sum(
+        score_by_key.get(key, 45) * weight
+        for key, weight in profile.dimension_weights.items()
+    )
+    return round(weighted / total_weight)
+
+
+def _first_matching_knowledge(
+    skills: tuple[str, ...],
+    core_titles: tuple[str, ...],
+    *,
+    fallback: str,
+) -> str:
+    for skill in skills:
+        for title in core_titles:
+            if skill in title or title in skill:
+                return title
+    return fallback
 
 
 def _build_learning_path(

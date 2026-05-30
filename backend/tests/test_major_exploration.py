@@ -71,6 +71,27 @@ def test_major_exploration_ranks_interest_related_direction() -> None:
     top_titles = [item.title for item in plan.career_directions[:3]]
     assert "数据分析师" in top_titles
     assert plan.career_directions[0].fit_score >= plan.career_directions[-1].fit_score
+    top = plan.career_directions[0]
+    assert top.exploration_domain
+    assert top.requirement_profile.core_skills
+    assert top.requirement_profile.dimension_weights
+    assert top.requirement_profile.evidence_suggestions
+
+
+def test_major_exploration_uses_major_catalog_role_profiles() -> None:
+    plan = build_major_exploration_plan(
+        ExplorationRequest(
+            major="电子信息工程",
+            foundation_level="basic",
+            interests=["嵌入式开发"],
+        )
+    )
+
+    embedded = next(item for item in plan.career_directions if item.title == "嵌入式工程师")
+    assert embedded.exploration_domain == "嵌入式开发"
+    assert "C 语言" in embedded.requirement_profile.core_skills
+    assert "problem_solving" in embedded.required_dimensions
+    assert any("direction-" in item for item in embedded.related_knowledge_ids)
 
 
 def test_major_exploration_returns_three_phase_path() -> None:

@@ -41,14 +41,23 @@ export interface ExplorationTask {
   evidence_to_collect: string;
 }
 
+export interface CareerRequirementProfile {
+  core_skills: string[];
+  typical_tasks: string[];
+  dimension_weights: Record<string, number>;
+  evidence_suggestions: string[];
+}
+
 export interface CareerDirection {
   id: string;
   title: string;
+  exploration_domain: string;
   fit_score: number;
   why_explore: string[];
   required_dimensions: string[];
   first_probe_task_id: string;
   related_knowledge_ids: string[];
+  requirement_profile: CareerRequirementProfile;
 }
 
 export interface LearningPathItem {
