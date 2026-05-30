@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.schemas.exploration import ExplorationRequest, PROFILE_DIMENSION_KEYS
-from app.services.exploration_store import JsonExplorationStore
+from app.services.exploration_store import SQLiteExplorationStore
 from app.services.major_exploration import (
     add_workspace_review,
     build_exploration_coach_response,
@@ -24,7 +24,7 @@ from app.services.major_exploration import (
 
 @pytest.fixture(autouse=True)
 def isolated_exploration_store(tmp_path):
-    use_exploration_store(JsonExplorationStore(tmp_path / "exploration_store.json"))
+    use_exploration_store(SQLiteExplorationStore(tmp_path / "exploration_store.sqlite3"))
     reset_exploration_store()
     yield
     reset_exploration_store()
@@ -258,8 +258,8 @@ def test_growth_report_draft_and_export() -> None:
 
 
 def test_workspace_persists_across_store_instances(tmp_path) -> None:
-    store_path = tmp_path / "persistent_exploration_store.json"
-    use_exploration_store(JsonExplorationStore(store_path))
+    store_path = tmp_path / "persistent_exploration_store.sqlite3"
+    use_exploration_store(SQLiteExplorationStore(store_path))
     reset_exploration_store()
     plan = build_major_exploration_plan(ExplorationRequest(major="软件工程"))
     workspace = create_exploration_workspace(
@@ -268,7 +268,7 @@ def test_workspace_persists_across_store_instances(tmp_path) -> None:
         direction_id=plan.career_directions[0].id,
     )
 
-    use_exploration_store(JsonExplorationStore(store_path))
+    use_exploration_store(SQLiteExplorationStore(store_path))
     restored = build_growth_report(workspace.workspace_id)
 
     assert store_path.exists()

@@ -37,7 +37,7 @@ from ..schemas.exploration import (
     WorkspaceResource,
     WorkspaceTask,
 )
-from .exploration_store import JsonExplorationStore
+from .exploration_store import SQLiteExplorationStore
 
 
 DIMENSION_TITLES = {
@@ -122,7 +122,7 @@ DEFAULT_TEMPLATE = MajorTemplate(
     tools=("Excel", "Markdown", "AI 检索", "演示文稿"),
 )
 
-_STORE = JsonExplorationStore()
+_STORE = SQLiteExplorationStore()
 
 
 def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
@@ -604,7 +604,7 @@ def reset_exploration_store() -> None:
     _STORE.clear()
 
 
-def use_exploration_store(store: JsonExplorationStore) -> None:
+def use_exploration_store(store: SQLiteExplorationStore) -> None:
     """Swap the repository, mainly for tests and future app wiring."""
 
     global _STORE
