@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
