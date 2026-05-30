@@ -4,26 +4,165 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 from ..schemas.exploration import ExplorationWorkspace, FavoriteDirection
 
 
 def default_store_path() -> Path:
-    """Return the local JSON store path.
+    """Return the local SQLite store path."""
 
-    The project is still lightweight, so a JSON store gives the module restart-safe
-    state without introducing a database dependency. It can be replaced by SQL later.
-    """
-
-    configured = os.getenv("EDU_EXPLORATION_STORE_PATH")
+    configured = os.getenv("EDU_EXPLORATION_DB_PATH") or os.getenv("EDU_EXPLORATION_STORE_PATH")
     if configured:
         return Path(configured).expanduser()
-    return Path(__file__).resolve().parents[2] / ".data" / "exploration_store.json"
+    return Path(__file__).resolve().parents[2] / ".data" / "exploration_store.sqlite3"
+
+
+class SQLiteExplorationStore:
+    """SQLite repository for favorites and exploration workspaces.
+
+    Complex nested pydantic models are stored as JSON payloads while key columns
+    remain queryable. This keeps the module dependency-free and ready for a
+    later move to a full relational schema.
+    """
+
+    def __init__(self, path: Path | str | None = None) -> None:
+        self.path = Path(path).expanduser() if path is not None else default_store_path()
+        self._ensure_schema()
+
+    def list_favorites(self) -> list[FavoriteDirection]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload
+                FROM exploration_favorites
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+        return [FavoriteDirection.model_validate(json.loads(row["payload"])) for row in rows]
+
+    def save_favorite(self, favorite: FavoriteDirection) -> None:
+        payload = favorite.model_dump(mode="json")
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO exploration_favorites (
+                    favorite_id,
+                    student_id,
+                    direction_id,
+                    created_at,
+                    payload
+                )
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(favorite_id) DO UPDATE SET
+                    student_id = excluded.student_id,
+                    direction_id = excluded.direction_id,
+                    created_at = excluded.created_at,
+                    payload = excluded.payload
+                """,
+                (
+                    favorite.favorite_id,
+                    favorite.student_id,
+                    favorite.direction.id,
+                    favorite.created_at.isoformat(),
+                    json.dumps(payload, ensure_ascii=False),
+                ),
+            )
+
+    def get_workspace(self, workspace_id: str) -> ExplorationWorkspace | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT payload
+                FROM exploration_workspaces
+                WHERE workspace_id = ?
+                """,
+                (workspace_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return ExplorationWorkspace.model_validate(json.loads(row["payload"]))
+
+    def save_workspace(self, workspace: ExplorationWorkspace) -> None:
+        payload = workspace.model_dump(mode="json")
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO exploration_workspaces (
+                    workspace_id,
+                    favorite_id,
+                    student_id,
+                    updated_at,
+                    payload
+                )
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(workspace_id) DO UPDATE SET
+                    favorite_id = excluded.favorite_id,
+                    student_id = excluded.student_id,
+                    updated_at = excluded.updated_at,
+                    payload = excluded.payload
+                """,
+                (
+                    workspace.workspace_id,
+                    workspace.favorite.favorite_id,
+                    workspace.favorite.student_id,
+                    workspace.updated_at.isoformat(),
+                    json.dumps(payload, ensure_ascii=False),
+                ),
+            )
+
+    def clear(self) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM exploration_workspaces")
+            conn.execute("DELETE FROM exploration_favorites")
+
+    def _ensure_schema(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS exploration_favorites (
+                    favorite_id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL,
+                    direction_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    payload TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_exploration_favorites_student
+                ON exploration_favorites(student_id, created_at DESC)
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS exploration_workspaces (
+                    workspace_id TEXT PRIMARY KEY,
+                    favorite_id TEXT NOT NULL,
+                    student_id TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    payload TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_exploration_workspaces_student
+                ON exploration_workspaces(student_id, updated_at DESC)
+                """
+            )
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.path)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 
 class JsonExplorationStore:
-    """Tiny JSON repository for favorites and exploration workspaces."""
+    """Tiny JSON repository kept for migration and narrow tests."""
 
     def __init__(self, path: Path | str | None = None) -> None:
         self.path = Path(path).expanduser() if path is not None else default_store_path()

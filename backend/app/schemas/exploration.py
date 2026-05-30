@@ -103,14 +103,23 @@ class ExplorationTask(BaseModel):
     evidence_to_collect: str
 
 
+class CareerRequirementProfile(BaseModel):
+    core_skills: list[str] = Field(default_factory=list)
+    typical_tasks: list[str] = Field(default_factory=list)
+    dimension_weights: dict[str, int] = Field(default_factory=dict)
+    evidence_suggestions: list[str] = Field(default_factory=list)
+
+
 class CareerDirection(BaseModel):
     id: str
     title: str
+    exploration_domain: str = ""
     fit_score: int = Field(ge=0, le=100)
     why_explore: list[str] = Field(default_factory=list)
     required_dimensions: list[str] = Field(default_factory=list)
     first_probe_task_id: str
     related_knowledge_ids: list[str] = Field(default_factory=list)
+    requirement_profile: CareerRequirementProfile = Field(default_factory=CareerRequirementProfile)
 
 
 class LearningPathItem(BaseModel):

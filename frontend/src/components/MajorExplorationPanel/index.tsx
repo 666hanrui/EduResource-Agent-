@@ -435,6 +435,15 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
                     <p style={probeStyle}>
                       首个验证任务：{tasksById.get(direction.first_probe_task_id) || direction.first_probe_task_id}
                     </p>
+                    <div style={roleProfileStyle}>
+                      <span style={tagStyle}>{direction.exploration_domain || '探索方向'}</span>
+                      <small>{direction.requirement_profile.core_skills.slice(0, 4).join('、')}</small>
+                    </div>
+                    {direction.requirement_profile.evidence_suggestions.length > 0 && (
+                      <p style={probeStyle}>
+                        证据建议：{direction.requirement_profile.evidence_suggestions[0]}
+                      </p>
+                    )}
                     <button
                       onClick={() => handleCreateWorkspace(direction)}
                       disabled={workspaceLoading}
@@ -913,6 +922,15 @@ const directionItemStyle: CSSProperties = {
   border: '1px solid #e5e7eb',
   borderRadius: 6,
   background: '#fcfcfd',
+};
+
+const roleProfileStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  flexWrap: 'wrap',
+  marginTop: 8,
+  color: '#4b5563',
 };
 
 const fitStyle: CSSProperties = {
