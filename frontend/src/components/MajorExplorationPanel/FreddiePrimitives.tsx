@@ -1,6 +1,13 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type {
+  ButtonHTMLAttributes,
+  CSSProperties,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'small';
 };
 
@@ -32,15 +39,15 @@ export function Field({ label, wide, children }: FieldProps) {
   );
 }
 
-export function MajorInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function MajorInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`major-input ${props.className ?? ''}`} />;
 }
 
-export function MajorSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function MajorSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`major-select ${props.className ?? ''}`} />;
 }
 
-export function MajorTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function MajorTextarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`major-textarea ${props.className ?? ''}`} />;
 }
 
