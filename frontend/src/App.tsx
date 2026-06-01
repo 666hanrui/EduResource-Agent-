@@ -22,6 +22,12 @@ interface GenerateResponse {
   task_id: string;
 }
 
+interface DigitalHumanAction {
+  action_id: string;
+  title: string;
+  domain: string;
+}
+
 export function App() {
   const [activeModule, setActiveModule] = useState<'exploration' | 'generator'>('exploration');
   const [knowledgeName, setKnowledgeName] = useState('链表');
@@ -40,7 +46,10 @@ export function App() {
     if (pollHandle.current !== null) window.clearInterval(pollHandle.current);
   }, []);
 
-  const handleStart = async () => {
+  const handleStart = async (overrides?: { knowledgeId?: string; knowledgeName?: string }) => {
+    const selectedKnowledgeId = overrides?.knowledgeId ?? knowledgeId;
+    const selectedKnowledgeName = overrides?.knowledgeName ?? knowledgeName;
+
     setError(null);
     setResults(null);
     setSubmitting(true);
@@ -50,8 +59,8 @@ export function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           student_id: studentId,
-          knowledge_id: knowledgeId,
-          knowledge_name: knowledgeName,
+          knowledge_id: selectedKnowledgeId,
+          knowledge_name: selectedKnowledgeName,
           conversation: [],
           exercise_count: 5,
           languages: ['python', 'java'],
@@ -76,6 +85,85 @@ export function App() {
     setKnowledgeId(item.knowledge_id);
     setKnowledgeName(item.knowledge_name);
     setActiveModule('generator');
+  };
+
+  const handleTutorCommand = async (text: string): Promise<string | null> => {
+    const command = text.trim().toLowerCase();
+    const wantsNavigation =
+      command.includes('打开') ||
+      command.includes('进入') ||
+      command.includes('切到') ||
+      command.includes('切换') ||
+      command.includes('去');
+    const wantsGeneration =
+      command.includes('开始生成') ||
+      command.includes('生成学习资源') ||
+      command.includes('生成资源');
+
+    if (
+      command === '打开专业探索' ||
+      ((command.includes('专业探索') || command.includes('探索工作台')) && wantsNavigation)
+    ) {
+      setActiveModule('exploration');
+      return '已打开专业探索工作台。你可以先选择专业和年级，我会从基础知识广度、兴趣线索和未来职业方向帮你一起收敛。';
+    }
+
+    if (
+      command === '打开资源生成' ||
+      ((command.includes('资源生成') || command.includes('生成页')) && wantsNavigation)
+    ) {
+      setActiveModule('generator');
+      return `已打开资源生成页。当前知识点是「${knowledgeName}」，你可以直接让我开始生成学习资源。`;
+    }
+
+    if (command.includes('链表') && (wantsNavigation || wantsGeneration)) {
+      setKnowledgeId('linked-list-basics');
+      setKnowledgeName('链表');
+      setActiveModule('generator');
+      if (wantsGeneration) {
+        if (submitting || generating) {
+          return '学习资源生成已经在运行了。你可以看右侧 Agent 协作时序，我会等这一轮完成后再启动新的任务。';
+        }
+        void handleStart({ knowledgeId: 'linked-list-basics', knowledgeName: '链表' });
+        return '已切到「链表」，并启动多 Agent 资源生成。右侧可以看到 7 个 Agent 的协作时序。';
+      }
+      return '已切到「链表」学习资源生成。需要的话，我可以继续帮你启动多 Agent 生成流程。';
+    }
+
+    if (command.includes('二叉树') && (wantsNavigation || wantsGeneration)) {
+      setKnowledgeId('binary-tree-traversal');
+      setKnowledgeName('二叉树遍历');
+      setActiveModule('generator');
+      if (wantsGeneration) {
+        if (submitting || generating) {
+          return '学习资源生成已经在运行了。你可以看右侧 Agent 协作时序，我会等这一轮完成后再启动新的任务。';
+        }
+        void handleStart({ knowledgeId: 'binary-tree-traversal', knowledgeName: '二叉树遍历' });
+        return '已切到「二叉树遍历」，并启动多 Agent 资源生成。右侧可以看到 7 个 Agent 的协作时序。';
+      }
+      return '已切到「二叉树遍历」学习资源生成。需要的话，我可以继续帮你启动多 Agent 生成流程。';
+    }
+
+    if (wantsGeneration) {
+      setActiveModule('generator');
+      if (submitting || generating) {
+        return '学习资源生成已经在运行了。你可以看右侧 Agent 协作时序，我会等这一轮完成后再启动新的任务。';
+      }
+      void handleStart();
+      return `已为「${knowledgeName}」启动多 Agent 资源生成。右侧可以看到 7 个 Agent 的协作时序，完成后中间区域会展示资源卡片。`;
+    }
+
+    if (command.includes('能做什么') || command.includes('可以操作') || command.includes('操作')) {
+      const res = await fetch('/api/digital-human/actions');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const actions = (await res.json()) as DigitalHumanAction[];
+      const domains = Array.from(new Set(actions.map((action) => action.domain)));
+      return `我现在登记了 ${actions.length} 类可操作动作，覆盖 ${domains.join('、')}。当前前端已接入模块切换、知识点切换和资源生成启动，后续可以继续把探索工作台里的计划、画像、报告和导出也交给我直接操作。`;
+    }
+
+    return null;
   };
 
   const startPolling = (id: string) => {
@@ -164,7 +252,7 @@ export function App() {
               style={INPUT_STYLE}
             />
             <button
-              onClick={handleStart}
+              onClick={() => void handleStart()}
               disabled={submitting || generating}
               style={{
                 padding: '8px 20px',
@@ -210,7 +298,7 @@ export function App() {
         taskId={taskId}
         title={taskId ? `${knowledgeName} · ${studentId}` : '未启动任务'}
       />
-      <TutorFloatingBall />
+      <TutorFloatingBall onCommand={handleTutorCommand} />
     </div>
   );
 }

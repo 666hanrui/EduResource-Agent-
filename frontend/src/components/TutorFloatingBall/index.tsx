@@ -9,13 +9,19 @@ interface Message {
   ts: Date;
 }
 
+interface Props {
+  onCommand?: (text: string) => Promise<string | null>;
+}
+
 const QUICK_QUESTIONS = [
   '单链表插入的指针修改顺序是什么？',
   '二叉树的前中后序遍历有什么区别？',
-  '系统画像中的8维和12维是什么？'
+  '系统画像中的8维和12维是什么？',
+  '打开专业探索',
+  '打开资源生成'
 ];
 
-export function TutorFloatingBall() {
+export function TutorFloatingBall({ onCommand }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(true);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -162,6 +168,17 @@ export function TutorFloatingBall() {
     setLoading(true);
 
     try {
+      const commandReply = await onCommand?.(text);
+      if (commandReply) {
+        setMessages(prev => [...prev, {
+          id: Math.random().toString(),
+          sender: 'tutor',
+          text: commandReply,
+          ts: new Date()
+        }]);
+        return;
+      }
+
       const chatHistory = messages
         .concat(userMsg)
         .map(m => ({
