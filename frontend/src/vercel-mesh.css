@@ -1,0 +1,607 @@
+:root {
+  --mesh-black: #000000;
+  --mesh-surface-1: #0a0a0a;
+  --mesh-surface-2: #111111;
+  --mesh-surface-3: #151515;
+  --mesh-hairline: rgba(255, 255, 255, 0.08);
+  --mesh-hairline-strong: rgba(255, 255, 255, 0.16);
+  --mesh-text: #ededed;
+  --mesh-muted: #888888;
+  --mesh-dim: #5f5f5f;
+  --mesh-cyan: #0070f3;
+  --mesh-magenta: #ff0080;
+  --mesh-orange: #f5a623;
+  --mesh-radius-sm: 8px;
+  --mesh-radius-md: 12px;
+  --mesh-radius-lg: 16px;
+  --mesh-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mesh-page {
+  min-height: 100vh;
+  color: var(--mesh-text);
+  background: var(--mesh-black);
+  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+.mesh-page * {
+  box-sizing: border-box;
+}
+
+.mesh-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+
+.mesh-shell::before {
+  content: "";
+  position: fixed;
+  inset: -28% -18% auto -18%;
+  z-index: -2;
+  height: 760px;
+  background:
+    radial-gradient(circle at 22% 36%, rgba(0, 112, 243, 0.42), transparent 28%),
+    radial-gradient(circle at 58% 18%, rgba(255, 0, 128, 0.26), transparent 26%),
+    radial-gradient(circle at 78% 46%, rgba(245, 166, 35, 0.22), transparent 26%);
+  filter: blur(72px) saturate(0.82);
+  opacity: 0.86;
+  animation: mesh-drift 18s var(--mesh-ease) infinite alternate;
+}
+
+.mesh-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.1), #000 72%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: auto, 64px 64px, 64px 64px;
+  mask-image: linear-gradient(to bottom, black 0 64%, transparent 100%);
+}
+
+.mesh-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 18px 0;
+  backdrop-filter: blur(16px);
+}
+
+.mesh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mesh-text);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.mesh-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mesh-hairline-strong);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.mesh-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.72);
+}
+
+.mesh-nav-link,
+.mesh-ghost-button,
+.mesh-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 520;
+  text-decoration: none;
+  transition: transform 200ms var(--mesh-ease), border-color 200ms var(--mesh-ease), background 200ms var(--mesh-ease), color 200ms var(--mesh-ease);
+}
+
+.mesh-nav-link {
+  color: var(--mesh-muted);
+}
+
+.mesh-nav-link:hover,
+.mesh-nav-link.is-active {
+  color: var(--mesh-text);
+  background: rgba(255,255,255,0.06);
+}
+
+.mesh-primary-button {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+}
+
+.mesh-primary-button:hover,
+.mesh-ghost-button:hover {
+  transform: translateY(-1px);
+}
+
+.mesh-ghost-button {
+  border-color: var(--mesh-hairline-strong);
+  color: var(--mesh-text);
+  background: rgba(255,255,255,0.04);
+}
+
+.mesh-main {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.mesh-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 48px;
+  align-items: center;
+  min-height: calc(100vh - 84px);
+  padding: 72px 0 96px;
+}
+
+.mesh-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 6px 10px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: 999px;
+  color: var(--mesh-muted);
+  background: rgba(255,255,255,0.035);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.mesh-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #21c55d;
+  box-shadow: 0 0 18px rgba(33, 197, 93, 0.7);
+}
+
+.mesh-title {
+  margin: 0;
+  max-width: 800px;
+  color: var(--mesh-text);
+  font-size: clamp(46px, 7vw, 96px);
+  line-height: 0.92;
+  font-weight: 620;
+  letter-spacing: -0.075em;
+}
+
+.mesh-title span {
+  color: transparent;
+  background: linear-gradient(90deg, #fff, #bdbdbd 42%, #fff);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.mesh-subtitle {
+  max-width: 660px;
+  margin: 24px 0 0;
+  color: var(--mesh-muted);
+  font-size: 17px;
+  line-height: 1.72;
+}
+
+.mesh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.mesh-terminal,
+.mesh-card,
+.mesh-panel {
+  border: 1px solid var(--mesh-hairline);
+  border-radius: var(--mesh-radius-lg);
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025));
+}
+
+.mesh-terminal {
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.mesh-terminal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--mesh-hairline);
+  color: var(--mesh-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.mesh-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.mesh-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+}
+
+.mesh-terminal-body {
+  padding: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.mesh-log-line {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 12px;
+  color: var(--mesh-muted);
+}
+
+.mesh-log-line strong {
+  color: var(--mesh-text);
+  font-weight: 520;
+}
+
+.mesh-log-ok {
+  color: #21c55d;
+}
+
+.mesh-section {
+  padding: 88px 0;
+  border-top: 1px solid var(--mesh-hairline);
+}
+
+.mesh-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.mesh-section h2 {
+  margin: 0;
+  max-width: 720px;
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+}
+
+.mesh-section p {
+  color: var(--mesh-muted);
+}
+
+.mesh-grid-3,
+.mesh-grid-2,
+.mesh-metric-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.mesh-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mesh-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mesh-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mesh-card,
+.mesh-panel {
+  position: relative;
+  padding: 22px;
+  overflow: hidden;
+}
+
+.mesh-card::before,
+.mesh-panel::before {
+  content: "";
+  position: absolute;
+  inset: auto 10% -58% 10%;
+  height: 160px;
+  background: radial-gradient(circle at center, rgba(0,112,243,0.18), transparent 62%);
+  opacity: 0;
+  transition: opacity 220ms var(--mesh-ease);
+  pointer-events: none;
+}
+
+.mesh-card:hover::before,
+.mesh-panel:hover::before {
+  opacity: 1;
+}
+
+.mesh-card h3,
+.mesh-panel h3 {
+  margin: 0 0 10px;
+  color: var(--mesh-text);
+  font-size: 18px;
+  font-weight: 580;
+  letter-spacing: -0.02em;
+}
+
+.mesh-card p,
+.mesh-panel p {
+  margin: 0;
+  color: var(--mesh-muted);
+  line-height: 1.65;
+}
+
+.mesh-card small,
+.mesh-mono {
+  color: var(--mesh-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.mesh-metric {
+  padding: 18px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: var(--mesh-radius-md);
+  background: rgba(255,255,255,0.035);
+}
+
+.mesh-metric strong {
+  display: block;
+  color: var(--mesh-text);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.mesh-metric span {
+  color: var(--mesh-muted);
+  font-size: 13px;
+}
+
+.mesh-dashboard {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+  min-height: calc(100vh - 84px);
+  padding: 24px 0 40px;
+}
+
+.mesh-sidebar {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: var(--mesh-radius-lg);
+  background: rgba(10,10,10,0.76);
+}
+
+.mesh-side-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: var(--mesh-radius-md);
+  color: var(--mesh-muted);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mesh-side-item.is-active,
+.mesh-side-item:hover {
+  border-color: var(--mesh-hairline);
+  color: var(--mesh-text);
+  background: rgba(255,255,255,0.05);
+}
+
+.mesh-side-item strong {
+  font-size: 14px;
+}
+
+.mesh-side-item span {
+  color: var(--mesh-muted);
+  font-size: 12px;
+}
+
+.mesh-dashboard-main {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.mesh-dashboard-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 28px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: var(--mesh-radius-lg);
+  background:
+    radial-gradient(circle at 88% 24%, rgba(0,112,243,0.18), transparent 30%),
+    rgba(255,255,255,0.035);
+}
+
+.mesh-dashboard-hero h1 {
+  margin: 0;
+  font-size: clamp(32px, 4vw, 58px);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+  font-weight: 620;
+}
+
+.mesh-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--mesh-muted);
+  font-size: 14px;
+}
+
+.mesh-table th,
+.mesh-table td {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--mesh-hairline);
+  text-align: left;
+}
+
+.mesh-table th {
+  color: var(--mesh-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mesh-table td strong {
+  color: var(--mesh-text);
+  font-weight: 520;
+}
+
+.mesh-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: 999px;
+  color: var(--mesh-text);
+  background: rgba(255,255,255,0.04);
+  font-size: 12px;
+}
+
+.mesh-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #21c55d;
+}
+
+.mesh-status.warn::before {
+  background: var(--mesh-orange);
+}
+
+.mesh-progress {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+}
+
+.mesh-progress span {
+  display: block;
+  width: var(--value);
+  height: 100%;
+  background: linear-gradient(90deg, #ffffff, rgba(255,255,255,0.52));
+}
+
+.mesh-footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--mesh-hairline);
+  color: var(--mesh-dim);
+  text-align: center;
+  font-size: 13px;
+}
+
+@keyframes mesh-drift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
+@media (max-width: 980px) {
+  .mesh-hero,
+  .mesh-dashboard,
+  .mesh-dashboard-hero,
+  .mesh-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .mesh-grid-3,
+  .mesh-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mesh-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mesh-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mesh-nav-links,
+  .mesh-actions {
+    width: 100%;
+  }
+
+  .mesh-nav-link,
+  .mesh-primary-button,
+  .mesh-ghost-button {
+    flex: 1;
+  }
+
+  .mesh-hero {
+    padding-top: 48px;
+  }
+
+  .mesh-grid-3,
+  .mesh-metric-grid,
+  .mesh-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .mesh-terminal-body {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-shell::before {
+    animation: none;
+  }
+
+  * {
+    transition: none !important;
+  }
+}
