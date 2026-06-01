@@ -54,3 +54,42 @@
 - [ ] 前端资源溯源卡片组件
 - [ ] 数据结构课程预置数据
 - [ ] 演示视频与 PPT
+
+## AI 智能助教 Live2D 数字人集成与自定义指南
+
+系统在前端右下角集成了基于 WebGL 的 Live2D 交互式数字人助教“小灵（Haru）”，具备以下特征：
+- **鼠标跟随与自动眨眼**：角色眼睛、头部和视线会自动跟踪用户鼠标移动，并在随机间隔内自动眨眼。
+- **发言口型同步 (LipSync)**：当助教在思考或输出生成回答时，模型嘴巴会自动按照语音振幅频率进行张合，生成结束后自动闭嘴。
+- **拖拽与边界夹持**：用户可将数字人拖拽至屏幕任意位置，且具备窗口边界碰撞检测，不会拖出屏幕外。
+
+### 1. 本地化资源结构
+为了确保国内网络环境下 100% 稳定加载且不依赖外部 CDN，数字人核心库与资源已全部本地化：
+- **SDK 核心引擎**：位于 `frontend/public/live2dcubismcore.min.js`（官方 Cubism 4 SDK 运行时）。
+- **默认模型目录**：位于 `frontend/public/live2d/haru/`（官方测试模型 Haru 骨骼及贴图）。
+
+### 2. 替换为自己建模的专属形象
+如果你想使用自己画图并建模的 Live2D 形象，只需按以下步骤操作：
+
+1. **制作模型**：
+   - 使用 Photoshop / CSP 将立绘角色按图层精细分层并导出 `.psd` 文件。
+   - 导入 **Live2D Cubism Editor** 中进行网格变形、参数绑定和物理碰撞设置。
+   - 导出为运行时文件（Moc3 格式），确保生成 `*.model3.json`、`*.moc3` 以及包含贴图 png 文件的文件夹。
+2. **替换资源**：
+   - 将导出的整套模型文件夹放入到前端公共目录中，例如：`frontend/public/live2d/my_avatar/`。
+3. **更改加载路径**：
+   - 打开 [frontend/src/components/TutorLivePanel/TutorLive2D.tsx](frontend/src/components/TutorLivePanel/TutorLive2D.tsx)，将加载路径指向你的新 JSON 文件：
+     ```typescript
+     const modelUrl = "/live2d/my_avatar/my_avatar.model3.json";
+     ```
+4. **微调大小与位置**：
+   - 打开 [frontend/src/components/TutorFloatingBall/index.tsx](frontend/src/components/TutorFloatingBall/index.tsx)，根据自制模型的比例，微调 `<TutorLive2D>` 的缩放及偏移量：
+     ```tsx
+     <TutorLive2D 
+       isSpeaking={loading} 
+       width={240} 
+       height={320} 
+       scale={0.065}    // 调整此数值以缩放模型大小
+       xOffset={25}     // 水平偏移微调
+       yOffset={25}     // 垂直偏移微调
+     />
+     ```

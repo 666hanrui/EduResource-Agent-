@@ -77,6 +77,10 @@ def _serialize_outputs(outputs: GenerateOutputs) -> dict:
     }
 
 
+class ChatRequest(BaseModel):
+    messages: list[dict[str, str]]
+
+
 def build_router(ctx: AppContext) -> APIRouter:
     router = APIRouter(prefix="/api")
 
@@ -346,6 +350,54 @@ def build_router(ctx: AppContext) -> APIRouter:
         if task_id not in _GENERATE_OUTPUTS:
             raise HTTPException(status_code=404, detail="task results not ready")
         return _GENERATE_OUTPUTS[task_id]
+
+    # ──────────────────────── 通用 AI 助教对话 ────────────────────────
+
+    @router.post("/chat")
+    async def general_chat(payload: ChatRequest) -> dict:
+        """通用 AI 助教对话接口，支持大模型调用和本地规则兜底。"""
+        try:
+            system_prompt = {
+                "role": "system",
+                "content": (
+                    "你是数据结构与算法课程的 AI 智能助教『小灵』。"
+                    "你的回答要专业、亲切、通俗易懂，并且在必要时给出清晰的步骤和防坑指南。"
+                    "请使用 Markdown 格式来排版代码块或分点列表。"
+                )
+            }
+            full_messages = [system_prompt] + [m for m in payload.messages if m.get("role") != "system"]
+            response = await ctx.llm.chat(full_messages)
+            return {"content": response.content}
+        except Exception as exc:
+            logger.warning("通用对话接口调用异常，启用规则兜底: %s", exc)
+            user_msg = payload.messages[-1].get("content", "").lower()
+            reply = "你好！我是你的 AI 助教。在配置大模型 API Key 之前，我可以为您进行本地规则解答：\n\n"
+            if "链表" in user_msg or "link" in user_msg or "insert" in user_msg:
+                reply += (
+                    "对于**单链表的中间插入**，操作的核心在于指针修改顺序。具体步骤是：\n"
+                    "1. 创建新节点 `new_node`；\n"
+                    "2. 将新节点的 next 指向当前节点的 next：`new_node->next = curr->next`；\n"
+                    "3. 将当前节点的 next 指向新节点：`curr->next = new_node`。\n\n"
+                    "⚠️ **防坑指南**：第2步和第3步绝不能颠倒，否则原链表后续部分指针会丢失！"
+                )
+            elif "二叉树" in user_msg or "tree" in user_msg:
+                reply += (
+                    "**二叉树的遍历**主要有三种经典顺序：\n"
+                    "- **先序遍历**：根节点 -> 左子树 -> 右子树；\n"
+                    "- **中序遍历**：左子树 -> 根节点 -> 右子树；\n"
+                    "- **后序遍历**：左子树 -> 右子树 -> 根节点。\n\n"
+                    "它们在代码中可以通过递归或栈（迭代占位）来实现。"
+                )
+            elif "画像" in user_msg or "profile" in user_msg:
+                reply += (
+                    "系统会为您生成**学习画像**（含当前掌握度、学习风格如代码/图解/推导、当前进度），"
+                    "以及专业探索模块的 **12维能力画像**，用于精准匹配并生成您此刻所需的定制资源。"
+                )
+            else:
+                reply += (
+                    "我是您的 AI 智能助教『小灵』。我可以协助您理解单链表插入指针顺序、二叉树遍历原理，以及帮助您在专业探索或个性化资源生成中解答问题。"
+                )
+            return {"content": reply}
 
     # ──────────────────────── SSE 事件流 ────────────────────────
 

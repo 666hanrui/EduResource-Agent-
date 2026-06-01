@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react';
 import { AgentTracePanel } from './components/AgentTracePanel';
 import { MajorExplorationPanel } from './components/MajorExplorationPanel';
 import { ResultsPanel } from './components/ResultsPanel';
+import { TutorFloatingBall } from './components/TutorFloatingBall';
 import type { RecommendedKnowledge } from './types/exploration';
 import type { GenerateResults } from './types/resources';
 
@@ -209,6 +210,7 @@ export function App() {
         taskId={taskId}
         title={taskId ? `${knowledgeName} · ${studentId}` : '未启动任务'}
       />
+      <TutorFloatingBall />
     </div>
   );
 }
