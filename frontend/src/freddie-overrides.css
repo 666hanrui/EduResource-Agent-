@@ -1,0 +1,81 @@
+/* Extra Freddie adaptation for legacy inline components that remain after React rewrites. */
+
+/* Rationale modal: turn the old white popup into a Freddie explanation card. */
+#root div[style*="rgba(0,0,0,0.35)"],
+#root div[style*="rgba(0, 0, 0, 0.35)"] {
+  background: rgba(36, 28, 21, 0.42) !important;
+}
+
+#root div[style*="box-shadow: 0 8px 32px"],
+#root div[style*="boxShadow: 0 8px 32px"] {
+  width: min(560px, calc(100vw - 48px)) !important;
+  border: 3px solid var(--freddie-ink) !important;
+  border-radius: 28px !important;
+  background: var(--freddie-paper) !important;
+  box-shadow: 10px 10px 0 var(--freddie-ink) !important;
+  color: var(--freddie-ink) !important;
+}
+
+#root div[style*="box-shadow: 0 8px 32px"] header,
+#root div[style*="boxShadow: 0 8px 32px"] header {
+  border-bottom: 2px dashed var(--freddie-ink) !important;
+}
+
+#root div[style*="box-shadow: 0 8px 32px"] section,
+#root div[style*="boxShadow: 0 8px 32px"] section {
+  padding: 14px !important;
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: 20px !important;
+  background: var(--freddie-cream) !important;
+}
+
+#root div[style*="box-shadow: 0 8px 32px"] code,
+#root div[style*="boxShadow: 0 8px 32px"] code {
+  background: var(--freddie-yellow) !important;
+  color: var(--freddie-ink) !important;
+}
+
+/* Tutor / Live2D helper: make the chat window feel like a hand-drawn helper card. */
+#root div[style*="z-index: 9999"] div[style*="backdrop-filter"],
+#root div[style*="z-index: 9999"] div[style*="backdropFilter"] {
+  border: 3px solid var(--freddie-ink) !important;
+  border-radius: 24px !important;
+  background: var(--freddie-paper) !important;
+  box-shadow: 8px 8px 0 var(--freddie-ink) !important;
+  color: var(--freddie-ink) !important;
+}
+
+#root div[style*="z-index: 9999"] header[style*="linear-gradient"] {
+  background: var(--freddie-yellow) !important;
+  color: var(--freddie-ink) !important;
+  border-bottom: 3px solid var(--freddie-ink) !important;
+}
+
+#root div[style*="z-index: 9999"] header[style*="linear-gradient"] div,
+#root div[style*="z-index: 9999"] header[style*="linear-gradient"] button {
+  color: var(--freddie-ink) !important;
+}
+
+#root div[style*="z-index: 9999"] div[style*="backgroundColor: '#fff'"],
+#root div[style*="z-index: 9999"] div[style*="background-color: rgb(255, 255, 255)"] {
+  background: var(--freddie-paper) !important;
+}
+
+#root div[style*="z-index: 9999"] input[style] {
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: 999px !important;
+  background: #fffaf0 !important;
+}
+
+#root div[style*="z-index: 9999"] button[style] {
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: 999px !important;
+  background: var(--freddie-yellow) !important;
+  color: var(--freddie-ink) !important;
+  box-shadow: 3px 3px 0 var(--freddie-ink) !important;
+}
+
+/* Remove cold blue glows from the Live2D helper. */
+#root div[style*="rgba(22, 119, 255"] {
+  background: rgba(255, 224, 27, 0.22) !important;
+}
