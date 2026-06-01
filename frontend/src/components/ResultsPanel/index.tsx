@@ -1,10 +1,3 @@
-/**
- * ResultsPanel —— 主区资源卡片。
- *
- * 把 GenerateFlow 产出按知识点解构、文档讲解、习题、代码、可视化、闭环评估顺序铺开。
- * 每张卡片右上角"为什么"按钮触发 RationalePanel —— 杀手锏二的入口。
- */
-
 import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type {
@@ -23,6 +16,17 @@ interface Props {
   loading: boolean;
 }
 
+type AskWhy = (rationale: Rationale, title: string) => void;
+
+const C = {
+  yellow: '#FFE01B',
+  ink: '#241C15',
+  cream: '#FBEFE3',
+  paper: '#FFFDF6',
+  muted: '#88837C',
+  coral: '#FF4D74',
+};
+
 export function ResultsPanel({ results, loading }: Props) {
   const [activeRationale, setActiveRationale] = useState<{
     rationale: Rationale;
@@ -31,58 +35,53 @@ export function ResultsPanel({ results, loading }: Props) {
 
   if (loading && !results) {
     return (
-      <div style={emptyStyle}>
-        <div style={{ fontSize: 14, color: '#999' }}>资源生成中…</div>
-        <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>
-          可以盯右侧 Agent 协作时序面板看进度
-        </div>
-      </div>
+      <EmptyState
+        title="Agent 们正在排队干活"
+        body="右侧剧场会实时亮起。等它们跑完，这里会自动贴出讲解、题目、代码和可视化。"
+      />
     );
   }
 
   if (!results) {
     return (
-      <div style={emptyStyle}>
-        <div style={{ fontSize: 14, color: '#999' }}>还没有生成任务</div>
-        <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>
-          填好上面的知识点和学生 ID，点"开始生成"
-        </div>
-      </div>
+      <EmptyState
+        title="还没开始生成"
+        body="填好知识点和学生 ID，点“开始生成”。别怕，系统会把为什么生成这个也一起交代清楚。"
+      />
     );
   }
 
+  const producedCount = [results.document, results.exercise, results.code, results.visual, results.evaluation].filter(Boolean).length;
+
   return (
     <div style={wrapStyle}>
-      {results.document && (
-        <DocumentCard
-          data={results.document}
-          onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })}
-        />
-      )}
-      {results.exercise && (
-        <ExerciseCard
-          data={results.exercise}
-          onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })}
-        />
-      )}
-      {results.code && (
-        <CodeCard
-          data={results.code}
-          onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })}
-        />
-      )}
-      {results.visual && (
-        <VisualCard
-          data={results.visual}
-          onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })}
-        />
-      )}
-      {results.evaluation && <EvaluationCard data={results.evaluation} />}
+      <section style={summaryStyle}>
+        <div>
+          <span style={eyebrowStyle}>Resource Pack</span>
+          <h2 style={{ margin: '8px 0 0', fontSize: 28 }}>这一轮产出了 {producedCount} 组学习材料</h2>
+          <p style={summaryTextStyle}>每张卡片都保留“为什么生成这个”的入口，展示画像匹配、短板、难度调整和生成指纹。</p>
+        </div>
+        <div style={stampStyle}>可追溯</div>
+      </section>
+
+      <div style={gridStyle}>
+        {results.document && (
+          <DocumentCard data={results.document} onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })} />
+        )}
+        {results.exercise && (
+          <ExerciseCard data={results.exercise} onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })} />
+        )}
+        {results.code && (
+          <CodeCard data={results.code} onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })} />
+        )}
+        {results.visual && (
+          <VisualCard data={results.visual} onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })} />
+        )}
+        {results.evaluation && <EvaluationCard data={results.evaluation} />}
+      </div>
 
       {Object.keys(results.errors).length > 0 && (
-        <div style={errorBoxStyle}>
-          部分 Agent 失败（已走兜底）：{Object.keys(results.errors).join(' / ')}
-        </div>
+        <div style={errorBoxStyle}>有 Agent 摔了一跤，但系统已兜底：{Object.keys(results.errors).join(' / ')}</div>
       )}
 
       {activeRationale && (
@@ -96,13 +95,20 @@ export function ResultsPanel({ results, loading }: Props) {
   );
 }
 
-// ─────────────────────────── 资源卡片 ───────────────────────────
-
-type AskWhy = (rationale: Rationale, title: string) => void;
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div style={emptyStyle}>
+      <div style={emptyMascotStyle} />
+      <h2 style={{ margin: '14px 0 8px', fontSize: 34 }}>{title}</h2>
+      <p style={{ margin: 0, maxWidth: 520, color: C.muted, lineHeight: 1.6 }}>{body}</p>
+    </div>
+  );
+}
 
 function CardShell({
   title,
   badge,
+  kicker,
   onAskWhy,
   whyTitle,
   rationale,
@@ -110,6 +116,7 @@ function CardShell({
 }: {
   title: string;
   badge: string;
+  kicker: string;
   onAskWhy: AskWhy;
   whyTitle: string;
   rationale: Rationale;
@@ -120,11 +127,10 @@ function CardShell({
       <header style={cardHeaderStyle}>
         <div>
           <span style={badgePillStyle}>{badge}</span>
-          <strong style={{ marginLeft: 8, fontSize: 15 }}>{title}</strong>
+          <h3 style={{ margin: '8px 0 4px', fontSize: 22 }}>{title}</h3>
+          <div style={kickerStyle}>{kicker}</div>
         </div>
-        <button style={whyButtonStyle} onClick={() => onAskWhy(rationale, whyTitle)}>
-          为什么生成这个？
-        </button>
+        <button style={whyButtonStyle} onClick={() => onAskWhy(rationale, whyTitle)}>为什么？</button>
       </header>
       <div style={cardBodyStyle}>{children}</div>
     </section>
@@ -135,22 +141,19 @@ function DocumentCard({ data, onAskWhy }: { data: DocumentResult; onAskWhy: AskW
   return (
     <CardShell
       title={data.document.title}
-      badge="讲解文档"
+      badge="讲解"
+      kicker="先讲清楚，再上题。"
       onAskWhy={onAskWhy}
       whyTitle="为什么生成这份讲解？"
       rationale={data.rationale}
     >
-      {data.document.sections.map((sec, i) => (
-        <div key={i} style={{ marginBottom: 10 }}>
-          <h4 style={{ margin: '6px 0', fontSize: 14 }}>{sec.heading}</h4>
+      {data.document.sections.slice(0, 3).map((sec, i) => (
+        <div key={i} style={miniSectionStyle}>
+          <strong>{sec.heading}</strong>
           <pre style={preStyle}>{sec.body_md}</pre>
         </div>
       ))}
-      {data.document.key_diagrams.length > 0 && (
-        <div style={metaStyle}>
-          含 {data.document.key_diagrams.length} 个结构图
-        </div>
-      )}
+      {data.document.key_diagrams.length > 0 && <div style={metaStyle}>附带 {data.document.key_diagrams.length} 个结构图线索</div>}
     </CardShell>
   );
 }
@@ -158,33 +161,23 @@ function DocumentCard({ data, onAskWhy }: { data: DocumentResult; onAskWhy: AskW
 function ExerciseCard({ data, onAskWhy }: { data: ExerciseResult; onAskWhy: AskWhy }) {
   return (
     <CardShell
-      title={`自适应题目 ×${data.questions.length}`}
+      title={`自适应题目 × ${data.questions.length}`}
       badge="题目"
+      kicker="不是刷题堆量，是按短板补洞。"
       onAskWhy={onAskWhy}
       whyTitle="为什么是这套题？"
       rationale={data.rationale}
     >
       {data.questions.slice(0, 3).map((q, i) => (
-        <div key={q.qid} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 13 }}>
+        <div key={q.qid} style={questionStyle}>
+          <div style={{ display: 'flex', gap: 8 }}>
             <span style={qNumStyle}>{i + 1}</span>
-            <span style={{ marginLeft: 6 }}>{q.stem}</span>
+            <strong style={{ lineHeight: 1.45 }}>{q.stem}</strong>
           </div>
-          {q.options.length > 0 && (
-            <ul style={{ ...listStyle, marginTop: 4 }}>
-              {q.options.map((opt, j) => (
-                <li key={j} style={{ fontSize: 12, color: '#555' }}>{opt}</li>
-              ))}
-            </ul>
-          )}
-          <div style={{ ...metaStyle, marginTop: 4 }}>
-            难度 {q.difficulty} · {q.expected_time_sec}s · 答案 {q.answer}
-          </div>
+          {q.options.length > 0 && <ul style={listStyle}>{q.options.map((opt, j) => <li key={j}>{opt}</li>)}</ul>}
+          <div style={metaStyle}>难度 {q.difficulty} · {q.expected_time_sec}s · 答案 {q.answer}</div>
         </div>
       ))}
-      {data.questions.length > 3 && (
-        <div style={metaStyle}>… 共 {data.questions.length} 题</div>
-      )}
     </CardShell>
   );
 }
@@ -195,30 +188,18 @@ function CodeCard({ data, onAskWhy }: { data: CodeResult; onAskWhy: AskWhy }) {
   if (!sample) return null;
   return (
     <CardShell
-      title={`代码案例（${data.code_samples.length} 种语言）`}
+      title="代码案例"
       badge="代码"
+      kicker="把概念落到 Python / Java，而不是停在 PPT。"
       onAskWhy={onAskWhy}
       whyTitle="为什么这样写代码？"
       rationale={data.rationale}
     >
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {data.code_samples.map((s, i) => (
-          <button
-            key={s.lang}
-            style={i === active ? tabActiveStyle : tabStyle}
-            onClick={() => setActive(i)}
-          >
-            {s.lang}
-          </button>
-        ))}
-      </div>
-      <pre style={{ ...preStyle, background: '#0d1117', color: '#c9d1d9', padding: 10 }}>
-        {sample.code}
-      </pre>
-      <div style={metaStyle}>
-        复杂度 时间 {sample.complexity.time} · 空间 {sample.complexity.space} ·
-        {sample.trace.length} 步执行轨迹
-      </div>
+      <div style={tabRowStyle}>{data.code_samples.map((s, i) => (
+        <button key={s.lang} style={i === active ? tabActiveStyle : tabStyle} onClick={() => setActive(i)}>{s.lang}</button>
+      ))}</div>
+      <pre style={codeStyle}>{sample.code}</pre>
+      <div style={metaStyle}>复杂度：时间 {sample.complexity.time} · 空间 {sample.complexity.space} · {sample.trace.length} 步轨迹</div>
     </CardShell>
   );
 }
@@ -228,25 +209,14 @@ function VisualCard({ data, onAskWhy }: { data: VisualResult; onAskWhy: AskWhy }
     <CardShell
       title="思维导图 + 动画步骤"
       badge="可视化"
+      kicker="用图和动作把抽象步骤拽回地面。"
       onAskWhy={onAskWhy}
       whyTitle="为什么生成这个可视化？"
       rationale={data.rationale}
     >
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h4 style={{ margin: '4px 0', fontSize: 13, color: '#666' }}>思维导图（markdown）</h4>
-          <pre style={preStyle}>{data.mindmap_md}</pre>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h4 style={{ margin: '4px 0', fontSize: 13, color: '#666' }}>动画步骤</h4>
-          <ol style={{ ...listStyle, paddingLeft: 18 }}>
-            {data.animation.steps.map((s, i) => (
-              <li key={i} style={{ fontSize: 12, marginBottom: 4 }}>
-                <code>{s.action}</code> {s.target} — {s.narration}
-              </li>
-            ))}
-          </ol>
-        </div>
+      <div style={visualGridStyle}>
+        <pre style={preStyle}>{data.mindmap_md}</pre>
+        <ol style={listStyle}>{data.animation.steps.slice(0, 5).map((s, i) => <li key={i}><code>{s.action}</code> {s.target} — {s.narration}</li>)}</ol>
       </div>
     </CardShell>
   );
@@ -255,151 +225,56 @@ function VisualCard({ data, onAskWhy }: { data: VisualResult; onAskWhy: AskWhy }
 function EvaluationCard({ data }: { data: EvaluationResult }) {
   const d = data.evaluation_delta;
   return (
-    <section style={{ ...cardStyle, background: '#fffbe6', borderColor: '#ffe58f' }}>
+    <section style={{ ...cardStyle, background: C.yellow }}>
       <header style={cardHeaderStyle}>
         <div>
-          <span style={{ ...badgePillStyle, background: '#fa8c16' }}>闭环评估</span>
-          <strong style={{ marginLeft: 8, fontSize: 15 }}>答题分析（模拟）</strong>
+          <span style={{ ...badgePillStyle, background: C.coral }}>闭环</span>
+          <h3 style={{ margin: '8px 0 4px', fontSize: 22 }}>答题评估</h3>
+          <div style={kickerStyle}>生成不是终点，反馈才是闭环。</div>
         </div>
       </header>
       <div style={cardBodyStyle}>
-        <div style={{ fontSize: 13, marginBottom: 6 }}>{data.narrative}</div>
-        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#555' }}>
-          <span>正确率 {(d.observed_correct_rate * 100).toFixed(0)}%</span>
-          <span>掌握度 {(d.estimated_mastery * 100).toFixed(0)}%</span>
-          <span>下一组难度 {d.next_difficulty_recommendation}</span>
+        <p style={{ marginTop: 0, lineHeight: 1.6 }}>{data.narrative}</p>
+        <div style={metricRowStyle}>
+          <Metric label="正确率" value={`${(d.observed_correct_rate * 100).toFixed(0)}%`} />
+          <Metric label="掌握度" value={`${(d.estimated_mastery * 100).toFixed(0)}%`} />
+          <Metric label="下一组难度" value={String(d.next_difficulty_recommendation)} />
         </div>
-        {d.new_weakness.length > 0 && (
-          <div style={{ ...metaStyle, marginTop: 6, color: '#cf1322' }}>
-            新增短板：{d.new_weakness.join(' / ')}
-          </div>
-        )}
-        {d.resolved_weakness.length > 0 && (
-          <div style={{ ...metaStyle, marginTop: 4, color: '#389e0d' }}>
-            已克服：{d.resolved_weakness.join(' / ')}
-          </div>
-        )}
+        {d.new_weakness.length > 0 && <div style={metaStyle}>新增短板：{d.new_weakness.join(' / ')}</div>}
       </div>
     </section>
   );
 }
 
-// ─────────────────────────── 样式 ───────────────────────────
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div style={metricStyle}><strong>{value}</strong><span>{label}</span></div>;
+}
 
-const wrapStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-  padding: 16,
-  flex: 1,
-  minWidth: 0,
-  fontFamily: 'system-ui, -apple-system, sans-serif',
-};
-
-const emptyStyle: CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 40,
-  fontFamily: 'system-ui, -apple-system, sans-serif',
-};
-
-const cardStyle: CSSProperties = {
-  border: '1px solid #f0f0f0',
-  borderRadius: 8,
-  background: '#fff',
-  padding: 14,
-};
-
-const cardHeaderStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-};
-
-const cardBodyStyle: CSSProperties = {
-  fontSize: 13,
-  color: '#333',
-};
-
-const badgePillStyle: CSSProperties = {
-  display: 'inline-block',
-  padding: '2px 8px',
-  borderRadius: 10,
-  background: '#1677ff',
-  color: '#fff',
-  fontSize: 11,
-  fontWeight: 600,
-};
-
-const whyButtonStyle: CSSProperties = {
-  border: '1px solid #1677ff',
-  color: '#1677ff',
-  background: '#e6f4ff',
-  fontSize: 12,
-  padding: '4px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-};
-
-const preStyle: CSSProperties = {
-  margin: 0,
-  background: '#fafafa',
-  padding: 8,
-  borderRadius: 4,
-  fontSize: 12,
-  whiteSpace: 'pre-wrap',
-  wordBreak: 'break-word',
-  maxHeight: 200,
-  overflow: 'auto',
-};
-
-const metaStyle: CSSProperties = {
-  fontSize: 11,
-  color: '#999',
-};
-
-const listStyle: CSSProperties = {
-  margin: 0,
-  paddingLeft: 14,
-};
-
-const qNumStyle: CSSProperties = {
-  display: 'inline-block',
-  width: 18,
-  height: 18,
-  borderRadius: '50%',
-  background: '#1677ff',
-  color: '#fff',
-  textAlign: 'center',
-  fontSize: 11,
-  lineHeight: '18px',
-};
-
-const tabStyle: CSSProperties = {
-  border: '1px solid #ddd',
-  background: '#fafafa',
-  fontSize: 12,
-  padding: '4px 12px',
-  borderRadius: 4,
-  cursor: 'pointer',
-};
-
-const tabActiveStyle: CSSProperties = {
-  ...tabStyle,
-  border: '1px solid #1677ff',
-  color: '#1677ff',
-  background: '#e6f4ff',
-};
-
-const errorBoxStyle: CSSProperties = {
-  background: '#fff1f0',
-  border: '1px solid #ffa39e',
-  borderRadius: 4,
-  padding: 8,
-  fontSize: 12,
-  color: '#cf1322',
-};
+const wrapStyle: CSSProperties = { display: 'grid', gap: 18, padding: 0, minWidth: 0 };
+const summaryStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center', padding: 20, border: `3px solid ${C.ink}`, borderRadius: 24, background: C.cream, boxShadow: `6px 6px 0 ${C.ink}` };
+const eyebrowStyle: CSSProperties = { display: 'inline-flex', padding: '5px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.yellow, fontSize: 12, fontWeight: 900 };
+const summaryTextStyle: CSSProperties = { margin: '8px 0 0', color: C.muted, lineHeight: 1.6 };
+const stampStyle: CSSProperties = { display: 'grid', placeItems: 'center', width: 86, height: 86, border: `3px solid ${C.ink}`, borderRadius: '50%', background: C.paper, boxShadow: `5px 5px 0 ${C.ink}`, fontWeight: 900, transform: 'rotate(8deg)' };
+const gridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 };
+const emptyStyle: CSSProperties = { minHeight: 420, display: 'grid', placeItems: 'center', alignContent: 'center', textAlign: 'center', padding: 40, border: `3px dashed ${C.ink}`, borderRadius: 28, background: C.cream };
+const emptyMascotStyle: CSSProperties = { width: 104, height: 78, border: `3px solid ${C.ink}`, borderRadius: '55% 45% 50% 50%', background: `radial-gradient(circle at 32% 44%, ${C.ink} 0 4px, transparent 5px), radial-gradient(circle at 62% 40%, ${C.ink} 0 4px, transparent 5px), radial-gradient(ellipse at 50% 68%, transparent 0 14px, ${C.ink} 15px 17px, transparent 18px), ${C.yellow}`, boxShadow: `5px 5px 0 ${C.ink}`, transform: 'rotate(-4deg)' };
+const cardStyle: CSSProperties = { border: `3px solid ${C.ink}`, borderRadius: 24, background: C.paper, padding: 18, boxShadow: `6px 6px 0 ${C.ink}` };
+const cardHeaderStyle: CSSProperties = { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 14 };
+const cardBodyStyle: CSSProperties = { color: C.ink, fontSize: 14 };
+const badgePillStyle: CSSProperties = { display: 'inline-flex', width: 'fit-content', padding: '4px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.yellow, color: C.ink, fontSize: 12, fontWeight: 900 };
+const kickerStyle: CSSProperties = { color: C.muted, fontSize: 13, fontWeight: 700 };
+const whyButtonStyle: CSSProperties = { padding: '8px 13px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.cream, color: C.ink, boxShadow: `3px 3px 0 ${C.ink}`, cursor: 'pointer', fontWeight: 900, whiteSpace: 'nowrap' };
+const miniSectionStyle: CSSProperties = { display: 'grid', gap: 8, marginBottom: 12 };
+const preStyle: CSSProperties = { margin: 0, padding: 12, border: `2px solid ${C.ink}`, borderRadius: 16, background: C.cream, color: C.ink, fontSize: 12, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 220, overflow: 'auto' };
+const codeStyle: CSSProperties = { ...preStyle, background: '#241C15', color: '#FFFDF6' };
+const metaStyle: CSSProperties = { marginTop: 8, color: C.muted, fontSize: 12, fontWeight: 800 };
+const questionStyle: CSSProperties = { display: 'grid', gap: 8, padding: 12, marginBottom: 10, border: `2px dashed ${C.ink}`, borderRadius: 18, background: C.cream };
+const qNumStyle: CSSProperties = { display: 'inline-grid', placeItems: 'center', flex: '0 0 auto', width: 24, height: 24, border: `2px solid ${C.ink}`, borderRadius: '50%', background: C.yellow, fontSize: 12, fontWeight: 900 };
+const listStyle: CSSProperties = { margin: 0, paddingLeft: 20, lineHeight: 1.65 };
+const tabRowStyle: CSSProperties = { display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' };
+const tabStyle: CSSProperties = { padding: '6px 14px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.paper, color: C.ink, boxShadow: `3px 3px 0 ${C.ink}`, cursor: 'pointer', fontWeight: 900 };
+const tabActiveStyle: CSSProperties = { ...tabStyle, background: C.yellow };
+const visualGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 };
+const metricRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 };
+const metricStyle: CSSProperties = { display: 'grid', gap: 2, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 16, background: C.paper, textAlign: 'center' };
+const errorBoxStyle: CSSProperties = { padding: 12, border: `3px solid ${C.ink}`, borderRadius: 18, background: '#ffd8df', boxShadow: `4px 4px 0 ${C.ink}`, fontWeight: 900 };
