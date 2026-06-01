@@ -1,0 +1,469 @@
+/*
+ * Freddie / Mailchimp-era theme layer.
+ * Source of visual rules: garden-skills web-design-engineer recipe `mailchimp-freddie`.
+ * This file intentionally overrides the existing inline-heavy demo UI with !important,
+ * so the page can be restyled without rewriting every React component.
+ */
+
+:root {
+  --freddie-yellow: #FFE01B;
+  --freddie-ink: #241C15;
+  --freddie-cream: #FBEFE3;
+  --freddie-paper: #FFFDF6;
+  --freddie-muted: #88837C;
+  --freddie-coral: #FF4D74;
+  --freddie-line: #241C15;
+  --freddie-shadow: 8px 8px 0 rgba(36, 28, 21, 0.96);
+  --freddie-soft-shadow: 0 4px 12px rgba(36, 28, 21, 0.08);
+  --freddie-radius-sm: 8px;
+  --freddie-radius-md: 16px;
+  --freddie-radius-lg: 24px;
+  --freddie-radius-pill: 999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  color: var(--freddie-ink);
+  background: var(--freddie-yellow);
+}
+
+body {
+  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+::selection {
+  color: var(--freddie-yellow);
+  background: var(--freddie-ink);
+}
+
+#root > div[style] {
+  position: relative !important;
+  gap: 18px !important;
+  padding: 18px !important;
+  min-height: 100vh !important;
+  height: 100vh !important;
+  color: var(--freddie-ink) !important;
+  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(255, 77, 116, 0.26) 0 10%, transparent 11%),
+    radial-gradient(circle at 92% 78%, rgba(251, 239, 227, 0.9) 0 15%, transparent 16%),
+    linear-gradient(135deg, var(--freddie-yellow), #ffd84a 48%, var(--freddie-cream)) !important;
+  overflow: hidden !important;
+}
+
+#root > div[style]::before {
+  content: "";
+  position: absolute;
+  left: 34px;
+  bottom: 22px;
+  width: 160px;
+  height: 90px;
+  pointer-events: none;
+  opacity: 0.65;
+  background:
+    radial-gradient(circle, var(--freddie-ink) 0 2px, transparent 3px) 0 0 / 22px 22px,
+    linear-gradient(35deg, transparent 45%, rgba(36, 28, 21, 0.4) 46% 50%, transparent 51%);
+  transform: rotate(-7deg);
+}
+
+#root > div[style]::after {
+  content: "嘿，开始探索吧";
+  position: absolute;
+  right: 410px;
+  top: 28px;
+  z-index: 2;
+  padding: 8px 14px;
+  border: 2px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-pill);
+  color: var(--freddie-ink);
+  background: var(--freddie-paper);
+  box-shadow: 4px 4px 0 var(--freddie-ink);
+  font-size: 13px;
+  font-weight: 900;
+  transform: rotate(2deg);
+}
+
+#root > div[style] > main[style] {
+  position: relative !important;
+  z-index: 1 !important;
+  min-width: 0 !important;
+  border: 3px solid var(--freddie-line) !important;
+  border-radius: 30px !important;
+  background: var(--freddie-paper) !important;
+  box-shadow: var(--freddie-shadow) !important;
+  overflow: hidden !important;
+}
+
+#root > div[style] > main[style]::before {
+  content: "";
+  position: absolute;
+  right: 28px;
+  top: 86px;
+  z-index: 0;
+  width: 130px;
+  height: 90px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: 48% 52% 58% 42%;
+  background:
+    radial-gradient(circle at 38% 42%, var(--freddie-ink) 0 5px, transparent 6px),
+    radial-gradient(circle at 63% 39%, var(--freddie-ink) 0 4px, transparent 5px),
+    radial-gradient(ellipse at 50% 70%, transparent 0 17px, var(--freddie-ink) 18px 20px, transparent 21px),
+    var(--freddie-cream);
+  opacity: 0.16;
+  transform: rotate(-10deg);
+  pointer-events: none;
+}
+
+#root > div[style] > main[style] > header[style] {
+  position: relative !important;
+  z-index: 1 !important;
+  padding: 30px 34px 22px !important;
+  border-bottom: 3px solid var(--freddie-ink) !important;
+  background:
+    linear-gradient(90deg, var(--freddie-yellow) 0 62%, var(--freddie-cream) 62% 100%) !important;
+}
+
+#root > div[style] > main[style] > header[style]::after {
+  content: "✦";
+  position: absolute;
+  right: 34px;
+  top: 24px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: 50%;
+  color: var(--freddie-ink);
+  background: var(--freddie-coral);
+  box-shadow: 4px 4px 0 var(--freddie-ink);
+  font-size: 22px;
+  transform: rotate(8deg);
+}
+
+h1,
+h2,
+h3,
+h4,
+strong {
+  color: var(--freddie-ink) !important;
+  letter-spacing: -0.035em;
+}
+
+#root h1[style] {
+  max-width: 760px !important;
+  margin: 0 !important;
+  color: var(--freddie-ink) !important;
+  font-size: clamp(30px, 4vw, 56px) !important;
+  line-height: 0.95 !important;
+  font-weight: 900 !important;
+}
+
+#root h3[style] {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+p[style],
+span[style],
+label[style],
+div[style] {
+  color: inherit;
+}
+
+#root > div[style] > main[style] > header[style] p[style] {
+  max-width: 680px !important;
+  margin-top: 10px !important;
+  color: var(--freddie-ink) !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  font-weight: 650 !important;
+}
+
+#root > div[style] > main[style] > nav[style] {
+  position: relative !important;
+  z-index: 1 !important;
+  padding: 18px 34px !important;
+  gap: 12px !important;
+  border-bottom: 2px dashed rgba(36, 28, 21, 0.34) !important;
+  background: var(--freddie-paper) !important;
+}
+
+button[style] {
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-pill) !important;
+  background: var(--freddie-paper) !important;
+  color: var(--freddie-ink) !important;
+  box-shadow: 3px 3px 0 var(--freddie-ink) !important;
+  cursor: pointer !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.01em !important;
+  transition: transform 170ms cubic-bezier(.34,1.56,.64,1), box-shadow 170ms ease, background 170ms ease !important;
+}
+
+button[style]:hover:not(:disabled) {
+  transform: translate(-2px, -2px) rotate(-0.8deg) !important;
+  box-shadow: 6px 6px 0 var(--freddie-ink) !important;
+  background: var(--freddie-yellow) !important;
+}
+
+button[style]:active:not(:disabled) {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0 var(--freddie-ink) !important;
+}
+
+button[style]:disabled {
+  opacity: 0.58 !important;
+  cursor: wait !important;
+  background: var(--freddie-cream) !important;
+}
+
+#root > div[style] > main[style] > nav[style] button[style] {
+  padding: 10px 20px !important;
+}
+
+#root > div[style] > main[style] > nav[style] button[style]:first-child,
+#root > div[style] > main[style] > nav[style] button[style]:focus-visible {
+  background: var(--freddie-yellow) !important;
+}
+
+input[style],
+select[style],
+textarea[style] {
+  min-height: 38px !important;
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-md) !important;
+  outline: none !important;
+  background: #fffaf0 !important;
+  color: var(--freddie-ink) !important;
+  box-shadow: inset 0 0 0 1px rgba(36, 28, 21, 0.04), var(--freddie-soft-shadow) !important;
+  font: inherit !important;
+}
+
+input[style]:focus,
+select[style]:focus,
+textarea[style]:focus {
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(255, 224, 27, 0.45), var(--freddie-soft-shadow) !important;
+}
+
+label[style] {
+  color: var(--freddie-ink) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Generator control strip */
+#root > div[style] > main[style] > section[style] {
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 34px 18px !important;
+  padding: 18px !important;
+  border: 3px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-lg) !important;
+  background: var(--freddie-cream) !important;
+  box-shadow: 6px 6px 0 var(--freddie-ink) !important;
+}
+
+/* Generic card/panel override for the inline-style-heavy components. */
+#root main div[style*="border"],
+#root main section[style*="border"],
+#root main footer[style*="border"],
+#root aside div[style*="border"],
+#root aside footer[style*="border"] {
+  border-color: var(--freddie-ink) !important;
+  border-width: 2px !important;
+  border-radius: var(--freddie-radius-md) !important;
+  background: var(--freddie-paper) !important;
+}
+
+#root main div[style*="background"],
+#root main section[style*="background"],
+#root main footer[style*="background"] {
+  color: var(--freddie-ink) !important;
+}
+
+#root main div[style*="border: 1px"],
+#root main section[style*="border: 1px"] {
+  box-shadow: 4px 4px 0 rgba(36, 28, 21, 0.88) !important;
+}
+
+#root main div[style*="border-radius: 6px"],
+#root main section[style*="border-radius: 6px"],
+#root main button[style*="border-radius: 6px"] {
+  border-radius: var(--freddie-radius-md) !important;
+}
+
+#root main span[style*="border-radius: 999px"],
+#root main div[style*="border-radius: 999px"] {
+  border: 2px solid var(--freddie-ink) !important;
+  background: var(--freddie-yellow) !important;
+  color: var(--freddie-ink) !important;
+  font-weight: 900 !important;
+}
+
+#root main [style*="color: rgb(37, 111, 108)"],
+#root main [style*="color: #256f6c"],
+#root main [style*="color: rgb(23, 76, 73)"],
+#root main [style*="color: #174c49"] {
+  color: var(--freddie-ink) !important;
+}
+
+#root main [style*="background: rgb(230, 244, 241)"],
+#root main [style*="background: #e6f4f1"],
+#root main [style*="background-color: rgb(230, 244, 241)"],
+#root main [style*="background-color: #e6f4f1"] {
+  background: var(--freddie-yellow) !important;
+}
+
+#root main [style*="background: rgb(246, 248, 250)"],
+#root main [style*="background: #f6f8fa"],
+#root main [style*="background-color: rgb(250, 250, 250)"] {
+  background: var(--freddie-cream) !important;
+}
+
+#root main ul[style],
+#root main ol[style] {
+  color: var(--freddie-ink) !important;
+}
+
+#root main li::marker {
+  color: var(--freddie-coral);
+}
+
+/* Right-side Agent panel */
+#root > div[style] > aside[style] {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 376px !important;
+  height: calc(100vh - 36px) !important;
+  padding: 22px !important;
+  border: 3px solid var(--freddie-ink) !important;
+  border-left: 3px solid var(--freddie-ink) !important;
+  border-radius: 30px !important;
+  background: var(--freddie-cream) !important;
+  box-shadow: var(--freddie-shadow) !important;
+  color: var(--freddie-ink) !important;
+  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+#root > div[style] > aside[style]::before {
+  content: "";
+  display: block;
+  width: 78px;
+  height: 54px;
+  margin: 0 0 14px auto;
+  border: 3px solid var(--freddie-ink);
+  border-radius: 55% 45% 50% 50%;
+  background:
+    radial-gradient(circle at 32% 44%, var(--freddie-ink) 0 3px, transparent 4px),
+    radial-gradient(circle at 63% 42%, var(--freddie-ink) 0 3px, transparent 4px),
+    radial-gradient(ellipse at 50% 68%, transparent 0 12px, var(--freddie-ink) 13px 15px, transparent 16px),
+    var(--freddie-yellow);
+  box-shadow: 4px 4px 0 var(--freddie-ink);
+  transform: rotate(7deg);
+}
+
+#root aside header[style] {
+  padding: 0 0 14px !important;
+  border-bottom: 2px dashed rgba(36, 28, 21, 0.35) !important;
+}
+
+#root aside section > div[style] {
+  margin: 10px 0 !important;
+  padding: 12px !important;
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-md) !important;
+  background: var(--freddie-paper) !important;
+  box-shadow: 3px 3px 0 var(--freddie-ink) !important;
+}
+
+#root aside span[style] {
+  color: var(--freddie-ink) !important;
+}
+
+#root aside [style*="color: #666"],
+#root aside [style*="color: rgb(102, 102, 102)"],
+#root aside [style*="color: #999"],
+#root aside [style*="color: rgb(153, 153, 153)"] {
+  color: var(--freddie-muted) !important;
+}
+
+/* Small progress/status elements should feel like hand-labeled stickers. */
+#root aside [style*="border-radius: 999px"],
+#root aside [style*="border-radius: 4px"],
+#root aside [style*="border-radius: 6px"] {
+  border-radius: var(--freddie-radius-pill) !important;
+}
+
+#root aside [style*="background-color"],
+#root aside [style*="background:"] {
+  color: var(--freddie-ink) !important;
+}
+
+/* Floating tutor bubble */
+#root > div[style] > div[style*="position: fixed"],
+#root > div[style] > button[style*="position: fixed"] {
+  border: 3px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-lg) !important;
+  background: var(--freddie-yellow) !important;
+  color: var(--freddie-ink) !important;
+  box-shadow: 7px 7px 0 var(--freddie-ink) !important;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--freddie-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid var(--freddie-cream);
+  border-radius: 999px;
+  background: var(--freddie-ink);
+}
+
+@media (max-width: 1100px) {
+  #root > div[style] {
+    flex-direction: column !important;
+    overflow: auto !important;
+  }
+
+  #root > div[style]::after {
+    display: none;
+  }
+
+  #root > div[style] > main[style],
+  #root > div[style] > aside[style] {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  #root > div[style] > main[style] > section[style] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
