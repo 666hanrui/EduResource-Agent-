@@ -171,9 +171,7 @@ button[style] {
 .freddie-tab { padding: 10px 20px; font-size: 14px; }
 .freddie-tab-active,
 .freddie-primary-button,
-button[style]:hover:not(:disabled) {
-  background: var(--freddie-yellow) !important;
-}
+button[style]:hover:not(:disabled) { background: var(--freddie-yellow) !important; }
 button[style]:hover:not(:disabled),
 .freddie-tab:hover,
 .freddie-primary-button:hover:not(:disabled) {
@@ -181,17 +179,8 @@ button[style]:hover:not(:disabled),
   box-shadow: 6px 6px 0 var(--freddie-ink) !important;
 }
 button[style]:disabled,
-.freddie-primary-button:disabled {
-  opacity: 0.58 !important;
-  cursor: wait !important;
-  background: var(--freddie-cream) !important;
-}
-.freddie-status-note {
-  margin-left: auto;
-  color: var(--freddie-muted);
-  font-size: 13px;
-  font-weight: 800;
-}
+.freddie-primary-button:disabled { opacity: 0.58 !important; cursor: wait !important; background: var(--freddie-cream) !important; }
+.freddie-status-note { margin-left: auto; color: var(--freddie-muted); font-size: 13px; font-weight: 800; }
 .freddie-generator-band {
   position: relative;
   z-index: 1;
@@ -218,14 +207,7 @@ button[style]:disabled,
   font-size: 13px;
   font-weight: 800;
 }
-.freddie-content-scroll {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px;
-}
+.freddie-content-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: auto; padding: 18px; }
 
 h1, h2, h3, h4, strong { color: var(--freddie-ink) !important; letter-spacing: -0.035em; }
 label[style] { color: var(--freddie-ink) !important; }
@@ -237,73 +219,42 @@ input[style], select[style], textarea[style] {
   color: var(--freddie-ink) !important;
   font: inherit !important;
 }
-input[style]:focus, select[style]:focus, textarea[style]:focus {
-  background: #fff !important;
-  box-shadow: 0 0 0 4px rgba(255, 224, 27, 0.45) !important;
-}
-pre[style], code[style] {
-  border: 2px solid var(--freddie-ink) !important;
-  border-radius: var(--freddie-radius-md) !important;
-  background: var(--freddie-cream) !important;
-  color: var(--freddie-ink) !important;
-}
+input[style]:focus, select[style]:focus, textarea[style]:focus { background: #fff !important; box-shadow: 0 0 0 4px rgba(255, 224, 27, 0.45) !important; }
+pre[style], code[style] { border: 2px solid var(--freddie-ink) !important; border-radius: var(--freddie-radius-md) !important; background: var(--freddie-cream) !important; color: var(--freddie-ink) !important; }
 
-/* Existing inline-heavy panels */
 #root main div[style*="border"],
 #root main section[style*="border"],
 #root main footer[style*="border"],
 #root aside div[style*="border"],
-#root aside footer[style*="border"] {
-  border-color: var(--freddie-ink) !important;
-  border-width: 2px !important;
-  border-radius: var(--freddie-radius-md) !important;
-}
+#root aside footer[style*="border"] { border-color: var(--freddie-ink) !important; border-width: 2px !important; border-radius: var(--freddie-radius-md) !important; }
 #root main div[style*="border: 1px"],
 #root main section[style*="border: 1px"],
-#root main footer[style*="border: 1px"] {
-  background: var(--freddie-paper) !important;
-  box-shadow: 4px 4px 0 rgba(36, 28, 21, 0.88) !important;
-}
+#root main footer[style*="border: 1px"] { background: var(--freddie-paper) !important; box-shadow: 4px 4px 0 rgba(36, 28, 21, 0.88) !important; }
 #root main span[style*="border-radius: 999px"],
 #root main div[style*="border-radius: 999px"],
-#root main span[style*="border-radius: 10px"] {
-  border: 2px solid var(--freddie-ink) !important;
-  background: var(--freddie-yellow) !important;
-  color: var(--freddie-ink) !important;
-  font-weight: 900 !important;
-}
+#root main span[style*="border-radius: 10px"] { border: 2px solid var(--freddie-ink) !important; background: var(--freddie-yellow) !important; color: var(--freddie-ink) !important; font-weight: 900 !important; }
 #root main [style*="color: #666"],
 #root main [style*="color: rgb(102, 102, 102)"],
 #root main [style*="color: #999"],
 #root main [style*="color: rgb(153, 153, 153)"],
 #root main [style*="color: #555"],
-#root main [style*="color: rgb(85, 85, 85)"] {
-  color: var(--freddie-muted) !important;
-}
+#root main [style*="color: rgb(85, 85, 85)"] { color: var(--freddie-muted) !important; }
 #root main [style*="color: #1677ff"],
 #root main [style*="color: rgb(22, 119, 255)"],
 #root main [style*="color: #256f6c"],
-#root main [style*="color: rgb(37, 111, 108)"] {
-  color: var(--freddie-ink) !important;
-}
+#root main [style*="color: rgb(37, 111, 108)"] { color: var(--freddie-ink) !important; }
 #root main [style*="background: #1677ff"],
 #root main [style*="background-color: #1677ff"],
 #root main [style*="background: rgb(22, 119, 255)"],
 #root main [style*="background-color: rgb(22, 119, 255)"],
 #root main [style*="background: #e6f4f1"],
-#root main [style*="background-color: #e6f4f1"] {
-  background: var(--freddie-yellow) !important;
-  color: var(--freddie-ink) !important;
-}
+#root main [style*="background-color: #e6f4f1"] { background: var(--freddie-yellow) !important; color: var(--freddie-ink) !important; }
 #root main [style*="background: #fafafa"],
 #root main [style*="background-color: #fafafa"],
 #root main [style*="background: #f6f8fa"],
-#root main [style*="background-color: #f6f8fa"] {
-  background: var(--freddie-cream) !important;
-}
+#root main [style*="background-color: #f6f8fa"] { background: var(--freddie-cream) !important; }
 #root main li::marker { color: var(--freddie-coral); }
 
-/* Agent theatre */
 #root > div > aside[style] {
   position: relative !important;
   z-index: 1 !important;
@@ -318,58 +269,54 @@ pre[style], code[style] {
   color: var(--freddie-ink) !important;
   font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
 }
-#root > div > aside[style]::before {
-  content: "Agent Theatre";
-  display: block;
-  width: fit-content;
-  margin: 0 0 14px auto;
-  padding: 7px 12px;
-  border: 2px solid var(--freddie-ink);
-  border-radius: var(--freddie-radius-pill);
-  background: var(--freddie-yellow);
-  box-shadow: 3px 3px 0 var(--freddie-ink);
-  font-size: 12px;
-  font-weight: 900;
-  transform: rotate(3deg);
-}
-#root aside header[style] {
-  padding-bottom: 14px !important;
-  border-bottom: 2px dashed rgba(36, 28, 21, 0.35) !important;
-}
-#root aside section > div[style] {
-  margin: 10px 0 !important;
-  padding: 12px !important;
-  border: 2px solid var(--freddie-ink) !important;
-  border-radius: var(--freddie-radius-md) !important;
-  background: var(--freddie-paper) !important;
-  box-shadow: 3px 3px 0 var(--freddie-ink) !important;
-}
+#root aside header[style] { padding-bottom: 14px !important; border-bottom: 2px dashed rgba(36, 28, 21, 0.35) !important; }
+#root aside section > div[style] { margin: 10px 0 !important; padding: 12px !important; border: 2px solid var(--freddie-ink) !important; border-radius: var(--freddie-radius-md) !important; background: var(--freddie-paper) !important; box-shadow: 3px 3px 0 var(--freddie-ink) !important; }
 #root aside span[style], #root aside div[style] { color: var(--freddie-ink) !important; }
 #root aside [style*="color: #666"],
 #root aside [style*="color: #999"],
 #root aside [style*="color: rgb(102, 102, 102)"],
 #root aside [style*="color: rgb(153, 153, 153)"] { color: var(--freddie-muted) !important; }
 
-/* Tutor as Freddie helper */
 #root div[style*="z-index: 9999"] div[style*="backgroundColor"],
-#root div[style*="z-index: 9999"] div[style*="background-color"] {
-  border-color: var(--freddie-ink) !important;
-}
+#root div[style*="z-index: 9999"] div[style*="background-color"] { border-color: var(--freddie-ink) !important; }
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: var(--freddie-cream); }
-::-webkit-scrollbar-thumb {
-  border: 3px solid var(--freddie-cream);
-  border-radius: var(--freddie-radius-pill);
-  background: var(--freddie-ink);
+::-webkit-scrollbar-thumb { border: 3px solid var(--freddie-cream); border-radius: var(--freddie-radius-pill); background: var(--freddie-ink); }
+
+@media (max-width: 1280px) {
+  .freddie-hero { grid-template-columns: minmax(0, 1fr) 210px; padding: 26px; }
+  .freddie-hero h1 { font-size: clamp(28px, 4vw, 46px); }
+  .freddie-mascot-card { padding: 12px; }
+  .freddie-generator-band { grid-template-columns: 1fr 1fr; }
+  .freddie-primary-button { width: fit-content; }
+  #root > div > aside[style] { width: 340px !important; }
 }
 
 @media (max-width: 1100px) {
   body { overflow: auto; }
-  .freddie-app-shell { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+  .freddie-app-shell { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; padding: 14px; }
+  .freddie-main-stage { min-height: 760px; }
   .freddie-hero { grid-template-columns: 1fr; }
-  .freddie-generator-band { grid-template-columns: 1fr; }
-  #root > div > aside[style] { width: 100% !important; height: auto !important; }
+  .freddie-mascot-card { width: min(100%, 280px); justify-self: start; transform: rotate(-1deg); }
+  .freddie-mode-strip { align-items: flex-start; flex-wrap: wrap; }
+  .freddie-status-note { width: 100%; margin-left: 0; }
+  .freddie-generator-band { grid-template-columns: 1fr; margin-inline: 20px; }
+  #root > div > aside[style] { width: 100% !important; height: auto !important; max-height: none !important; }
+}
+
+@media (max-width: 720px) {
+  .freddie-app-shell { padding: 10px; gap: 12px; }
+  .freddie-main-stage, #root > div > aside[style] { border-radius: 22px !important; box-shadow: 5px 5px 0 var(--freddie-ink) !important; }
+  .freddie-hero { padding: 20px; }
+  .freddie-hero h1 { font-size: clamp(27px, 11vw, 40px); }
+  .freddie-hero p { font-size: 14px; }
+  .freddie-mode-strip { padding: 14px 18px; }
+  .freddie-tab { width: 100%; }
+  .freddie-generator-band { margin: 14px; padding: 14px; }
+  .freddie-content-scroll { padding: 14px; }
+  #root main div[style*="grid-template-columns: repeat(auto-fit"],
+  #root main div[style*="gridTemplateColumns"] { grid-template-columns: 1fr !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
