@@ -42,17 +42,20 @@ export function CoachWorkbenchPanel({
     },
   ]);
   const [input, setInput] = useState(`围绕「${knowledgeName}」生成一段演示说明`);
+  const [manualTaskId, setManualTaskId] = useState(activeTaskId ?? '');
   const [steps, setSteps] = useState<StepEvent[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const effectiveTaskId = activeTaskId || manualTaskId.trim() || null;
+
   const contextLabel = useMemo(() => {
     const parts = [`页面：${sourcePage}`];
-    if (activeTaskId) parts.push(`任务：${activeTaskId}`);
+    if (effectiveTaskId) parts.push(`任务：${effectiveTaskId}`);
     parts.push(`知识点：${knowledgeName}`);
     return parts.join(' · ');
-  }, [activeTaskId, knowledgeName, sourcePage]);
+  }, [effectiveTaskId, knowledgeName, sourcePage]);
 
   const send = async (override?: string) => {
     const text = (override ?? input).trim();
@@ -79,7 +82,7 @@ export function CoachWorkbenchPanel({
         body: JSON.stringify({
           messages: nextMessages,
           source_page: sourcePage,
-          active_task_id: activeTaskId,
+          active_task_id: effectiveTaskId,
         }),
         signal: controller.signal,
       });
@@ -153,7 +156,7 @@ export function CoachWorkbenchPanel({
     <section style={shellStyle}>
       <div style={headerStyle}>
         <div>
-          <span style={eyebrowStyle}>AI Workbench / Claude Code-like</span>
+          <span style={eyebrowStyle}>AI Workbench / Agentic Console</span>
           <h2 style={{ margin: '8px 0 0', fontSize: 28 }}>把系统操作变成可解释的对话工作台</h2>
           <p style={{ margin: '8px 0 0', lineHeight: 1.7, fontWeight: 700 }}>
             保留 career-planning-agent 的 AI Coach 思路：不是普通聊天，而是带上下文、步骤轨迹和工具入口的智能体操作台。
@@ -162,6 +165,16 @@ export function CoachWorkbenchPanel({
         <div style={contextCardStyle}>
           <strong>当前上下文</strong>
           <span>{contextLabel}</span>
+          <label style={{ display: 'grid', gap: 6, fontWeight: 900 }}>
+            绑定任务 ID
+            <input
+              value={manualTaskId}
+              onChange={(e) => setManualTaskId(e.target.value)}
+              placeholder="例如 gen_xxxxx"
+              disabled={Boolean(activeTaskId)}
+              style={miniInputStyle}
+            />
+          </label>
         </div>
       </div>
 
@@ -233,153 +246,23 @@ export function CoachWorkbenchPanel({
   );
 }
 
-const shellStyle: CSSProperties = {
-  display: 'grid',
-  gap: 18,
-};
-
-const headerStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) 280px',
-  gap: 18,
-  alignItems: 'stretch',
-};
-
-const eyebrowStyle: CSSProperties = {
-  display: 'inline-flex',
-  padding: '7px 12px',
-  border: '2px solid #241C15',
-  borderRadius: 999,
-  background: '#FFE01B',
-  boxShadow: '3px 3px 0 #241C15',
-  fontSize: 12,
-  fontWeight: 900,
-};
-
-const contextCardStyle: CSSProperties = {
-  display: 'grid',
-  gap: 10,
-  padding: 16,
-  border: '3px solid #241C15',
-  borderRadius: 20,
-  background: '#FBEFE3',
-  boxShadow: '5px 5px 0 #241C15',
-  fontSize: 13,
-  lineHeight: 1.6,
-};
-
-const gridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) 340px',
-  gap: 18,
-  minHeight: 520,
-};
-
-const chatStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateRows: '1fr auto auto',
-  gap: 14,
-  minHeight: 0,
-};
-
-const messagesStyle: CSSProperties = {
-  display: 'grid',
-  gap: 12,
-  alignContent: 'start',
-  minHeight: 320,
-  maxHeight: 460,
-  overflow: 'auto',
-  padding: 14,
-  border: '3px solid #241C15',
-  borderRadius: 24,
-  background: '#FFFDF6',
-};
-
-const assistantBubbleStyle: CSSProperties = {
-  maxWidth: '86%',
-  padding: 14,
-  border: '2px solid #241C15',
-  borderRadius: 18,
-  background: '#FBEFE3',
-};
-
-const userBubbleStyle: CSSProperties = {
-  ...assistantBubbleStyle,
-  justifySelf: 'end',
-  background: '#FFE01B',
-};
-
-const quickStyle: CSSProperties = {
-  display: 'flex',
-  gap: 10,
-  flexWrap: 'wrap',
-};
-
-const quickButtonStyle: CSSProperties = {
-  padding: '8px 12px',
-  fontSize: 12,
-};
-
-const inputBandStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) 104px',
-  gap: 12,
-};
-
-const textareaStyle: CSSProperties = {
-  minHeight: 84,
-  padding: 12,
-  resize: 'vertical',
-  fontSize: 14,
-  lineHeight: 1.6,
-};
-
-const actionButtonStyle: CSSProperties = {
-  minHeight: 42,
-};
-
-const traceStyle: CSSProperties = {
-  padding: 16,
-  border: '3px solid #241C15',
-  borderRadius: 24,
-  background: '#FBEFE3',
-  boxShadow: '6px 6px 0 #241C15',
-  overflow: 'auto',
-};
-
-const stepStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '30px 1fr',
-  gap: 10,
-  alignItems: 'start',
-  padding: '10px 0',
-  borderTop: '2px dashed rgba(36, 28, 21, 0.25)',
-};
-
-const stepIndexStyle: CSSProperties = {
-  display: 'inline-grid',
-  placeItems: 'center',
-  width: 24,
-  height: 24,
-  border: '2px solid #241C15',
-  borderRadius: 999,
-  background: '#FFE01B',
-  fontSize: 12,
-  fontWeight: 900,
-};
-
-const emptyTraceStyle: CSSProperties = {
-  padding: 16,
-  border: '2px dashed rgba(36, 28, 21, 0.35)',
-  borderRadius: 16,
-  color: '#6f675f',
-  fontWeight: 700,
-};
-
-const errorStyle: CSSProperties = {
-  padding: 10,
-  border: '2px solid #241C15',
-  borderRadius: 14,
-  background: '#ffd8df',
-  fontWeight: 800,
-};
+const shellStyle: CSSProperties = { display: 'grid', gap: 18 };
+const headerStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: 18, alignItems: 'stretch' };
+const eyebrowStyle: CSSProperties = { display: 'inline-flex', padding: '7px 12px', border: '2px solid #241C15', borderRadius: 999, background: '#FFE01B', boxShadow: '3px 3px 0 #241C15', fontSize: 12, fontWeight: 900 };
+const contextCardStyle: CSSProperties = { display: 'grid', gap: 10, padding: 16, border: '3px solid #241C15', borderRadius: 20, background: '#FBEFE3', boxShadow: '5px 5px 0 #241C15', fontSize: 13, lineHeight: 1.6 };
+const miniInputStyle: CSSProperties = { width: '100%', minWidth: 0, padding: '8px 10px', fontSize: 12 };
+const gridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 18, minHeight: 520 };
+const chatStyle: CSSProperties = { display: 'grid', gridTemplateRows: '1fr auto auto', gap: 14, minHeight: 0 };
+const messagesStyle: CSSProperties = { display: 'grid', gap: 12, alignContent: 'start', minHeight: 320, maxHeight: 460, overflow: 'auto', padding: 14, border: '3px solid #241C15', borderRadius: 24, background: '#FFFDF6' };
+const assistantBubbleStyle: CSSProperties = { maxWidth: '86%', padding: 14, border: '2px solid #241C15', borderRadius: 18, background: '#FBEFE3' };
+const userBubbleStyle: CSSProperties = { ...assistantBubbleStyle, justifySelf: 'end', background: '#FFE01B' };
+const quickStyle: CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' };
+const quickButtonStyle: CSSProperties = { padding: '8px 12px', fontSize: 12 };
+const inputBandStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 104px', gap: 12 };
+const textareaStyle: CSSProperties = { minHeight: 84, padding: 12, resize: 'vertical', fontSize: 14, lineHeight: 1.6 };
+const actionButtonStyle: CSSProperties = { minHeight: 42 };
+const traceStyle: CSSProperties = { padding: 16, border: '3px solid #241C15', borderRadius: 24, background: '#FBEFE3', boxShadow: '6px 6px 0 #241C15', overflow: 'auto' };
+const stepStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '30px 1fr', gap: 10, alignItems: 'start', padding: '10px 0', borderTop: '2px dashed rgba(36, 28, 21, 0.25)' };
+const stepIndexStyle: CSSProperties = { display: 'inline-grid', placeItems: 'center', width: 24, height: 24, border: '2px solid #241C15', borderRadius: 999, background: '#FFE01B', fontSize: 12, fontWeight: 900 };
+const emptyTraceStyle: CSSProperties = { padding: 16, border: '2px dashed rgba(36, 28, 21, 0.35)', borderRadius: 16, color: '#6f675f', fontWeight: 700 };
+const errorStyle: CSSProperties = { padding: 10, border: '2px solid #241C15', borderRadius: 14, background: '#ffd8df', fontWeight: 800 };
