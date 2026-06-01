@@ -77,15 +77,91 @@ export interface RecommendedKnowledge {
   suggested_difficulty: number;
 }
 
+export interface ExplorationAgentStep {
+  id: string;
+  agent_name: string;
+  title: string;
+  status: 'waiting' | 'running' | 'done' | 'blocked';
+  summary: string;
+  evidence_refs: string[];
+  output_count: number;
+}
+
+export interface MatchComparisonDimension {
+  key: string;
+  title: string;
+  market_importance: number;
+  user_readiness: number;
+  gap: number;
+  status_label: string;
+  matched_keywords: string[];
+  missing_keywords: string[];
+  next_actions: string[];
+  evidence_sources: string[];
+}
+
+export interface MatchChartSeriesItem {
+  key: string;
+  title: string;
+  market_importance: number;
+  user_readiness: number;
+}
+
+export interface MatchActionAdvice {
+  key: string;
+  title: string;
+  status_label: string;
+  gap: number;
+  why_it_matters: string;
+  current_issue: string;
+  next_actions: string[];
+  evidence_sources: string[];
+  recommended_keywords: string[];
+}
+
+export interface MatchEvidenceCard {
+  id: string;
+  title: string;
+  scenario: string;
+  match_score: number;
+  requirement_keywords: string[];
+  student_evidence: string[];
+  proof_task: string;
+  source_label: string;
+}
+
+export interface MatchNarrative {
+  overall_review: string;
+  strength_highlights: string[];
+  priority_gap_highlights: string[];
+}
+
+export interface CareerMatchReport {
+  report_id: string;
+  direction_id: string;
+  target_title: string;
+  exploration_domain: string;
+  overall_match: number;
+  comparison_dimensions: MatchComparisonDimension[];
+  chart_series: MatchChartSeriesItem[];
+  strength_dimensions: string[];
+  priority_gap_dimensions: string[];
+  action_advices: MatchActionAdvice[];
+  evidence_cards: MatchEvidenceCard[];
+  narrative: MatchNarrative;
+}
+
 export interface ExplorationPlan {
   student_id: string;
   major: string;
   summary: string;
+  agent_steps: ExplorationAgentStep[];
   profile: DimensionProfile;
   dimension_scores: DimensionScore[];
   knowledge_map: KnowledgeNode[];
   exploration_tasks: ExplorationTask[];
   career_directions: CareerDirection[];
+  match_reports: CareerMatchReport[];
   learning_path: LearningPathItem[];
   recommended_knowledge: RecommendedKnowledge[];
 }
@@ -148,6 +224,8 @@ export interface WorkspaceResource {
 export interface ExplorationWorkspace {
   workspace_id: string;
   favorite: FavoriteDirection;
+  match_report?: CareerMatchReport | null;
+  agent_steps: ExplorationAgentStep[];
   profile: DimensionProfile;
   dimension_scores: DimensionScore[];
   profile_versions: ProfileVersion[];

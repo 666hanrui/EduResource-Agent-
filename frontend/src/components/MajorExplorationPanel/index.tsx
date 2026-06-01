@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type {
   CareerDirection,
@@ -55,6 +55,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
   const [weeklyHours, setWeeklyHours] = useState(6);
   const [interestText, setInterestText] = useState('AI 应用，Web 开发');
   const [plan, setPlan] = useState<ExplorationPlan | null>(null);
+  const [activeMatchDirectionId, setActiveMatchDirectionId] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<ExplorationWorkspace | null>(null);
   const [growthReport, setGrowthReport] = useState<GrowthReport | null>(null);
   const [reportText, setReportText] = useState('');
@@ -73,6 +74,29 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
     plan?.exploration_tasks.forEach((task) => map.set(task.id, task.title));
     return map;
   }, [plan]);
+
+  useEffect(() => {
+    if (!plan?.match_reports.length) {
+      setActiveMatchDirectionId(null);
+      return;
+    }
+    if (!activeMatchDirectionId || !plan.match_reports.some((item) => item.direction_id === activeMatchDirectionId)) {
+      setActiveMatchDirectionId(plan.match_reports[0].direction_id);
+    }
+  }, [activeMatchDirectionId, plan]);
+
+  const activeMatchReport = useMemo(() => {
+    if (!plan?.match_reports.length) return null;
+    return (
+      plan.match_reports.find((item) => item.direction_id === activeMatchDirectionId) ||
+      plan.match_reports[0]
+    );
+  }, [activeMatchDirectionId, plan]);
+
+  const activeMatchDirection = useMemo(() => {
+    if (!plan || !activeMatchReport) return null;
+    return plan.career_directions.find((item) => item.id === activeMatchReport.direction_id) || null;
+  }, [activeMatchReport, plan]);
 
   const handleBuild = async () => {
     setLoading(true);
@@ -379,6 +403,154 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
             </div>
           </section>
 
+          {plan.agent_steps.length > 0 && (
+            <section style={agentPipelineStyle}>
+              <div style={sectionHeaderStyle}>
+                <div>
+                  <h3 style={h3Style}>专业探索多 Agent 流水线</h3>
+                  <p style={probeStyle}>从专业广度、12 维画像、方向匹配到蜗牛路径，全部以结构化证据串联。</p>
+                </div>
+                <span style={pipelineBadgeStyle}>{plan.agent_steps.length} Agents</span>
+              </div>
+              <div style={agentStepGridStyle}>
+                {plan.agent_steps.map((step, index) => (
+                  <div key={step.id} style={agentStepStyle}>
+                    <div style={agentStepTopStyle}>
+                      <span style={agentIndexStyle}>{index + 1}</span>
+                      <strong>{step.agent_name}</strong>
+                      <span style={agentStatusStyle}>{step.status}</span>
+                    </div>
+                    <div style={agentTitleStyle}>{step.title}</div>
+                    <p style={mutedTextStyle}>{step.summary}</p>
+                    <div style={agentEvidenceStyle}>
+                      {step.evidence_refs.slice(0, 3).map((item) => (
+                        <span key={item} style={smallChipStyle}>{item}</span>
+                      ))}
+                    </div>
+                    <small style={probeStyle}>输出 {step.output_count} 项</small>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeMatchReport && (
+            <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                <div>
+                  <h3 style={h3Style}>职业匹配分析</h3>
+                  <p style={probeStyle}>复用参考仓的“12 维画像 × 岗位要求”报告形态，但入口改成专业探索。</p>
+                </div>
+                {activeMatchDirection && (
+                  <button
+                    onClick={() => handleCreateWorkspace(activeMatchDirection)}
+                    disabled={workspaceLoading}
+                    style={smallButtonStyle}
+                  >
+                    {workspaceLoading ? '创建中...' : '收藏并生成路径'}
+                  </button>
+                )}
+              </div>
+              <div style={matchLayoutStyle}>
+                <aside style={matchNavStyle}>
+                  {plan.match_reports.map((report) => (
+                    <button
+                      key={report.report_id}
+                      onClick={() => setActiveMatchDirectionId(report.direction_id)}
+                      style={matchNavButtonStyle(report.direction_id === activeMatchReport.direction_id)}
+                    >
+                      <strong>{report.target_title}</strong>
+                      <span>{report.exploration_domain}</span>
+                      <em>{report.overall_match}</em>
+                    </button>
+                  ))}
+                </aside>
+                <div style={matchContentStyle}>
+                  <div style={matchHeroStyle}>
+                    <div style={matchScoreStyle}>
+                      <span>{activeMatchReport.overall_match}</span>
+                      <small>综合匹配</small>
+                    </div>
+                    <div>
+                      <h4 style={h4Style}>{activeMatchReport.target_title}</h4>
+                      <p style={mutedTextStyle}>{activeMatchReport.narrative.overall_review}</p>
+                      <div style={chipRowStyle}>
+                        {activeMatchReport.strength_dimensions.slice(0, 4).map((item) => (
+                          <span key={item} style={strengthChipStyle}>{item}</span>
+                        ))}
+                        {activeMatchReport.priority_gap_dimensions.slice(0, 4).map((item) => (
+                          <span key={item} style={gapChipStyle}>{item}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={comparisonGridStyle}>
+                    {activeMatchReport.comparison_dimensions.map((item) => (
+                      <div key={item.key} style={comparisonItemStyle}>
+                        <div style={scoreHeaderStyle}>
+                          <strong>{item.title}</strong>
+                          <span style={gapValueStyle(item.gap)}>{item.status_label}</span>
+                        </div>
+                        <div style={dualBarStyle}>
+                          <span style={dualBarLabelStyle}>市场</span>
+                          <div style={barTrackStyle}>
+                            <div style={{ ...marketBarFillStyle, width: `${item.market_importance}%` }} />
+                          </div>
+                          <strong>{item.market_importance}</strong>
+                        </div>
+                        <div style={dualBarStyle}>
+                          <span style={dualBarLabelStyle}>个人</span>
+                          <div style={barTrackStyle}>
+                            <div style={{ ...barFillStyle, width: `${item.user_readiness}%` }} />
+                          </div>
+                          <strong>{item.user_readiness}</strong>
+                        </div>
+                        <p style={probeStyle}>
+                          缺口 {item.gap > 0 ? item.gap : 0} · 缺失关键词：
+                          {item.missing_keywords.slice(0, 3).join('、') || '暂无'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={adviceGridStyle}>
+                    {activeMatchReport.action_advices.map((advice) => (
+                      <div key={advice.key} style={adviceItemStyle}>
+                        <strong>{advice.title}</strong>
+                        <p style={mutedTextStyle}>{advice.why_it_matters}</p>
+                        <p style={probeStyle}>{advice.current_issue}</p>
+                        <ul style={listStyle}>
+                          {advice.next_actions.slice(0, 2).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={evidenceGridStyle}>
+                    {activeMatchReport.evidence_cards.map((card) => (
+                      <div key={card.id} style={evidenceCardStyle}>
+                        <div style={scoreHeaderStyle}>
+                          <strong>{card.title}</strong>
+                          <span style={fitStyle}>{card.match_score}</span>
+                        </div>
+                        <p style={mutedTextStyle}>{card.scenario}</p>
+                        <p style={probeStyle}>证据任务：{card.proof_task}</p>
+                        <div style={chipRowStyle}>
+                          {card.requirement_keywords.slice(0, 4).map((item) => (
+                            <span key={item} style={smallChipStyle}>{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           <div style={gridStyle}>
             <section style={panelStyle}>
               <h3 style={h3Style}>12 维探索画像</h3>
@@ -501,6 +673,21 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
                   生成成长报告
                 </button>
               </div>
+              {workspace.match_report && (
+                <div style={workspaceMatchStripStyle}>
+                  <div style={matchScoreMiniStyle}>
+                    <strong>{workspace.match_report.overall_match}</strong>
+                    <span>匹配度</span>
+                  </div>
+                  <div>
+                    <strong>{workspace.match_report.target_title}</strong>
+                    <p style={probeStyle}>
+                      优势：{workspace.match_report.strength_dimensions.slice(0, 3).join('、') || '待补证据'} ·
+                      差距：{workspace.match_report.priority_gap_dimensions.slice(0, 3).join('、') || '待观察'}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div style={profileEditorStyle}>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>画像维度</label>
@@ -1216,4 +1403,255 @@ const chipBoxStyle: CSSProperties = {
   borderRadius: 6,
   background: '#fbfcfd',
   fontSize: 12,
+};
+
+const sectionHeaderStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'start',
+  gap: 12,
+  marginBottom: 12,
+};
+
+const agentPipelineStyle: CSSProperties = {
+  ...panelStyle,
+  borderColor: '#c9ddd9',
+  background: '#f8fbfa',
+};
+
+const pipelineBadgeStyle: CSSProperties = {
+  padding: '3px 8px',
+  borderRadius: 999,
+  background: '#256f6c',
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: 700,
+  whiteSpace: 'nowrap',
+};
+
+const agentStepGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+  gap: 10,
+};
+
+const agentStepStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  padding: 10,
+  border: '1px solid #dbe3e1',
+  borderRadius: 6,
+  background: '#fff',
+};
+
+const agentStepTopStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'auto 1fr auto',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 12,
+};
+
+const agentIndexStyle: CSSProperties = {
+  display: 'inline-grid',
+  placeItems: 'center',
+  width: 22,
+  height: 22,
+  borderRadius: 999,
+  background: '#e6f4f1',
+  color: '#256f6c',
+  fontWeight: 800,
+};
+
+const agentStatusStyle: CSSProperties = {
+  padding: '2px 6px',
+  borderRadius: 999,
+  background: '#e7f7ed',
+  color: '#18794e',
+  fontWeight: 700,
+};
+
+const agentTitleStyle: CSSProperties = {
+  color: '#1f2328',
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const agentEvidenceStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+};
+
+const smallChipStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  maxWidth: '100%',
+  padding: '2px 6px',
+  borderRadius: 999,
+  background: '#edf2f7',
+  color: '#415466',
+  fontSize: 11,
+  lineHeight: 1.4,
+};
+
+const matchLayoutStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '220px minmax(0, 1fr)',
+  gap: 14,
+};
+
+const matchNavStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+};
+
+const matchNavButtonStyle = (active: boolean): CSSProperties => ({
+  display: 'grid',
+  gridTemplateColumns: '1fr auto',
+  gap: '3px 8px',
+  padding: 10,
+  border: active ? '1px solid #256f6c' : '1px solid #e5e7eb',
+  borderRadius: 6,
+  background: active ? '#e6f4f1' : '#fff',
+  color: '#1f2328',
+  textAlign: 'left',
+  cursor: 'pointer',
+});
+
+const matchContentStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  minWidth: 0,
+};
+
+const matchHeroStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '96px minmax(0, 1fr)',
+  gap: 12,
+  alignItems: 'center',
+  padding: 12,
+  border: '1px solid #e5e7eb',
+  borderRadius: 6,
+  background: '#fcfcfd',
+};
+
+const matchScoreStyle: CSSProperties = {
+  display: 'grid',
+  placeItems: 'center',
+  height: 82,
+  borderRadius: 6,
+  background: '#1f2328',
+  color: '#fff',
+};
+
+const chipRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+  marginTop: 8,
+};
+
+const strengthChipStyle: CSSProperties = {
+  ...smallChipStyle,
+  background: '#e7f7ed',
+  color: '#18794e',
+};
+
+const gapChipStyle: CSSProperties = {
+  ...smallChipStyle,
+  background: '#fff7e6',
+  color: '#9a6700',
+};
+
+const comparisonGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 10,
+};
+
+const comparisonItemStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 7,
+  padding: 10,
+  border: '1px solid #e5e7eb',
+  borderRadius: 6,
+  background: '#fff',
+};
+
+const dualBarStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '36px 1fr 34px',
+  gap: 8,
+  alignItems: 'center',
+  fontSize: 12,
+};
+
+const dualBarLabelStyle: CSSProperties = {
+  color: '#6b7280',
+};
+
+const marketBarFillStyle: CSSProperties = {
+  ...barFillStyle,
+  background: '#4f46e5',
+};
+
+const gapValueStyle = (gap: number): CSSProperties => ({
+  padding: '2px 6px',
+  borderRadius: 999,
+  background: gap > 12 ? '#fff7e6' : '#e7f7ed',
+  color: gap > 12 ? '#9a6700' : '#18794e',
+  fontSize: 12,
+  fontWeight: 700,
+});
+
+const adviceGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+  gap: 10,
+};
+
+const adviceItemStyle: CSSProperties = {
+  padding: 10,
+  border: '1px solid #e5e7eb',
+  borderRadius: 6,
+  background: '#fbfcfd',
+};
+
+const evidenceGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+  gap: 10,
+};
+
+const evidenceCardStyle: CSSProperties = {
+  padding: 10,
+  border: '1px solid #dbe3e1',
+  borderRadius: 6,
+  background: '#f8fbfa',
+};
+
+const workspaceMatchStripStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '76px minmax(0, 1fr)',
+  gap: 10,
+  alignItems: 'center',
+  padding: 10,
+  margin: '8px 0 12px',
+  border: '1px solid #dbe3e1',
+  borderRadius: 6,
+  background: '#f8fbfa',
+};
+
+const matchScoreMiniStyle: CSSProperties = {
+  display: 'grid',
+  placeItems: 'center',
+  height: 56,
+  borderRadius: 6,
+  background: '#e6f4f1',
+  color: '#256f6c',
 };

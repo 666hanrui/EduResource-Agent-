@@ -23,12 +23,14 @@ from ..data.major_catalog import (
 )
 from ..schemas.exploration import (
     CareerDirection,
+    CareerMatchReport,
     CareerRequirementProfile,
     CoachResponse,
     CoachSuggestion,
     CoachTone,
     DimensionProfile,
     DimensionScore,
+    ExplorationAgentStep,
     ExplorationPlan,
     ExplorationRequest,
     ExplorationTask,
@@ -38,6 +40,11 @@ from ..schemas.exploration import (
     GrowthReport,
     KnowledgeNode,
     LearningPathItem,
+    MatchActionAdvice,
+    MatchChartSeriesItem,
+    MatchComparisonDimension,
+    MatchEvidenceCard,
+    MatchNarrative,
     ProfileVersion,
     RecommendedKnowledge,
     WorkspacePhase,
@@ -92,8 +99,18 @@ def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
     profile = _build_profile(req, template, interests)
     scores = _build_dimension_scores(profile, req, template, base_score)
     directions = _build_directions(template, interests, scores)
+    match_reports = _build_match_reports(directions, scores, profile)
     learning_path = _build_learning_path(template, tasks)
     recommended = _build_recommended_knowledge(knowledge_map, directions)
+    agent_steps = _build_agent_steps(
+        req=req,
+        template=template,
+        knowledge_map=knowledge_map,
+        scores=scores,
+        directions=directions,
+        tasks=tasks,
+        match_reports=match_reports,
+    )
 
     return ExplorationPlan(
         student_id=req.student_id,
@@ -102,11 +119,13 @@ def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
             f"从 {req.major.strip()} 的基础课、核心课和应用方向开始探索，"
             "先用低风险任务确认兴趣，再逐步收敛职业方向。"
         ),
+        agent_steps=agent_steps,
         profile=profile,
         dimension_scores=scores,
         knowledge_map=knowledge_map,
         exploration_tasks=tasks,
         career_directions=directions,
+        match_reports=match_reports,
         learning_path=learning_path,
         recommended_knowledge=recommended,
     )
@@ -184,6 +203,8 @@ def create_exploration_workspace(
     workspace = ExplorationWorkspace(
         workspace_id=workspace_id,
         favorite=favorite,
+        match_report=_match_report_for_direction(plan, direction_id),
+        agent_steps=[item.model_copy(deep=True) for item in plan.agent_steps],
         profile=plan.profile.model_copy(deep=True),
         dimension_scores=[item.model_copy(deep=True) for item in plan.dimension_scores],
         resources=_build_workspace_resources(plan),
@@ -271,6 +292,11 @@ def update_workspace_profile(
     )
     workspace.profile_versions.insert(0, version)
     workspace.dimension_scores = _scores_from_profile(workspace.profile, workspace.dimension_scores)
+    workspace.match_report = _build_match_report_from_direction(
+        workspace.favorite.direction,
+        workspace.dimension_scores,
+        workspace.profile,
+    )
     workspace.updated_at = version.created_at
     _STORE.save_workspace(workspace)
     return workspace
@@ -446,6 +472,13 @@ def export_growth_report(
     )
 
 
+def _match_report_for_direction(plan: ExplorationPlan, direction_id: str) -> CareerMatchReport | None:
+    for report in plan.match_reports:
+        if report.direction_id == direction_id:
+            return report.model_copy(deep=True)
+    return None
+
+
 def _build_growth_report_markdown(workspace: ExplorationWorkspace) -> str:
     direction = workspace.favorite.direction
     done_tasks = [
@@ -470,8 +503,38 @@ def _build_growth_report_markdown(workspace: ExplorationWorkspace) -> str:
         "## 为什么探索这个方向",
         *[f"- {item}" for item in direction.why_explore],
         "",
-        "## 阶段进度",
+        "## 职业匹配分析",
     ]
+    if workspace.match_report:
+        report = workspace.match_report
+        lines.extend(
+            [
+                f"- 目标方向：{report.target_title}",
+                f"- 领域：{report.exploration_domain}",
+                f"- 综合匹配度：{report.overall_match}",
+                f"- 优势维度：{'、'.join(report.strength_dimensions) or '待补充'}",
+                f"- 优先差距：{'、'.join(report.priority_gap_dimensions) or '待观察'}",
+                "",
+                "### 关键维度差距",
+            ]
+        )
+        for item in report.comparison_dimensions[:6]:
+            lines.append(
+                f"- {item.title}：个人准备度 {item.user_readiness} / 市场重要度 {item.market_importance}，"
+                f"{item.status_label}；建议：{'；'.join(item.next_actions[:2])}"
+            )
+        lines.extend(["", "### 证据链样本"])
+        for card in report.evidence_cards[:4]:
+            lines.append(
+                f"- {card.title}：{card.scenario}。证据任务：{card.proof_task}"
+            )
+    else:
+        lines.append("- 尚未生成方向匹配报告。")
+    lines.extend(["", "## 阶段进度"])
+    if workspace.agent_steps:
+        lines.extend(["", "## Agentic 生成流水线"])
+        for step in workspace.agent_steps:
+            lines.append(f"- {step.agent_name}：{step.summary}")
     lines.extend(["", "## 当前 12 维画像证据"])
     for key, title in DIMENSION_TITLES.items():
         values = getattr(workspace.profile, key)
@@ -900,6 +963,293 @@ def _weighted_fit_score(score_by_key: dict[str, int], profile: CareerProfile) ->
         for key, weight in profile.dimension_weights.items()
     )
     return round(weighted / total_weight)
+
+
+def _build_match_reports(
+    directions: list[CareerDirection],
+    scores: list[DimensionScore],
+    profile: DimensionProfile,
+) -> list[CareerMatchReport]:
+    return [
+        _build_match_report_from_direction(direction, scores, profile)
+        for direction in directions
+    ]
+
+
+def _build_match_report_from_direction(
+    direction: CareerDirection,
+    scores: list[DimensionScore],
+    profile: DimensionProfile,
+) -> CareerMatchReport:
+    score_by_key = {item.key: item.score for item in scores}
+    score_meta_by_key = {item.key: item for item in scores}
+    weights = direction.requirement_profile.dimension_weights
+    comparison: list[MatchComparisonDimension] = []
+
+    for key, weight in sorted(weights.items(), key=lambda item: item[1], reverse=True):
+        title = DIMENSION_TITLES.get(key, key)
+        user_readiness = max(0, min(100, score_by_key.get(key, 45)))
+        market_importance = max(35, min(95, 48 + weight))
+        gap = market_importance - user_readiness
+        values = list(getattr(profile, key, []))
+        matched_keywords, missing_keywords = _dimension_keyword_alignment(
+            key=key,
+            values=values,
+            direction=direction,
+        )
+        comparison.append(
+            MatchComparisonDimension(
+                key=key,
+                title=title,
+                market_importance=market_importance,
+                user_readiness=user_readiness,
+                gap=gap,
+                status_label=_gap_status_label(gap),
+                matched_keywords=matched_keywords,
+                missing_keywords=missing_keywords,
+                next_actions=_dimension_next_actions(
+                    key=key,
+                    score=score_meta_by_key.get(key),
+                    direction=direction,
+                ),
+                evidence_sources=_dimension_evidence_sources(values, direction),
+            )
+        )
+
+    strength_dimensions = [
+        item.title
+        for item in comparison
+        if item.gap <= 5
+    ][:4]
+    priority_gap_dimensions = [
+        item.title
+        for item in sorted(comparison, key=lambda row: row.gap, reverse=True)
+        if item.gap > 8
+    ][:4]
+    action_advices = _build_match_action_advices(comparison, direction)
+    evidence_cards = _build_match_evidence_cards(direction, profile, score_by_key)
+
+    return CareerMatchReport(
+        report_id=f"match-{_slug(direction.title)}",
+        direction_id=direction.id,
+        target_title=direction.title,
+        exploration_domain=direction.exploration_domain,
+        overall_match=direction.fit_score,
+        comparison_dimensions=comparison,
+        chart_series=[
+            MatchChartSeriesItem(
+                key=item.key,
+                title=item.title,
+                market_importance=item.market_importance,
+                user_readiness=item.user_readiness,
+            )
+            for item in comparison
+        ],
+        strength_dimensions=strength_dimensions,
+        priority_gap_dimensions=priority_gap_dimensions,
+        action_advices=action_advices,
+        evidence_cards=evidence_cards,
+        narrative=MatchNarrative(
+            overall_review=(
+                f"{direction.title} 当前适合作为探索方向，而不是立即锁定目标。"
+                f"系统已用 12 维画像和 {len(comparison)} 个岗位要求维度做了对比。"
+            ),
+            strength_highlights=[
+                f"{item} 已经有早期证据，可以作为继续探索的支点。"
+                for item in strength_dimensions[:3]
+            ],
+            priority_gap_highlights=[
+                f"{item} 需要通过小任务继续补证据。"
+                for item in priority_gap_dimensions[:3]
+            ],
+        ),
+    )
+
+
+def _dimension_keyword_alignment(
+    *,
+    key: str,
+    values: list[str],
+    direction: CareerDirection,
+) -> tuple[list[str], list[str]]:
+    requirement = direction.requirement_profile
+    if key in {"professional_skills", "professional_background"}:
+        target_keywords = requirement.core_skills
+    elif key in {"teamwork", "communication", "problem_solving", "responsibility"}:
+        target_keywords = requirement.typical_tasks
+    elif key == "documentation_awareness":
+        target_keywords = requirement.evidence_suggestions
+    else:
+        target_keywords = requirement.core_skills[:2] + requirement.evidence_suggestions[:1]
+
+    haystack = " ".join(values)
+    matched = [item for item in target_keywords if item and item in haystack]
+    missing = [item for item in target_keywords if item not in matched]
+    return matched[:5], missing[:5]
+
+
+def _gap_status_label(gap: int) -> str:
+    if gap <= 0:
+        return "优势可用"
+    if gap <= 12:
+        return "接近要求"
+    if gap <= 28:
+        return "需要补证据"
+    return "优先补强"
+
+
+def _dimension_next_actions(
+    *,
+    key: str,
+    score: DimensionScore | None,
+    direction: CareerDirection,
+) -> list[str]:
+    actions: list[str] = []
+    if score is not None and score.next_probe:
+        actions.append(score.next_probe)
+    for suggestion in direction.requirement_profile.evidence_suggestions:
+        if suggestion not in actions:
+            actions.append(suggestion)
+    if not actions:
+        actions.append(f"围绕「{DIMENSION_TITLES.get(key, key)}」补一条可验证学习证据。")
+    return actions[:3]
+
+
+def _dimension_evidence_sources(values: list[str], direction: CareerDirection) -> list[str]:
+    sources = [f"学生画像：{item}" for item in values[:3]]
+    sources.extend(f"方向要求：{item}" for item in direction.requirement_profile.core_skills[:2])
+    return sources[:5]
+
+
+def _build_match_action_advices(
+    comparison: list[MatchComparisonDimension],
+    direction: CareerDirection,
+) -> list[MatchActionAdvice]:
+    advices: list[MatchActionAdvice] = []
+    for item in sorted(comparison, key=lambda row: row.gap, reverse=True)[:3]:
+        advices.append(
+            MatchActionAdvice(
+                key=item.key,
+                title=item.title,
+                status_label=item.status_label,
+                gap=item.gap,
+                why_it_matters=(
+                    f"{direction.title} 的典型任务需要 {item.title} 支撑，"
+                    "否则后续学习路径会缺少可判断的真实证据。"
+                ),
+                current_issue=(
+                    f"当前画像中可用证据为：{'、'.join(item.evidence_sources[:2]) or '暂无明确证据'}。"
+                ),
+                next_actions=item.next_actions,
+                evidence_sources=item.evidence_sources,
+                recommended_keywords=item.missing_keywords[:4],
+            )
+        )
+    return advices
+
+
+def _build_match_evidence_cards(
+    direction: CareerDirection,
+    profile: DimensionProfile,
+    score_by_key: dict[str, int],
+) -> list[MatchEvidenceCard]:
+    cards: list[MatchEvidenceCard] = []
+    profile_values = [
+        value
+        for key in direction.required_dimensions
+        for value in list(getattr(profile, key, []))[:2]
+    ]
+    for idx, task in enumerate(direction.requirement_profile.typical_tasks[:4]):
+        score = max(40, min(96, direction.fit_score - idx * 4 + score_by_key.get("learning_ability", 50) // 10))
+        cards.append(
+            MatchEvidenceCard(
+                id=f"evidence-{_slug(direction.title)}-{idx + 1}",
+                title=f"{direction.title} / {task}",
+                scenario=f"用一个低成本任务模拟「{task}」，观察自己是否愿意继续投入。",
+                match_score=score,
+                requirement_keywords=list(direction.requirement_profile.core_skills[idx : idx + 3])
+                or list(direction.requirement_profile.core_skills[:3]),
+                student_evidence=profile_values[:4],
+                proof_task=direction.requirement_profile.evidence_suggestions[
+                    idx % len(direction.requirement_profile.evidence_suggestions)
+                ],
+                source_label=f"{direction.exploration_domain} 方向能力样本",
+            )
+        )
+    return cards
+
+
+def _build_agent_steps(
+    *,
+    req: ExplorationRequest,
+    template: MajorTemplate,
+    knowledge_map: list[KnowledgeNode],
+    scores: list[DimensionScore],
+    directions: list[CareerDirection],
+    tasks: list[ExplorationTask],
+    match_reports: list[CareerMatchReport],
+) -> list[ExplorationAgentStep]:
+    interests = "、".join(req.interests) if req.interests else "未填写，使用专业默认方向"
+    top_direction = directions[0].title if directions else "待探索方向"
+    low_scores = sorted(scores, key=lambda item: item.score)[:3]
+    return [
+        ExplorationAgentStep(
+            id="major-scope",
+            agent_name="MajorScopeAgent",
+            title="专业广度拆解",
+            summary=f"读取 {req.major} / {req.grade}，展开基础课、核心课、方向课与实践入口。",
+            evidence_refs=[req.major, req.grade, req.foundation_level],
+            output_count=len(template.foundations) + len(template.core) + len(template.directions),
+        ),
+        ExplorationAgentStep(
+            id="knowledge-map",
+            agent_name="KnowledgeMapAgent",
+            title="知识地图生成",
+            summary=f"生成 {len(knowledge_map)} 个知识节点，覆盖基础、核心、方向和实践四类。",
+            evidence_refs=[node.title for node in knowledge_map[:5]],
+            output_count=len(knowledge_map),
+        ),
+        ExplorationAgentStep(
+            id="profile-12",
+            agent_name="Profile12Agent",
+            title="12 维画像初始化",
+            summary=f"用专业、年级、兴趣和每周投入初始化 12 维画像；当前兴趣：{interests}。",
+            evidence_refs=[item.title for item in low_scores],
+            output_count=len(scores),
+        ),
+        ExplorationAgentStep(
+            id="direction-match",
+            agent_name="DirectionMatchAgent",
+            title="职业方向匹配",
+            summary=f"对 {len(directions)} 个候选方向生成匹配报告，当前最高匹配是 {top_direction}。",
+            evidence_refs=[item.title for item in directions[:3]],
+            output_count=len(match_reports),
+        ),
+        ExplorationAgentStep(
+            id="gap-diagnosis",
+            agent_name="GapDiagnosisAgent",
+            title="差距与行动建议",
+            summary=f"定位优先补证据维度：{'、'.join(item.title for item in low_scores)}。",
+            evidence_refs=[item.next_probe for item in low_scores],
+            output_count=sum(len(report.action_advices) for report in match_reports[:3]),
+        ),
+        ExplorationAgentStep(
+            id="path-agent",
+            agent_name="SnailPathAgent",
+            title="蜗牛学习路径",
+            summary=f"生成 {len(tasks)} 个低成本探索任务，按短期/中期/长期推进。",
+            evidence_refs=[task.title for task in tasks],
+            output_count=len(tasks),
+        ),
+        ExplorationAgentStep(
+            id="coach-report",
+            agent_name="CoachReportAgent",
+            title="教练与成长报告准备",
+            summary="把任务、资源、画像版本和复盘记录纳入后续教练建议与成长报告。",
+            evidence_refs=["探索教练", "成长报告", "资源证据"],
+            output_count=3,
+        ),
+    ]
 
 
 def _first_matching_knowledge(

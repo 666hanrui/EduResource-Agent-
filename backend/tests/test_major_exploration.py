@@ -76,6 +76,33 @@ def test_major_exploration_ranks_interest_related_direction() -> None:
     assert top.requirement_profile.core_skills
     assert top.requirement_profile.dimension_weights
     assert top.requirement_profile.evidence_suggestions
+    report = next(item for item in plan.match_reports if item.direction_id == top.id)
+    assert report.overall_match == top.fit_score
+    assert report.comparison_dimensions
+    assert report.chart_series
+    assert report.action_advices
+    assert report.evidence_cards
+    assert report.narrative.overall_review
+
+
+def test_major_exploration_exposes_agentic_pipeline() -> None:
+    plan = build_major_exploration_plan(
+        ExplorationRequest(major="软件工程", interests=["AI 应用"])
+    )
+
+    agent_names = [item.agent_name for item in plan.agent_steps]
+
+    assert agent_names == [
+        "MajorScopeAgent",
+        "KnowledgeMapAgent",
+        "Profile12Agent",
+        "DirectionMatchAgent",
+        "GapDiagnosisAgent",
+        "SnailPathAgent",
+        "CoachReportAgent",
+    ]
+    assert all(item.status == "done" for item in plan.agent_steps)
+    assert plan.agent_steps[3].output_count == len(plan.match_reports)
 
 
 def test_major_exploration_uses_major_catalog_role_profiles() -> None:
@@ -241,6 +268,8 @@ def test_workspace_resources_include_multiple_sources_when_possible() -> None:
     sources = {item.source_key for item in workspace.resources}
 
     assert workspace.resources
+    assert workspace.match_report is not None
+    assert workspace.agent_steps
     assert all(item.quality_score > 0 for item in workspace.resources)
     assert all(item.source_name in item.reason for item in workspace.resources)
     assert len(sources) >= 2

@@ -139,15 +139,91 @@ class RecommendedKnowledge(BaseModel):
     suggested_difficulty: int = Field(default=2, ge=1, le=5)
 
 
+class ExplorationAgentStep(BaseModel):
+    id: str
+    agent_name: str
+    title: str
+    status: Literal["waiting", "running", "done", "blocked"] = "done"
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    output_count: int = Field(default=0, ge=0)
+
+
+class MatchComparisonDimension(BaseModel):
+    key: str
+    title: str
+    market_importance: int = Field(ge=0, le=100)
+    user_readiness: int = Field(ge=0, le=100)
+    gap: int = Field(ge=-100, le=100)
+    status_label: str
+    matched_keywords: list[str] = Field(default_factory=list)
+    missing_keywords: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+    evidence_sources: list[str] = Field(default_factory=list)
+
+
+class MatchChartSeriesItem(BaseModel):
+    key: str
+    title: str
+    market_importance: int = Field(ge=0, le=100)
+    user_readiness: int = Field(ge=0, le=100)
+
+
+class MatchActionAdvice(BaseModel):
+    key: str
+    title: str
+    status_label: str
+    gap: int
+    why_it_matters: str
+    current_issue: str
+    next_actions: list[str] = Field(default_factory=list)
+    evidence_sources: list[str] = Field(default_factory=list)
+    recommended_keywords: list[str] = Field(default_factory=list)
+
+
+class MatchEvidenceCard(BaseModel):
+    id: str
+    title: str
+    scenario: str
+    match_score: int = Field(ge=0, le=100)
+    requirement_keywords: list[str] = Field(default_factory=list)
+    student_evidence: list[str] = Field(default_factory=list)
+    proof_task: str
+    source_label: str
+
+
+class MatchNarrative(BaseModel):
+    overall_review: str
+    strength_highlights: list[str] = Field(default_factory=list)
+    priority_gap_highlights: list[str] = Field(default_factory=list)
+
+
+class CareerMatchReport(BaseModel):
+    report_id: str
+    direction_id: str
+    target_title: str
+    exploration_domain: str
+    overall_match: int = Field(ge=0, le=100)
+    comparison_dimensions: list[MatchComparisonDimension] = Field(default_factory=list)
+    chart_series: list[MatchChartSeriesItem] = Field(default_factory=list)
+    strength_dimensions: list[str] = Field(default_factory=list)
+    priority_gap_dimensions: list[str] = Field(default_factory=list)
+    action_advices: list[MatchActionAdvice] = Field(default_factory=list)
+    evidence_cards: list[MatchEvidenceCard] = Field(default_factory=list)
+    narrative: MatchNarrative
+
+
 class ExplorationPlan(BaseModel):
     student_id: str
     major: str
     summary: str
+    agent_steps: list[ExplorationAgentStep] = Field(default_factory=list)
     profile: DimensionProfile
     dimension_scores: list[DimensionScore]
     knowledge_map: list[KnowledgeNode]
     exploration_tasks: list[ExplorationTask]
     career_directions: list[CareerDirection]
+    match_reports: list[CareerMatchReport] = Field(default_factory=list)
     learning_path: list[LearningPathItem]
     recommended_knowledge: list[RecommendedKnowledge]
 
@@ -231,6 +307,8 @@ class ProfileVersion(BaseModel):
 class ExplorationWorkspace(BaseModel):
     workspace_id: str
     favorite: FavoriteDirection
+    match_report: CareerMatchReport | None = None
+    agent_steps: list[ExplorationAgentStep] = Field(default_factory=list)
     profile: DimensionProfile
     dimension_scores: list[DimensionScore] = Field(default_factory=list)
     profile_versions: list[ProfileVersion] = Field(default_factory=list)
