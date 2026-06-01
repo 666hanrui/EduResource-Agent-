@@ -1,14 +1,4 @@
-/**
- * ProgressBar —— Agent 自适应进度条。
- *
- * 渲染策略：
- * - waiting   : 空槽
- * - running   : 不定量条纹动画
- * - streaming : 同 running，但用更亮的呼吸蓝
- * - done      : 100% 实条 + elapsed 文本
- * - error     : 红条 + 错误信息提示
- */
-
+import type { CSSProperties } from 'react';
 import type { AgentState } from '../../types/agentTrace';
 
 interface Props {
@@ -16,24 +6,24 @@ interface Props {
   elapsedMs: number;
 }
 
-const TRACK_STYLE: React.CSSProperties = {
+const TRACK_STYLE: CSSProperties = {
   position: 'relative',
   width: '100%',
-  height: 8,
-  borderRadius: 4,
-  backgroundColor: '#f0f0f0',
+  height: 12,
+  border: '2px solid #241C15',
+  borderRadius: 999,
+  backgroundColor: '#FFFDF6',
   overflow: 'hidden',
 };
 
 export function ProgressBar({ state, elapsedMs }: Props) {
-  const filled =
-    state === 'done' ? '100%' : state === 'error' ? '100%' : '40%';
+  const filled = state === 'waiting' ? '18%' : state === 'done' || state === 'error' ? '100%' : '46%';
   const colorByState: Record<AgentState, string> = {
-    waiting: '#d9d9d9',
-    running: '#69b1ff',
-    streaming: '#1677ff',
-    done: '#52c41a',
-    error: '#ff4d4f',
+    waiting: '#FBEFE3',
+    running: '#FFE01B',
+    streaming: '#FFE01B',
+    done: '#DFF6DD',
+    error: '#FFD8DF',
   };
 
   return (
@@ -43,31 +33,27 @@ export function ProgressBar({ state, elapsedMs }: Props) {
           width: filled,
           height: '100%',
           backgroundColor: colorByState[state],
+          borderRight: state === 'waiting' ? undefined : '2px solid #241C15',
           transition: 'width 200ms ease-out',
-          animation:
-            state === 'running' || state === 'streaming'
-              ? 'agent-trace-stripe 1.6s linear infinite'
-              : undefined,
-          backgroundImage:
-            state === 'running' || state === 'streaming'
-              ? 'linear-gradient(90deg, rgba(255,255,255,0.4) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.4) 75%, transparent 75%)'
-              : undefined,
-          backgroundSize: state === 'streaming' ? '24px 24px' : undefined,
+          animation: state === 'running' || state === 'streaming' ? 'agent-trace-stripe 1.6s linear infinite' : undefined,
+          backgroundImage: state === 'running' || state === 'streaming'
+            ? 'linear-gradient(90deg, rgba(36,28,21,0.16) 25%, transparent 25%, transparent 50%, rgba(36,28,21,0.16) 50%, rgba(36,28,21,0.16) 75%, transparent 75%)'
+            : undefined,
+          backgroundSize: '24px 24px',
         }}
       />
       {state === 'done' || state === 'error' ? (
-        <span
-          style={{
-            position: 'absolute',
-            right: 6,
-            top: -16,
-            fontSize: 11,
-            color: '#666',
-          }}
-        >
-          {(elapsedMs / 1000).toFixed(1)}s
-        </span>
+        <span style={elapsedStyle}>{(elapsedMs / 1000).toFixed(1)}s</span>
       ) : null}
     </div>
   );
 }
+
+const elapsedStyle: CSSProperties = {
+  position: 'absolute',
+  right: 7,
+  top: -2,
+  fontSize: 10,
+  color: '#241C15',
+  fontWeight: 900,
+};
