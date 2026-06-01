@@ -35,6 +35,38 @@
   color: var(--freddie-ink) !important;
 }
 
+/* Coach workbench floating panel: it is part of the product now, not a debug drawer. */
+.freddie-coach-launcher {
+  transform: rotate(-1.5deg);
+}
+
+.freddie-coach-launcher:hover {
+  transform: translate(-2px, -2px) rotate(-2deg) !important;
+}
+
+.freddie-coach-panel {
+  background:
+    radial-gradient(circle at 96% 8%, rgba(255, 77, 116, 0.2) 0 12%, transparent 13%),
+    linear-gradient(135deg, var(--freddie-paper), var(--freddie-cream)) !important;
+}
+
+.freddie-coach-panel::before {
+  content: "Coach Studio";
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: inline-flex;
+  margin-bottom: 12px;
+  padding: 7px 12px;
+  border: 2px solid var(--freddie-ink);
+  border-radius: 999px;
+  background: var(--freddie-yellow);
+  box-shadow: 3px 3px 0 var(--freddie-ink);
+  font-size: 12px;
+  font-weight: 900;
+  transform: rotate(-2deg);
+}
+
 /* Tutor / Live2D helper: make the chat window feel like a hand-drawn helper card. */
 #root div[style*="z-index: 9999"] div[style*="backdrop-filter"],
 #root div[style*="z-index: 9999"] div[style*="backdropFilter"] {
@@ -56,11 +88,6 @@
   color: var(--freddie-ink) !important;
 }
 
-#root div[style*="z-index: 9999"] div[style*="backgroundColor: '#fff'"],
-#root div[style*="z-index: 9999"] div[style*="background-color: rgb(255, 255, 255)"] {
-  background: var(--freddie-paper) !important;
-}
-
 #root div[style*="z-index: 9999"] input[style] {
   border: 2px solid var(--freddie-ink) !important;
   border-radius: 999px !important;
@@ -78,4 +105,33 @@
 /* Remove cold blue glows from the Live2D helper. */
 #root div[style*="rgba(22, 119, 255"] {
   background: rgba(255, 224, 27, 0.22) !important;
+}
+
+/* Make old exploration cards more deliberately hand-made. */
+#root main [style*="gridTemplateColumns"],
+#root main [style*="grid-template-columns"] {
+  min-width: 0;
+}
+
+#root main article,
+#root main details {
+  color: var(--freddie-ink);
+}
+
+@media (max-width: 1280px) {
+  .freddie-coach-panel {
+    inset: 40px 40px 96px 40px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .freddie-coach-launcher {
+    right: 16px !important;
+    bottom: 16px !important;
+  }
+
+  .freddie-coach-panel {
+    inset: 16px 16px 86px 16px !important;
+    padding: 14px !important;
+  }
 }
