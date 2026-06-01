@@ -1,10 +1,4 @@
-/*
- * Freddie / Mailchimp-era theme layer.
- * Source of visual rules: garden-skills web-design-engineer recipe `mailchimp-freddie`.
- * This file intentionally overrides the existing inline-heavy demo UI with !important,
- * so the page can be restyled without rewriting every React component.
- */
-
+/* Freddie / Mailchimp-era full frontend adaptation */
 :root {
   --freddie-yellow: #FFE01B;
   --freddie-ink: #241C15;
@@ -12,8 +6,7 @@
   --freddie-paper: #FFFDF6;
   --freddie-muted: #88837C;
   --freddie-coral: #FF4D74;
-  --freddie-line: #241C15;
-  --freddie-shadow: 8px 8px 0 rgba(36, 28, 21, 0.96);
+  --freddie-shadow: 8px 8px 0 #241C15;
   --freddie-soft-shadow: 0 4px 12px rgba(36, 28, 21, 0.08);
   --freddie-radius-sm: 8px;
   --freddie-radius-md: 16px;
@@ -21,46 +14,29 @@
   --freddie-radius-pill: 999px;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; min-height: 100%; margin: 0; }
+body {
+  overflow: hidden;
   color: var(--freddie-ink);
   background: var(--freddie-yellow);
+  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
+::selection { color: var(--freddie-yellow); background: var(--freddie-ink); }
 
-body {
-  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif;
+.freddie-app-shell {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  height: 100vh;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255, 77, 116, 0.24) 0 10%, transparent 11%),
+    radial-gradient(circle at 88% 78%, rgba(251, 239, 227, 0.9) 0 15%, transparent 16%),
+    linear-gradient(135deg, var(--freddie-yellow), #ffd84a 48%, var(--freddie-cream));
   overflow: hidden;
 }
-
-::selection {
-  color: var(--freddie-yellow);
-  background: var(--freddie-ink);
-}
-
-#root > div[style] {
-  position: relative !important;
-  gap: 18px !important;
-  padding: 18px !important;
-  min-height: 100vh !important;
-  height: 100vh !important;
-  color: var(--freddie-ink) !important;
-  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  background:
-    radial-gradient(circle at 10% 12%, rgba(255, 77, 116, 0.26) 0 10%, transparent 11%),
-    radial-gradient(circle at 92% 78%, rgba(251, 239, 227, 0.9) 0 15%, transparent 16%),
-    linear-gradient(135deg, var(--freddie-yellow), #ffd84a 48%, var(--freddie-cream)) !important;
-  overflow: hidden !important;
-}
-
-#root > div[style]::before {
+.freddie-app-shell::before {
   content: "";
   position: absolute;
   left: 34px;
@@ -74,43 +50,26 @@ body {
     linear-gradient(35deg, transparent 45%, rgba(36, 28, 21, 0.4) 46% 50%, transparent 51%);
   transform: rotate(-7deg);
 }
-
-#root > div[style]::after {
-  content: "嘿，开始探索吧";
-  position: absolute;
-  right: 410px;
-  top: 28px;
-  z-index: 2;
-  padding: 8px 14px;
-  border: 2px solid var(--freddie-ink);
-  border-radius: var(--freddie-radius-pill);
-  color: var(--freddie-ink);
+.freddie-main-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid var(--freddie-ink);
+  border-radius: 30px;
   background: var(--freddie-paper);
-  box-shadow: 4px 4px 0 var(--freddie-ink);
-  font-size: 13px;
-  font-weight: 900;
-  transform: rotate(2deg);
+  box-shadow: var(--freddie-shadow);
+  overflow: hidden;
 }
-
-#root > div[style] > main[style] {
-  position: relative !important;
-  z-index: 1 !important;
-  min-width: 0 !important;
-  border: 3px solid var(--freddie-line) !important;
-  border-radius: 30px !important;
-  background: var(--freddie-paper) !important;
-  box-shadow: var(--freddie-shadow) !important;
-  overflow: hidden !important;
-}
-
-#root > div[style] > main[style]::before {
+.freddie-main-stage::after {
   content: "";
   position: absolute;
-  right: 28px;
-  top: 86px;
-  z-index: 0;
-  width: 130px;
-  height: 90px;
+  right: 30px;
+  top: 120px;
+  width: 128px;
+  height: 88px;
   border: 3px solid var(--freddie-ink);
   border-radius: 48% 52% 58% 42%;
   background:
@@ -122,82 +81,83 @@ body {
   transform: rotate(-10deg);
   pointer-events: none;
 }
-
-#root > div[style] > main[style] > header[style] {
-  position: relative !important;
-  z-index: 1 !important;
-  padding: 30px 34px 22px !important;
-  border-bottom: 3px solid var(--freddie-ink) !important;
-  background:
-    linear-gradient(90deg, var(--freddie-yellow) 0 62%, var(--freddie-cream) 62% 100%) !important;
-}
-
-#root > div[style] > main[style] > header[style]::after {
-  content: "✦";
-  position: absolute;
-  right: 34px;
-  top: 24px;
+.freddie-hero {
+  position: relative;
+  z-index: 1;
   display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 3px solid var(--freddie-ink);
-  border-radius: 50%;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 24px;
+  padding: 30px 34px 26px;
+  border-bottom: 3px solid var(--freddie-ink);
+  background: linear-gradient(90deg, var(--freddie-yellow) 0 62%, var(--freddie-cream) 62% 100%);
+}
+.freddie-eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 10px;
+  padding: 7px 12px;
+  border: 2px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-pill);
+  background: var(--freddie-paper);
+  box-shadow: 3px 3px 0 var(--freddie-ink);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.freddie-hero h1 {
+  max-width: 900px;
+  margin: 0;
   color: var(--freddie-ink);
-  background: var(--freddie-coral);
-  box-shadow: 4px 4px 0 var(--freddie-ink);
-  font-size: 22px;
-  transform: rotate(8deg);
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 0.96;
+  font-weight: 900;
+  letter-spacing: -0.055em;
 }
-
-h1,
-h2,
-h3,
-h4,
-strong {
-  color: var(--freddie-ink) !important;
-  letter-spacing: -0.035em;
+.freddie-hero p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: var(--freddie-ink);
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 650;
 }
-
-#root h1[style] {
-  max-width: 760px !important;
-  margin: 0 !important;
-  color: var(--freddie-ink) !important;
-  font-size: clamp(30px, 4vw, 56px) !important;
-  line-height: 0.95 !important;
-  font-weight: 900 !important;
+.freddie-mascot-card {
+  align-self: center;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 16px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-lg);
+  background: var(--freddie-paper);
+  box-shadow: 6px 6px 0 var(--freddie-ink);
+  transform: rotate(2deg);
+  text-align: center;
 }
-
-#root h3[style] {
-  font-size: 18px !important;
-  font-weight: 900 !important;
+.freddie-mascot-face {
+  width: 92px;
+  height: 70px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: 55% 45% 50% 50%;
+  background:
+    radial-gradient(circle at 32% 44%, var(--freddie-ink) 0 4px, transparent 5px),
+    radial-gradient(circle at 62% 40%, var(--freddie-ink) 0 4px, transparent 5px),
+    radial-gradient(ellipse at 50% 68%, transparent 0 14px, var(--freddie-ink) 15px 17px, transparent 18px),
+    var(--freddie-yellow);
 }
-
-p[style],
-span[style],
-label[style],
-div[style] {
-  color: inherit;
+.freddie-mode-strip {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 34px;
+  border-bottom: 2px dashed rgba(36, 28, 21, 0.35);
+  background: var(--freddie-paper);
 }
-
-#root > div[style] > main[style] > header[style] p[style] {
-  max-width: 680px !important;
-  margin-top: 10px !important;
-  color: var(--freddie-ink) !important;
-  font-size: 16px !important;
-  line-height: 1.55 !important;
-  font-weight: 650 !important;
-}
-
-#root > div[style] > main[style] > nav[style] {
-  position: relative !important;
-  z-index: 1 !important;
-  padding: 18px 34px !important;
-  gap: 12px !important;
-  border-bottom: 2px dashed rgba(36, 28, 21, 0.34) !important;
-  background: var(--freddie-paper) !important;
-}
-
+.freddie-tab,
+.freddie-primary-button,
 button[style] {
   border: 2px solid var(--freddie-ink) !important;
   border-radius: var(--freddie-radius-pill) !important;
@@ -206,77 +166,89 @@ button[style] {
   box-shadow: 3px 3px 0 var(--freddie-ink) !important;
   cursor: pointer !important;
   font-weight: 900 !important;
-  letter-spacing: -0.01em !important;
   transition: transform 170ms cubic-bezier(.34,1.56,.64,1), box-shadow 170ms ease, background 170ms ease !important;
 }
-
+.freddie-tab { padding: 10px 20px; font-size: 14px; }
+.freddie-tab-active,
+.freddie-primary-button,
 button[style]:hover:not(:disabled) {
-  transform: translate(-2px, -2px) rotate(-0.8deg) !important;
-  box-shadow: 6px 6px 0 var(--freddie-ink) !important;
   background: var(--freddie-yellow) !important;
 }
-
-button[style]:active:not(:disabled) {
-  transform: translate(1px, 1px) !important;
-  box-shadow: 1px 1px 0 var(--freddie-ink) !important;
+button[style]:hover:not(:disabled),
+.freddie-tab:hover,
+.freddie-primary-button:hover:not(:disabled) {
+  transform: translate(-2px, -2px) rotate(-0.8deg) !important;
+  box-shadow: 6px 6px 0 var(--freddie-ink) !important;
 }
-
-button[style]:disabled {
+button[style]:disabled,
+.freddie-primary-button:disabled {
   opacity: 0.58 !important;
   cursor: wait !important;
   background: var(--freddie-cream) !important;
 }
-
-#root > div[style] > main[style] > nav[style] button[style] {
-  padding: 10px 20px !important;
+.freddie-status-note {
+  margin-left: auto;
+  color: var(--freddie-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+.freddie-generator-band {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 14px;
+  align-items: end;
+  margin: 18px 34px 0;
+  padding: 18px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-lg);
+  background: var(--freddie-cream);
+  box-shadow: 6px 6px 0 var(--freddie-ink);
+}
+.freddie-primary-button { min-height: 42px; padding: 0 22px; font-size: 14px; }
+.freddie-error-card {
+  margin: 14px 34px 0;
+  padding: 12px 14px;
+  border: 3px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-md);
+  background: #ffd8df;
+  box-shadow: 4px 4px 0 var(--freddie-ink);
+  color: var(--freddie-ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+.freddie-content-scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
 }
 
-#root > div[style] > main[style] > nav[style] button[style]:first-child,
-#root > div[style] > main[style] > nav[style] button[style]:focus-visible {
-  background: var(--freddie-yellow) !important;
-}
-
-input[style],
-select[style],
-textarea[style] {
-  min-height: 38px !important;
+h1, h2, h3, h4, strong { color: var(--freddie-ink) !important; letter-spacing: -0.035em; }
+label[style] { color: var(--freddie-ink) !important; }
+input[style], select[style], textarea[style] {
   border: 2px solid var(--freddie-ink) !important;
   border-radius: var(--freddie-radius-md) !important;
   outline: none !important;
   background: #fffaf0 !important;
   color: var(--freddie-ink) !important;
-  box-shadow: inset 0 0 0 1px rgba(36, 28, 21, 0.04), var(--freddie-soft-shadow) !important;
   font: inherit !important;
 }
-
-input[style]:focus,
-select[style]:focus,
-textarea[style]:focus {
-  background: #ffffff !important;
-  box-shadow: 0 0 0 4px rgba(255, 224, 27, 0.45), var(--freddie-soft-shadow) !important;
+input[style]:focus, select[style]:focus, textarea[style]:focus {
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(255, 224, 27, 0.45) !important;
 }
-
-label[style] {
-  color: var(--freddie-ink) !important;
-  font-size: 12px !important;
-  font-weight: 900 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* Generator control strip */
-#root > div[style] > main[style] > section[style] {
-  position: relative !important;
-  z-index: 1 !important;
-  margin: 0 34px 18px !important;
-  padding: 18px !important;
-  border: 3px solid var(--freddie-ink) !important;
-  border-radius: var(--freddie-radius-lg) !important;
+pre[style], code[style] {
+  border: 2px solid var(--freddie-ink) !important;
+  border-radius: var(--freddie-radius-md) !important;
   background: var(--freddie-cream) !important;
-  box-shadow: 6px 6px 0 var(--freddie-ink) !important;
+  color: var(--freddie-ink) !important;
 }
 
-/* Generic card/panel override for the inline-style-heavy components. */
+/* Existing inline-heavy panels */
 #root main div[style*="border"],
 #root main section[style*="border"],
 #root main footer[style*="border"],
@@ -285,65 +257,54 @@ label[style] {
   border-color: var(--freddie-ink) !important;
   border-width: 2px !important;
   border-radius: var(--freddie-radius-md) !important;
-  background: var(--freddie-paper) !important;
 }
-
-#root main div[style*="background"],
-#root main section[style*="background"],
-#root main footer[style*="background"] {
-  color: var(--freddie-ink) !important;
-}
-
 #root main div[style*="border: 1px"],
-#root main section[style*="border: 1px"] {
+#root main section[style*="border: 1px"],
+#root main footer[style*="border: 1px"] {
+  background: var(--freddie-paper) !important;
   box-shadow: 4px 4px 0 rgba(36, 28, 21, 0.88) !important;
 }
-
-#root main div[style*="border-radius: 6px"],
-#root main section[style*="border-radius: 6px"],
-#root main button[style*="border-radius: 6px"] {
-  border-radius: var(--freddie-radius-md) !important;
-}
-
 #root main span[style*="border-radius: 999px"],
-#root main div[style*="border-radius: 999px"] {
+#root main div[style*="border-radius: 999px"],
+#root main span[style*="border-radius: 10px"] {
   border: 2px solid var(--freddie-ink) !important;
   background: var(--freddie-yellow) !important;
   color: var(--freddie-ink) !important;
   font-weight: 900 !important;
 }
-
-#root main [style*="color: rgb(37, 111, 108)"],
+#root main [style*="color: #666"],
+#root main [style*="color: rgb(102, 102, 102)"],
+#root main [style*="color: #999"],
+#root main [style*="color: rgb(153, 153, 153)"],
+#root main [style*="color: #555"],
+#root main [style*="color: rgb(85, 85, 85)"] {
+  color: var(--freddie-muted) !important;
+}
+#root main [style*="color: #1677ff"],
+#root main [style*="color: rgb(22, 119, 255)"],
 #root main [style*="color: #256f6c"],
-#root main [style*="color: rgb(23, 76, 73)"],
-#root main [style*="color: #174c49"] {
+#root main [style*="color: rgb(37, 111, 108)"] {
   color: var(--freddie-ink) !important;
 }
-
-#root main [style*="background: rgb(230, 244, 241)"],
+#root main [style*="background: #1677ff"],
+#root main [style*="background-color: #1677ff"],
+#root main [style*="background: rgb(22, 119, 255)"],
+#root main [style*="background-color: rgb(22, 119, 255)"],
 #root main [style*="background: #e6f4f1"],
-#root main [style*="background-color: rgb(230, 244, 241)"],
 #root main [style*="background-color: #e6f4f1"] {
   background: var(--freddie-yellow) !important;
-}
-
-#root main [style*="background: rgb(246, 248, 250)"],
-#root main [style*="background: #f6f8fa"],
-#root main [style*="background-color: rgb(250, 250, 250)"] {
-  background: var(--freddie-cream) !important;
-}
-
-#root main ul[style],
-#root main ol[style] {
   color: var(--freddie-ink) !important;
 }
-
-#root main li::marker {
-  color: var(--freddie-coral);
+#root main [style*="background: #fafafa"],
+#root main [style*="background-color: #fafafa"],
+#root main [style*="background: #f6f8fa"],
+#root main [style*="background-color: #f6f8fa"] {
+  background: var(--freddie-cream) !important;
 }
+#root main li::marker { color: var(--freddie-coral); }
 
-/* Right-side Agent panel */
-#root > div[style] > aside[style] {
+/* Agent theatre */
+#root > div > aside[style] {
   position: relative !important;
   z-index: 1 !important;
   width: 376px !important;
@@ -355,31 +316,26 @@ label[style] {
   background: var(--freddie-cream) !important;
   box-shadow: var(--freddie-shadow) !important;
   color: var(--freddie-ink) !important;
-  font-family: "Inter Tight", "Arial Rounded MT Bold", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
 }
-
-#root > div[style] > aside[style]::before {
-  content: "";
+#root > div > aside[style]::before {
+  content: "Agent Theatre";
   display: block;
-  width: 78px;
-  height: 54px;
+  width: fit-content;
   margin: 0 0 14px auto;
-  border: 3px solid var(--freddie-ink);
-  border-radius: 55% 45% 50% 50%;
-  background:
-    radial-gradient(circle at 32% 44%, var(--freddie-ink) 0 3px, transparent 4px),
-    radial-gradient(circle at 63% 42%, var(--freddie-ink) 0 3px, transparent 4px),
-    radial-gradient(ellipse at 50% 68%, transparent 0 12px, var(--freddie-ink) 13px 15px, transparent 16px),
-    var(--freddie-yellow);
-  box-shadow: 4px 4px 0 var(--freddie-ink);
-  transform: rotate(7deg);
+  padding: 7px 12px;
+  border: 2px solid var(--freddie-ink);
+  border-radius: var(--freddie-radius-pill);
+  background: var(--freddie-yellow);
+  box-shadow: 3px 3px 0 var(--freddie-ink);
+  font-size: 12px;
+  font-weight: 900;
+  transform: rotate(3deg);
 }
-
 #root aside header[style] {
-  padding: 0 0 14px !important;
+  padding-bottom: 14px !important;
   border-bottom: 2px dashed rgba(36, 28, 21, 0.35) !important;
 }
-
 #root aside section > div[style] {
   margin: 10px 0 !important;
   padding: 12px !important;
@@ -388,82 +344,34 @@ label[style] {
   background: var(--freddie-paper) !important;
   box-shadow: 3px 3px 0 var(--freddie-ink) !important;
 }
-
-#root aside span[style] {
-  color: var(--freddie-ink) !important;
-}
-
+#root aside span[style], #root aside div[style] { color: var(--freddie-ink) !important; }
 #root aside [style*="color: #666"],
-#root aside [style*="color: rgb(102, 102, 102)"],
 #root aside [style*="color: #999"],
-#root aside [style*="color: rgb(153, 153, 153)"] {
-  color: var(--freddie-muted) !important;
+#root aside [style*="color: rgb(102, 102, 102)"],
+#root aside [style*="color: rgb(153, 153, 153)"] { color: var(--freddie-muted) !important; }
+
+/* Tutor as Freddie helper */
+#root div[style*="z-index: 9999"] div[style*="backgroundColor"],
+#root div[style*="z-index: 9999"] div[style*="background-color"] {
+  border-color: var(--freddie-ink) !important;
 }
 
-/* Small progress/status elements should feel like hand-labeled stickers. */
-#root aside [style*="border-radius: 999px"],
-#root aside [style*="border-radius: 4px"],
-#root aside [style*="border-radius: 6px"] {
-  border-radius: var(--freddie-radius-pill) !important;
-}
-
-#root aside [style*="background-color"],
-#root aside [style*="background:"] {
-  color: var(--freddie-ink) !important;
-}
-
-/* Floating tutor bubble */
-#root > div[style] > div[style*="position: fixed"],
-#root > div[style] > button[style*="position: fixed"] {
-  border: 3px solid var(--freddie-ink) !important;
-  border-radius: var(--freddie-radius-lg) !important;
-  background: var(--freddie-yellow) !important;
-  color: var(--freddie-ink) !important;
-  box-shadow: 7px 7px 0 var(--freddie-ink) !important;
-}
-
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--freddie-cream);
-}
-
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--freddie-cream); }
 ::-webkit-scrollbar-thumb {
   border: 3px solid var(--freddie-cream);
-  border-radius: 999px;
+  border-radius: var(--freddie-radius-pill);
   background: var(--freddie-ink);
 }
 
 @media (max-width: 1100px) {
-  #root > div[style] {
-    flex-direction: column !important;
-    overflow: auto !important;
-  }
-
-  #root > div[style]::after {
-    display: none;
-  }
-
-  #root > div[style] > main[style],
-  #root > div[style] > aside[style] {
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-  }
-
-  #root > div[style] > main[style] > section[style] {
-    grid-template-columns: 1fr !important;
-  }
+  body { overflow: auto; }
+  .freddie-app-shell { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+  .freddie-hero { grid-template-columns: 1fr; }
+  .freddie-generator-band { grid-template-columns: 1fr; }
+  #root > div > aside[style] { width: 100% !important; height: auto !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition: none !important;
-    animation: none !important;
-  }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }
