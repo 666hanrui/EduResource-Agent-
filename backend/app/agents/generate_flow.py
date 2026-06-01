@@ -31,7 +31,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -42,6 +42,7 @@ from ..schemas.resource import (
     EvaluationResult,
     ExerciseResult,
     PlannerOutput,
+    ResourceTaskParams,
     VisualResult,
 )
 from .code_agent import CodeAgent, CodeAgentInput
@@ -64,6 +65,14 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────── 输入 ───────────────────────────────
 
 
+class GenerateSelectionContext(BaseModel):
+    """从上游模块进入资源生成时携带的选择理由。"""
+
+    source: Literal["manual", "exploration", "coach", "digital_human"] = "manual"
+    reason: str = Field(default="")
+    suggested_difficulty: int | None = Field(default=None, ge=1, le=5)
+
+
 class GenerateRequest(BaseModel):
     """演示态主入口请求。
 
@@ -76,6 +85,7 @@ class GenerateRequest(BaseModel):
     knowledge_name: str
     conversation: list[ConversationTurn] = Field(default_factory=list)
     prior_profile: Profile | None = None
+    selection_context: GenerateSelectionContext | None = None
     exercise_count: int = Field(default=5, ge=1, le=10)
     languages: list[str] = Field(default_factory=lambda: ["python", "java"])
 
@@ -114,7 +124,10 @@ class GenerateFlow:
             profile_agent: ProfileAgent = self._agent("ProfileAgent")
             profile_input = ProfileAgentInput(
                 session_id=task_id,
-                conversation=req.conversation,
+                conversation=[
+                    *req.conversation,
+                    *_selection_context_turns(req.selection_context),
+                ],
                 prior_profile=req.prior_profile,
             )
             profile_result = await profile_agent.run(task_id, profile_input)
@@ -133,7 +146,10 @@ class GenerateFlow:
             outputs.plan = plan
 
             kb = plan.knowledge_breakdown
-            base_params = _pick_params(plan, fallback_focus=req.knowledge_name)
+            base_params = _apply_selection_context(
+                _pick_params(plan, fallback_focus=req.knowledge_name),
+                req.selection_context,
+            )
             profile_summary = ProfileSummary(
                 weakness=profile_result.profile.weakness,
                 preference=list(profile_result.profile.preference),
@@ -252,13 +268,45 @@ class GenerateFlow:
 # ─────────────────────────────── 辅助 ───────────────────────────────
 
 
-def _pick_params(plan: PlannerOutput, fallback_focus: str):
+def _selection_context_turns(
+    context: GenerateSelectionContext | None,
+) -> list[ConversationTurn]:
+    if context is None:
+        return []
+
+    parts = [f"本次资源生成来自 {context.source}"]
+    if context.reason.strip():
+        parts.append(f"选择理由：{context.reason.strip()}")
+    if context.suggested_difficulty is not None:
+        parts.append(f"建议难度 {context.suggested_difficulty}")
+    return [ConversationTurn(role="student", text="；".join(parts))]
+
+
+def _apply_selection_context(
+    params: ResourceTaskParams,
+    context: GenerateSelectionContext | None,
+) -> ResourceTaskParams:
+    if context is None:
+        return params
+
+    updates: dict[str, Any] = {}
+    if context.suggested_difficulty is not None:
+        updates["difficulty"] = context.suggested_difficulty
+    if context.reason.strip():
+        reason = context.reason.strip()
+        updates["reason"] = (
+            f"{params.reason}；上游选择理由：{reason}"
+            if params.reason
+            else f"上游选择理由：{reason}"
+        )
+    return params.model_copy(update=updates)
+
+
+def _pick_params(plan: PlannerOutput, fallback_focus: str) -> ResourceTaskParams:
     """从 PlannerOutput.tasks 里挑一份 params 作为下游通用参数。
 
     优先 DocumentAgent 的，其次第一个；再次给个默认值。
     """
-    from ..schemas.resource import ResourceTaskParams
-
     for t in plan.tasks:
         if t.agent == "DocumentAgent":
             return t.params

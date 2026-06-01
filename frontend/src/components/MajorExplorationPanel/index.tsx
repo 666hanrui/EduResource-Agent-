@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import type {
   CareerDirection,
   CoachResponse,
@@ -67,27 +67,165 @@ const PROFILE_LABELS: Record<string, string> = {
   other_special: '补充信息',
 };
 
+interface RequestDraft {
+  major: string;
+  grade: string;
+  educationLevel: string;
+  foundationLevel: ExplorationLevel;
+  weeklyHours: number;
+  interestText: string;
+}
+
+interface MajorExplorationState {
+  request: RequestDraft;
+  plan: ExplorationPlan | null;
+  activeMatchDirectionId: string | null;
+  workspace: ExplorationWorkspace | null;
+  growthReport: GrowthReport | null;
+  reportText: string;
+  reviewText: string;
+  profileKey: string;
+  profileValueText: string;
+  coachQuestion: string;
+  coachTone: CoachTone;
+  coach: CoachResponse | null;
+  loading: boolean;
+  workspaceLoading: boolean;
+  error: string | null;
+}
+
+type MajorExplorationAction =
+  | { type: 'REQUEST_FIELD'; field: keyof RequestDraft; value: string | number }
+  | { type: 'PLAN_STARTED' }
+  | { type: 'PLAN_SUCCEEDED'; plan: ExplorationPlan }
+  | { type: 'PLAN_FAILED'; error: string }
+  | { type: 'SET_ACTIVE_MATCH'; directionId: string | null }
+  | { type: 'WORKSPACE_STARTED' }
+  | { type: 'WORKSPACE_SUCCEEDED'; workspace: ExplorationWorkspace }
+  | { type: 'WORKSPACE_FAILED'; error: string }
+  | { type: 'WORKSPACE_UPDATED'; workspace: ExplorationWorkspace }
+  | { type: 'REPORT_SUCCEEDED'; report: GrowthReport }
+  | { type: 'SET_REPORT_TEXT'; value: string }
+  | { type: 'SET_REVIEW_TEXT'; value: string }
+  | { type: 'SET_PROFILE_KEY'; key: string; valueText: string }
+  | { type: 'SET_PROFILE_VALUE_TEXT'; value: string }
+  | { type: 'SET_COACH_QUESTION'; value: string }
+  | { type: 'SET_COACH_TONE'; tone: CoachTone }
+  | { type: 'COACH_SUCCEEDED'; coach: CoachResponse }
+  | { type: 'SET_ERROR'; error: string | null };
+
+const INITIAL_STATE: MajorExplorationState = {
+  request: {
+    major: '计算机科学与技术',
+    grade: '大一',
+    educationLevel: '本科',
+    foundationLevel: 'beginner',
+    weeklyHours: 6,
+    interestText: 'AI 应用，Web 开发',
+  },
+  plan: null,
+  activeMatchDirectionId: null,
+  workspace: null,
+  growthReport: null,
+  reportText: '',
+  reviewText: '这周完成了一个小任务，发现自己更喜欢能看到结果的方向。',
+  profileKey: 'professional_skills',
+  profileValueText: 'Python，SQL，React',
+  coachQuestion: '我不知道这个方向适不适合我',
+  coachTone: 'encourage',
+  coach: null,
+  loading: false,
+  workspaceLoading: false,
+  error: null,
+};
+
+function resetWorkspaceDerived(state: MajorExplorationState): MajorExplorationState {
+  return {
+    ...state,
+    growthReport: null,
+    reportText: '',
+    coach: null,
+  };
+}
+
+function majorExplorationReducer(
+  state: MajorExplorationState,
+  action: MajorExplorationAction,
+): MajorExplorationState {
+  switch (action.type) {
+    case 'REQUEST_FIELD':
+      return {
+        ...state,
+        request: { ...state.request, [action.field]: action.value } as RequestDraft,
+      };
+    case 'PLAN_STARTED':
+      return { ...state, loading: true, error: null };
+    case 'PLAN_SUCCEEDED':
+      return {
+        ...state,
+        loading: false,
+        plan: action.plan,
+        activeMatchDirectionId: action.plan.match_reports[0]?.direction_id ?? null,
+        workspace: null,
+        growthReport: null,
+        reportText: '',
+        coach: null,
+      };
+    case 'PLAN_FAILED':
+      return { ...state, loading: false, error: action.error };
+    case 'SET_ACTIVE_MATCH':
+      return { ...state, activeMatchDirectionId: action.directionId };
+    case 'WORKSPACE_STARTED':
+      return { ...state, workspaceLoading: true, error: null };
+    case 'WORKSPACE_SUCCEEDED':
+      return resetWorkspaceDerived({ ...state, workspaceLoading: false, workspace: action.workspace });
+    case 'WORKSPACE_FAILED':
+      return { ...state, workspaceLoading: false, error: action.error };
+    case 'WORKSPACE_UPDATED':
+      return resetWorkspaceDerived({ ...state, workspace: action.workspace });
+    case 'REPORT_SUCCEEDED':
+      return { ...state, growthReport: action.report, reportText: action.report.markdown };
+    case 'SET_REPORT_TEXT':
+      return { ...state, reportText: action.value };
+    case 'SET_REVIEW_TEXT':
+      return { ...state, reviewText: action.value };
+    case 'SET_PROFILE_KEY':
+      return { ...state, profileKey: action.key, profileValueText: action.valueText };
+    case 'SET_PROFILE_VALUE_TEXT':
+      return { ...state, profileValueText: action.value };
+    case 'SET_COACH_QUESTION':
+      return { ...state, coachQuestion: action.value };
+    case 'SET_COACH_TONE':
+      return { ...state, coachTone: action.tone };
+    case 'COACH_SUCCEEDED':
+      return { ...state, coach: action.coach };
+    case 'SET_ERROR':
+      return { ...state, error: action.error };
+    default:
+      return state;
+  }
+}
+
 export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
-  const [major, setMajor] = useState('计算机科学与技术');
-  const [grade, setGrade] = useState('大一');
-  const [educationLevel, setEducationLevel] = useState('本科');
-  const [foundationLevel, setFoundationLevel] = useState<ExplorationLevel>('beginner');
-  const [weeklyHours, setWeeklyHours] = useState(6);
-  const [interestText, setInterestText] = useState('AI 应用，Web 开发');
-  const [plan, setPlan] = useState<ExplorationPlan | null>(null);
-  const [activeMatchDirectionId, setActiveMatchDirectionId] = useState<string | null>(null);
-  const [workspace, setWorkspace] = useState<ExplorationWorkspace | null>(null);
-  const [growthReport, setGrowthReport] = useState<GrowthReport | null>(null);
-  const [reportText, setReportText] = useState('');
-  const [reviewText, setReviewText] = useState('这周完成了一个小任务，发现自己更喜欢能看到结果的方向。');
-  const [profileKey, setProfileKey] = useState('professional_skills');
-  const [profileValueText, setProfileValueText] = useState('Python，SQL，React');
-  const [coachQuestion, setCoachQuestion] = useState('我不知道这个方向适不适合我');
-  const [coachTone, setCoachTone] = useState<CoachTone>('encourage');
-  const [coach, setCoach] = useState<CoachResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [workspaceLoading, setWorkspaceLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(majorExplorationReducer, INITIAL_STATE);
+  const {
+    request,
+    plan,
+    activeMatchDirectionId,
+    workspace,
+    growthReport,
+    reportText,
+    reviewText,
+    profileKey,
+    profileValueText,
+    coachQuestion,
+    coachTone,
+    coach,
+    loading,
+    workspaceLoading,
+    error,
+  } = state;
+  const { major, grade, educationLevel, foundationLevel, weeklyHours, interestText } = request;
 
   const tasksById = useMemo(() => {
     const map = new Map<string, string>();
@@ -97,11 +235,11 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
 
   useEffect(() => {
     if (!plan?.match_reports.length) {
-      setActiveMatchDirectionId(null);
+      if (activeMatchDirectionId !== null) dispatch({ type: 'SET_ACTIVE_MATCH', directionId: null });
       return;
     }
     if (!activeMatchDirectionId || !plan.match_reports.some((item) => item.direction_id === activeMatchDirectionId)) {
-      setActiveMatchDirectionId(plan.match_reports[0].direction_id);
+      dispatch({ type: 'SET_ACTIVE_MATCH', directionId: plan.match_reports[0].direction_id });
     }
   }, [activeMatchDirectionId, plan]);
 
@@ -126,8 +264,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
   };
 
   const handleBuild = async () => {
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'PLAN_STARTED' });
     try {
       const payload: ExplorationRequest = {
         student_id: studentId,
@@ -144,91 +281,72 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      setPlan((await res.json()) as ExplorationPlan);
-      setWorkspace(null);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'PLAN_SUCCEEDED', plan: (await res.json()) as ExplorationPlan });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'PLAN_FAILED', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleCreateWorkspace = async (direction: CareerDirection) => {
     if (!plan) return;
-    setWorkspaceLoading(true);
-    setError(null);
+    dispatch({ type: 'WORKSPACE_STARTED' });
     try {
       const next = await postJson<ExplorationWorkspace>('/api/exploration/workspaces', {
         student_id: studentId,
         plan,
         direction_id: direction.id,
       });
-      setWorkspace(next);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'WORKSPACE_SUCCEEDED', workspace: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setWorkspaceLoading(false);
+      dispatch({ type: 'WORKSPACE_FAILED', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleToggleTask = async (task: WorkspaceTask) => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const next = await postJson<ExplorationWorkspace>(
         `/api/exploration/workspaces/${workspace.workspace_id}/tasks/${task.id}`,
         { status: task.status === 'done' ? 'pending' : 'done', note: task.status === 'done' ? '' : '已完成并记录证据' },
         'PATCH',
       );
-      setWorkspace(next);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'WORKSPACE_UPDATED', workspace: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleAddReview = async () => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const next = await postJson<ExplorationWorkspace>(
         `/api/exploration/workspaces/${workspace.workspace_id}/reviews`,
         { review_type: 'weekly', phase: 'short_term', summary: reviewText },
       );
-      setWorkspace(next);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'WORKSPACE_UPDATED', workspace: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleBuildReport = async () => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const res = await fetch(`/api/exploration/workspaces/${workspace.workspace_id}/growth-report`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       const next = (await res.json()) as GrowthReport;
-      setGrowthReport(next);
-      setReportText(next.markdown);
+      dispatch({ type: 'REPORT_SUCCEEDED', report: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleSaveProfile = async () => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const next = await postJson<ExplorationWorkspace>(
         `/api/exploration/workspaces/${workspace.workspace_id}/profile`,
@@ -239,18 +357,15 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
         },
         'PATCH',
       );
-      setWorkspace(next);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'WORKSPACE_UPDATED', workspace: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleResourceStatus = async (resource: WorkspaceResource, status: WorkspaceResource['status']) => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       if (status === 'opened') window.open(resource.url, '_blank', 'noopener,noreferrer');
       const next = await postJson<ExplorationWorkspace>(
@@ -258,48 +373,44 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
         { status },
         'PATCH',
       );
-      setWorkspace(next);
-      setGrowthReport(null);
-      setReportText('');
-      setCoach(null);
+      dispatch({ type: 'WORKSPACE_UPDATED', workspace: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleAskCoach = async () => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const next = await postJson<CoachResponse>(
         `/api/exploration/workspaces/${workspace.workspace_id}/coach`,
         { question: coachQuestion, tone: coachTone },
       );
-      setCoach(next);
+      dispatch({ type: 'COACH_SUCCEEDED', coach: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleSaveReport = async () => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const next = await postJson<GrowthReport>(
         `/api/exploration/workspaces/${workspace.workspace_id}/growth-report`,
         { markdown: reportText },
         'PATCH',
       );
-      setGrowthReport(next);
-      setReportText(next.markdown);
+      dispatch({ type: 'REPORT_SUCCEEDED', report: next });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleDownloadReport = async (format: 'markdown' | 'html') => {
     if (!workspace) return;
-    setError(null);
+    dispatch({ type: 'SET_ERROR', error: null });
     try {
       const res = await fetch(`/api/exploration/workspaces/${workspace.workspace_id}/growth-report/export?format=${format}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -313,23 +424,23 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      dispatch({ type: 'SET_ERROR', error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   return (
     <div className="major-workshop">
       <section className="major-control-card">
-        <Field label="专业"><MajorInput value={major} onChange={(e) => setMajor(e.target.value)} /></Field>
-        <Field label="年级"><MajorInput value={grade} onChange={(e) => setGrade(e.target.value)} /></Field>
-        <Field label="学历"><MajorInput value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} /></Field>
+        <Field label="专业"><MajorInput value={major} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'major', value: e.target.value })} /></Field>
+        <Field label="年级"><MajorInput value={grade} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'grade', value: e.target.value })} /></Field>
+        <Field label="学历"><MajorInput value={educationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'educationLevel', value: e.target.value })} /></Field>
         <Field label="基础">
-          <MajorSelect value={foundationLevel} onChange={(e) => setFoundationLevel(e.target.value as ExplorationLevel)}>
+          <MajorSelect value={foundationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'foundationLevel', value: e.target.value as ExplorationLevel })}>
             {LEVEL_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </MajorSelect>
         </Field>
-        <Field label="每周小时"><MajorInput type="number" min={1} max={60} value={weeklyHours} onChange={(e) => setWeeklyHours(Number(e.target.value) || 1)} /></Field>
-        <Field label="兴趣关键词" wide><MajorInput value={interestText} onChange={(e) => setInterestText(e.target.value)} /></Field>
+        <Field label="每周小时"><MajorInput type="number" min={1} max={60} value={weeklyHours} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'weeklyHours', value: Number(e.target.value) || 1 })} /></Field>
+        <Field label="兴趣关键词" wide><MajorInput value={interestText} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'interestText', value: e.target.value })} /></Field>
         <MajorButton variant="primary" onClick={handleBuild} disabled={loading}>{loading ? '生成中…' : '生成探索计划'}</MajorButton>
       </section>
 
@@ -380,7 +491,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
               <div className="major-match-layout">
                 <aside className="major-match-nav">
                   {plan.match_reports.map((report) => (
-                    <button key={report.report_id} onClick={() => setActiveMatchDirectionId(report.direction_id)} className={report.direction_id === activeMatchReport.direction_id ? 'major-match-nav-button major-match-nav-button--active' : 'major-match-nav-button'}>
+                    <button key={report.report_id} onClick={() => dispatch({ type: 'SET_ACTIVE_MATCH', directionId: report.direction_id })} className={report.direction_id === activeMatchReport.direction_id ? 'major-match-nav-button major-match-nav-button--active' : 'major-match-nav-button'}>
                       <strong>{report.target_title}</strong>
                       <span>{report.exploration_domain}</span>
                       <em>{report.overall_match}</em>
@@ -514,12 +625,12 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
               coachQuestion={coachQuestion}
               coachTone={coachTone}
               coach={coach}
-              setReportText={setReportText}
-              setReviewText={setReviewText}
-              setProfileKey={setProfileKey}
-              setProfileValueText={setProfileValueText}
-              setCoachQuestion={setCoachQuestion}
-              setCoachTone={setCoachTone}
+              setReportText={(value) => dispatch({ type: 'SET_REPORT_TEXT', value })}
+              setReviewText={(value) => dispatch({ type: 'SET_REVIEW_TEXT', value })}
+              setProfileKey={(key, valueText) => dispatch({ type: 'SET_PROFILE_KEY', key, valueText })}
+              setProfileValueText={(value) => dispatch({ type: 'SET_PROFILE_VALUE_TEXT', value })}
+              setCoachQuestion={(value) => dispatch({ type: 'SET_COACH_QUESTION', value })}
+              setCoachTone={(tone) => dispatch({ type: 'SET_COACH_TONE', tone })}
               handleBuildReport={handleBuildReport}
               handleSaveReport={handleSaveReport}
               handleDownloadReport={handleDownloadReport}
@@ -548,7 +659,7 @@ interface WorkspaceSectionProps {
   coach: CoachResponse | null;
   setReportText: (value: string) => void;
   setReviewText: (value: string) => void;
-  setProfileKey: (value: string) => void;
+  setProfileKey: (key: string, valueText: string) => void;
   setProfileValueText: (value: string) => void;
   setCoachQuestion: (value: string) => void;
   setCoachTone: (value: CoachTone) => void;
@@ -606,8 +717,7 @@ function WorkspaceSection({
               value={profileKey}
               onChange={(e) => {
                 const nextKey = e.target.value;
-                setProfileKey(nextKey);
-                setProfileValueText((workspace.profile[nextKey] || []).join('，'));
+                setProfileKey(nextKey, (workspace.profile[nextKey] || []).join('，'));
               }}
             >
               {Object.entries(PROFILE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}

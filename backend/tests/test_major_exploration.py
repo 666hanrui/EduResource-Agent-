@@ -103,6 +103,9 @@ def test_major_exploration_exposes_agentic_pipeline() -> None:
     ]
     assert all(item.status == "done" for item in plan.agent_steps)
     assert plan.agent_steps[3].output_count == len(plan.match_reports)
+    assert all(item.started_at for item in plan.agent_steps)
+    assert all(item.completed_at for item in plan.agent_steps)
+    assert all(item.duration_ms >= 1 for item in plan.agent_steps)
 
 
 def test_major_exploration_uses_major_catalog_role_profiles() -> None:

@@ -13,7 +13,6 @@ from ..agents.document_agent import DocumentAgent
 from ..agents.evaluation_agent import EvaluationAgent
 from ..agents.event_bus import EventBus
 from ..agents.exercise_agent import ExerciseAgent
-from ..agents.generate_flow import GenerateFlow
 from ..agents.orchestrator import Orchestrator
 from ..agents.planner_agent import PlannerAgent
 from ..agents.profile_agent import ProfileAgent
@@ -30,7 +29,6 @@ class AppContext:
     llm: LLMService
     registry: AgentRegistry
     orchestrator: Orchestrator
-    generate_flow: GenerateFlow
 
     async def aclose(self) -> None:
         await self.llm.aclose()
@@ -58,7 +56,6 @@ def build_context(settings: Settings | None = None) -> AppContext:
     registry.register(EvaluationAgent(event_bus, llm))
 
     orchestrator = Orchestrator(registry, event_bus)
-    generate_flow = GenerateFlow(registry, event_bus)
 
     return AppContext(
         settings=s,
@@ -66,5 +63,4 @@ def build_context(settings: Settings | None = None) -> AppContext:
         llm=llm,
         registry=registry,
         orchestrator=orchestrator,
-        generate_flow=generate_flow,
     )

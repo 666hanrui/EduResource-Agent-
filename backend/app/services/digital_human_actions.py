@@ -30,6 +30,77 @@ class DigitalHumanAction(BaseModel):
     success_feedback: str
 
 
+class KnowledgeShortcut(BaseModel):
+    """数字人可直接切换的知识点快捷入口。
+
+    Frontend fetches this list on startup and uses it for voice/text command routing,
+    so adding a new item here is the only change needed — no frontend edits required.
+    """
+
+    knowledge_id: str
+    knowledge_name: str
+    keywords: list[str] = Field(description="用于自然语言匹配的关键词列表")
+    description: str = ""
+
+
+def list_knowledge_shortcuts() -> list[KnowledgeShortcut]:
+    """Return the canonical knowledge shortcut list.
+
+    Single source of truth for which knowledge items the digital human can navigate
+    to by voice/text command.
+    """
+    return [
+        KnowledgeShortcut(
+            knowledge_id="linked-list-basics",
+            knowledge_name="链表",
+            keywords=["链表", "linked list", "linkedlist", "单链表", "双链表", "节点指针"],
+            description="链表基础：节点、指针、插入删除操作。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="binary-tree-traversal",
+            knowledge_name="二叉树遍历",
+            keywords=["二叉树", "binary tree", "binarytree", "树遍历", "先序", "中序", "后序", "层序"],
+            description="二叉树三种经典遍历：先序/中序/后序，递归与迭代实现。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="sorting-algorithms",
+            knowledge_name="排序算法",
+            keywords=["排序", "sort", "冒泡", "快排", "归并", "bubble sort", "quick sort", "merge sort", "堆排序"],
+            description="经典排序算法比较：时间复杂度、稳定性、适用场景。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="dynamic-programming",
+            knowledge_name="动态规划",
+            keywords=["动态规划", "dp", "dynamic programming", "背包", "最长公共子序列", "记忆化", "状态转移"],
+            description="动态规划：状态定义、转移方程、记忆化搜索。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="graph-algorithms",
+            knowledge_name="图算法",
+            keywords=["图", "graph", "bfs", "dfs", "最短路径", "拓扑排序", "广度优先", "深度优先", "dijkstra"],
+            description="图的遍历与经典算法：BFS、DFS、Dijkstra、拓扑排序。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="stack-queue",
+            knowledge_name="栈与队列",
+            keywords=["栈", "队列", "stack", "queue", "先进先出", "后进先出", "单调栈", "双端队列"],
+            description="栈与队列的原理、实现与应用场景。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="hash-table",
+            knowledge_name="哈希表",
+            keywords=["哈希", "hash", "哈希表", "散列", "哈希冲突", "dictionary", "map", "字典"],
+            description="哈希表：哈希函数、冲突处理、时间复杂度分析。",
+        ),
+        KnowledgeShortcut(
+            knowledge_id="binary-search",
+            knowledge_name="二分查找",
+            keywords=["二分", "binary search", "二分查找", "二分法", "折半查找"],
+            description="二分查找及其变体：查找边界、旋转数组、答案二分。",
+        ),
+    ]
+
+
 def list_digital_human_actions() -> list[DigitalHumanAction]:
     """Return every backend-backed action the digital human may trigger."""
 
@@ -53,6 +124,16 @@ def list_digital_human_actions() -> list[DigitalHumanAction]:
             endpoint="app://module/generator",
             risk="read",
             success_feedback="已打开资源生成页。",
+        ),
+        DigitalHumanAction(
+            action_id="nav.open_coach",
+            title="打开 AI 工作台",
+            domain="navigation",
+            description="切换到 Claude Code 式 AI Coach 工作台。",
+            method="CLIENT",
+            endpoint="app://module/coach",
+            risk="read",
+            success_feedback="已打开 AI 工作台。",
         ),
         DigitalHumanAction(
             action_id="exploration.build_plan",

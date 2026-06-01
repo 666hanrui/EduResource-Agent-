@@ -147,6 +147,9 @@ class ExplorationAgentStep(BaseModel):
     summary: str
     evidence_refs: list[str] = Field(default_factory=list)
     output_count: int = Field(default=0, ge=0)
+    started_at: str = Field(default="")
+    completed_at: str = Field(default="")
+    duration_ms: int = Field(default=0, ge=0)
 
 
 class MatchComparisonDimension(BaseModel):

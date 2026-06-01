@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from .base import AgentRuntime, BaseAgent, AgentState, new_task_id
 from .event_bus import AgentEvent, EventBus, EventType
+from .generate_flow import GenerateFlow, GenerateOutputs, GenerateRequest
 from .registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,19 @@ class Orchestrator:
     def __init__(self, registry: AgentRegistry, event_bus: EventBus) -> None:
         self.registry = registry
         self.event_bus = event_bus
+        self._generate_flow = GenerateFlow(registry, event_bus)
+
+    async def run_generate(
+        self,
+        task_id: str,
+        payload: GenerateRequest,
+    ) -> GenerateOutputs:
+        """Run the concrete seven-agent resource generation flow.
+
+        GenerateFlow owns the domain-specific data handoffs, while Orchestrator is
+        the single public scheduling entrypoint used by HTTP routes.
+        """
+        return await self._generate_flow.run(task_id, payload)
 
     async def run_plan(self, plan: TaskPlan) -> dict[str, BaseModel]:
         """执行一个 TaskPlan，返回各节点的输出 (node_id → result)。"""

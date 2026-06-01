@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import re
 import hashlib
+import time
+from collections.abc import Callable
 from html import escape
 from datetime import datetime, timezone
+from typing import TypeVar
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -87,29 +90,163 @@ DIMENSION_GROUPS = {
 
 
 _STORE = SQLiteExplorationStore()
+T = TypeVar("T")
+
+
+class _ExplorationTraceRecorder:
+    """Records the rule-agent stages while the exploration plan is built."""
+
+    def __init__(self) -> None:
+        self.steps: list[ExplorationAgentStep] = []
+
+    def run(
+        self,
+        *,
+        step_id: str,
+        agent_name: str,
+        title: str,
+        action: Callable[[], T],
+        summary: Callable[[T], str],
+        evidence_refs: Callable[[T], list[str]],
+        output_count: Callable[[T], int],
+    ) -> T:
+        started_at = _now()
+        started_perf = time.perf_counter()
+        try:
+            result = action()
+        except Exception as exc:
+            completed_at = _now()
+            self.steps.append(
+                ExplorationAgentStep(
+                    id=step_id,
+                    agent_name=agent_name,
+                    title=title,
+                    status="blocked",
+                    summary=f"{title} 执行失败：{exc}",
+                    evidence_refs=[],
+                    output_count=0,
+                    started_at=started_at.isoformat(),
+                    completed_at=completed_at.isoformat(),
+                    duration_ms=max(1, int((time.perf_counter() - started_perf) * 1000)),
+                )
+            )
+            raise
+
+        completed_at = _now()
+        evidence = [str(item) for item in evidence_refs(result) if str(item)]
+        self.steps.append(
+            ExplorationAgentStep(
+                id=step_id,
+                agent_name=agent_name,
+                title=title,
+                status="done",
+                summary=summary(result),
+                evidence_refs=evidence,
+                output_count=max(0, output_count(result)),
+                started_at=started_at.isoformat(),
+                completed_at=completed_at.isoformat(),
+                duration_ms=max(1, int((time.perf_counter() - started_perf) * 1000)),
+            )
+        )
+        return result
 
 
 def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
-    template = _pick_template(req.major)
-    interests = req.interests or [template.directions[0]]
-    base_score = _base_score(req.foundation_level)
+    trace = _ExplorationTraceRecorder()
 
-    knowledge_map = _build_knowledge_map(req.major, template)
-    tasks = _build_tasks(template, req.weekly_hours)
-    profile = _build_profile(req, template, interests)
-    scores = _build_dimension_scores(profile, req, template, base_score)
-    directions = _build_directions(template, interests, scores)
-    match_reports = _build_match_reports(directions, scores, profile)
-    learning_path = _build_learning_path(template, tasks)
-    recommended = _build_recommended_knowledge(knowledge_map, directions)
-    agent_steps = _build_agent_steps(
-        req=req,
-        template=template,
-        knowledge_map=knowledge_map,
-        scores=scores,
-        directions=directions,
-        tasks=tasks,
-        match_reports=match_reports,
+    def scope_stage() -> tuple[MajorTemplate, list[str], int]:
+        template = _pick_template(req.major)
+        interests = req.interests or [template.directions[0]]
+        return template, interests, _base_score(req.foundation_level)
+
+    template, interests, base_score = trace.run(
+        step_id="major-scope",
+        agent_name="MajorScopeAgent",
+        title="专业广度拆解",
+        action=scope_stage,
+        summary=lambda result: (
+            f"读取 {req.major} / {req.grade}，展开基础课、核心课、方向课与实践入口。"
+        ),
+        evidence_refs=lambda result: [req.major, req.grade, req.foundation_level],
+        output_count=lambda result: len(result[0].foundations) + len(result[0].core) + len(result[0].directions),
+    )
+
+    knowledge_map = trace.run(
+        step_id="knowledge-map",
+        agent_name="KnowledgeMapAgent",
+        title="知识地图生成",
+        action=lambda: _build_knowledge_map(req.major, template),
+        summary=lambda nodes: f"生成 {len(nodes)} 个知识节点，覆盖基础、核心、方向和实践四类。",
+        evidence_refs=lambda nodes: [node.title for node in nodes[:5]],
+        output_count=lambda nodes: len(nodes),
+    )
+
+    def profile_stage() -> tuple[DimensionProfile, list[DimensionScore]]:
+        profile = _build_profile(req, template, interests)
+        return profile, _build_dimension_scores(profile, req, template, base_score)
+
+    profile, scores = trace.run(
+        step_id="profile-12",
+        agent_name="Profile12Agent",
+        title="12 维画像初始化",
+        action=profile_stage,
+        summary=lambda result: (
+            "用专业、年级、兴趣和每周投入初始化 12 维画像；当前兴趣："
+            f"{'、'.join(interests) if interests else '未填写，使用专业默认方向'}。"
+        ),
+        evidence_refs=lambda result: [item.title for item in sorted(result[1], key=lambda row: row.score)[:3]],
+        output_count=lambda result: len(result[1]),
+    )
+
+    def direction_stage() -> tuple[list[CareerDirection], list[CareerMatchReport]]:
+        directions = _build_directions(template, interests, scores)
+        return directions, _build_match_reports(directions, scores, profile)
+
+    directions, match_reports = trace.run(
+        step_id="direction-match",
+        agent_name="DirectionMatchAgent",
+        title="职业方向匹配",
+        action=direction_stage,
+        summary=lambda result: (
+            f"对 {len(result[0])} 个候选方向生成匹配报告，"
+            f"当前最高匹配是 {result[0][0].title if result[0] else '待探索方向'}。"
+        ),
+        evidence_refs=lambda result: [item.title for item in result[0][:3]],
+        output_count=lambda result: len(result[1]),
+    )
+
+    _low_scores = trace.run(
+        step_id="gap-diagnosis",
+        agent_name="GapDiagnosisAgent",
+        title="差距与行动建议",
+        action=lambda: sorted(scores, key=lambda item: item.score)[:3],
+        summary=lambda rows: f"定位优先补证据维度：{'、'.join(item.title for item in rows)}。",
+        evidence_refs=lambda rows: [item.next_probe for item in rows],
+        output_count=lambda rows: sum(len(report.action_advices) for report in match_reports[:3]),
+    )
+
+    def path_stage() -> tuple[list[ExplorationTask], list[LearningPathItem]]:
+        tasks = _build_tasks(template, req.weekly_hours)
+        return tasks, _build_learning_path(template, tasks)
+
+    tasks, learning_path = trace.run(
+        step_id="path-agent",
+        agent_name="SnailPathAgent",
+        title="蜗牛学习路径",
+        action=path_stage,
+        summary=lambda result: f"生成 {len(result[0])} 个低成本探索任务，按短期/中期/长期推进。",
+        evidence_refs=lambda result: [task.title for task in result[0]],
+        output_count=lambda result: len(result[0]),
+    )
+
+    recommended = trace.run(
+        step_id="coach-report",
+        agent_name="CoachReportAgent",
+        title="教练与成长报告准备",
+        action=lambda: _build_recommended_knowledge(knowledge_map, directions),
+        summary=lambda items: "把任务、资源、画像版本和复盘记录纳入后续教练建议与成长报告。",
+        evidence_refs=lambda items: [item.knowledge_name for item in items[:3]] or ["探索教练", "成长报告", "资源证据"],
+        output_count=lambda items: len(items),
     )
 
     return ExplorationPlan(
@@ -119,7 +256,7 @@ def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
             f"从 {req.major.strip()} 的基础课、核心课和应用方向开始探索，"
             "先用低风险任务确认兴趣，再逐步收敛职业方向。"
         ),
-        agent_steps=agent_steps,
+        agent_steps=trace.steps,
         profile=profile,
         dimension_scores=scores,
         knowledge_map=knowledge_map,
@@ -1177,79 +1314,6 @@ def _build_match_evidence_cards(
             )
         )
     return cards
-
-
-def _build_agent_steps(
-    *,
-    req: ExplorationRequest,
-    template: MajorTemplate,
-    knowledge_map: list[KnowledgeNode],
-    scores: list[DimensionScore],
-    directions: list[CareerDirection],
-    tasks: list[ExplorationTask],
-    match_reports: list[CareerMatchReport],
-) -> list[ExplorationAgentStep]:
-    interests = "、".join(req.interests) if req.interests else "未填写，使用专业默认方向"
-    top_direction = directions[0].title if directions else "待探索方向"
-    low_scores = sorted(scores, key=lambda item: item.score)[:3]
-    return [
-        ExplorationAgentStep(
-            id="major-scope",
-            agent_name="MajorScopeAgent",
-            title="专业广度拆解",
-            summary=f"读取 {req.major} / {req.grade}，展开基础课、核心课、方向课与实践入口。",
-            evidence_refs=[req.major, req.grade, req.foundation_level],
-            output_count=len(template.foundations) + len(template.core) + len(template.directions),
-        ),
-        ExplorationAgentStep(
-            id="knowledge-map",
-            agent_name="KnowledgeMapAgent",
-            title="知识地图生成",
-            summary=f"生成 {len(knowledge_map)} 个知识节点，覆盖基础、核心、方向和实践四类。",
-            evidence_refs=[node.title for node in knowledge_map[:5]],
-            output_count=len(knowledge_map),
-        ),
-        ExplorationAgentStep(
-            id="profile-12",
-            agent_name="Profile12Agent",
-            title="12 维画像初始化",
-            summary=f"用专业、年级、兴趣和每周投入初始化 12 维画像；当前兴趣：{interests}。",
-            evidence_refs=[item.title for item in low_scores],
-            output_count=len(scores),
-        ),
-        ExplorationAgentStep(
-            id="direction-match",
-            agent_name="DirectionMatchAgent",
-            title="职业方向匹配",
-            summary=f"对 {len(directions)} 个候选方向生成匹配报告，当前最高匹配是 {top_direction}。",
-            evidence_refs=[item.title for item in directions[:3]],
-            output_count=len(match_reports),
-        ),
-        ExplorationAgentStep(
-            id="gap-diagnosis",
-            agent_name="GapDiagnosisAgent",
-            title="差距与行动建议",
-            summary=f"定位优先补证据维度：{'、'.join(item.title for item in low_scores)}。",
-            evidence_refs=[item.next_probe for item in low_scores],
-            output_count=sum(len(report.action_advices) for report in match_reports[:3]),
-        ),
-        ExplorationAgentStep(
-            id="path-agent",
-            agent_name="SnailPathAgent",
-            title="蜗牛学习路径",
-            summary=f"生成 {len(tasks)} 个低成本探索任务，按短期/中期/长期推进。",
-            evidence_refs=[task.title for task in tasks],
-            output_count=len(tasks),
-        ),
-        ExplorationAgentStep(
-            id="coach-report",
-            agent_name="CoachReportAgent",
-            title="教练与成长报告准备",
-            summary="把任务、资源、画像版本和复盘记录纳入后续教练建议与成长报告。",
-            evidence_refs=["探索教练", "成长报告", "资源证据"],
-            output_count=3,
-        ),
-    ]
 
 
 def _first_matching_knowledge(

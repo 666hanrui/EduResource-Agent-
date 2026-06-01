@@ -85,6 +85,9 @@ export interface ExplorationAgentStep {
   summary: string;
   evidence_refs: string[];
   output_count: number;
+  started_at: string;
+  completed_at: string;
+  duration_ms: number;
 }
 
 export interface MatchComparisonDimension {

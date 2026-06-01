@@ -55,12 +55,14 @@ from ..services.major_exploration import (
     update_workspace_resource,
     update_workspace_task,
 )
-from ..services.digital_human_actions import DigitalHumanAction, list_digital_human_actions
+from ..services.digital_human_actions import DigitalHumanAction, KnowledgeShortcut, list_digital_human_actions, list_knowledge_shortcuts
+from ..services.generate_store import SQLiteGenerateStore
 
 logger = logging.getLogger(__name__)
 
-# 演示态：内存里缓存最近一次 generate 的结构化产出，给 ResultsPanel 用
-_GENERATE_OUTPUTS: dict[str, dict] = {}
+# SQLite 持久化存储，重启后自动恢复历史生成结果
+_GENERATE_STORE = SQLiteGenerateStore()
+_GENERATE_OUTPUT_CACHE: dict[str, dict] = _GENERATE_STORE.load_all()
 
 
 def _serialize_outputs(outputs: GenerateOutputs) -> dict:
@@ -93,6 +95,15 @@ def build_router(ctx: AppContext) -> APIRouter:
         """Return the action contract a digital human may use to operate the app."""
 
         return list_digital_human_actions()
+
+    @router.get("/digital-human/knowledge-shortcuts", response_model=list[KnowledgeShortcut])
+    async def digital_human_knowledge_shortcuts() -> list[KnowledgeShortcut]:
+        """Return the canonical knowledge shortcut list for digital human voice commands.
+
+        Frontend fetches this list on startup instead of maintaining its own hardcoded copy,
+        so adding a new knowledge item only requires a backend change.
+        """
+        return list_knowledge_shortcuts()
 
     # ──────────────────────── 专业探索模块 ────────────────────────
 
@@ -331,8 +342,9 @@ def build_router(ctx: AppContext) -> APIRouter:
 
         async def _run() -> None:
             try:
-                outputs = await ctx.generate_flow.run(task_id, payload)
-                _GENERATE_OUTPUTS[task_id] = _serialize_outputs(outputs)
+                outputs = await ctx.orchestrator.run_generate(task_id, payload)
+                _GENERATE_OUTPUT_CACHE[task_id] = _serialize_outputs(outputs)
+                _GENERATE_STORE.save(task_id, _GENERATE_OUTPUT_CACHE[task_id])
             except Exception:
                 logger.exception("GenerateFlow 失败 task_id=%s", task_id)
             finally:
@@ -345,11 +357,15 @@ def build_router(ctx: AppContext) -> APIRouter:
     async def get_results(task_id: str) -> dict:
         """拿一次 GenerateFlow 完整产物 —— 给 ResultsPanel + RationalePanel 用。
 
-        简单内存缓存即可，演示态不考虑过期。
+        优先读启动时恢复/本轮写入的缓存；缓存没有时再查 SQLite。
         """
-        if task_id not in _GENERATE_OUTPUTS:
+        if task_id in _GENERATE_OUTPUT_CACHE:
+            return _GENERATE_OUTPUT_CACHE[task_id]
+        stored = _GENERATE_STORE.get(task_id)
+        if stored is None:
             raise HTTPException(status_code=404, detail="task results not ready")
-        return _GENERATE_OUTPUTS[task_id]
+        _GENERATE_OUTPUT_CACHE[task_id] = stored
+        return stored
 
     # ──────────────────────── 通用 AI 助教对话 ────────────────────────
 
