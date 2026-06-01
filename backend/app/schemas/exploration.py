@@ -208,6 +208,10 @@ class WorkspaceResource(BaseModel):
     knowledge_id: str
     title: str
     resource_type: Literal["search", "article", "video", "course"] = "search"
+    source_key: str = "bilibili"
+    source_name: str = "Bilibili"
+    logo_hint: str = "B"
+    quality_score: int = Field(default=70, ge=0, le=100)
     url: str
     reason: str
     status: ResourceStatus = "recommended"

@@ -134,6 +134,10 @@ export interface WorkspaceResource {
   knowledge_id: string;
   title: string;
   resource_type: 'search' | 'article' | 'video' | 'course';
+  source_key: string;
+  source_name: string;
+  logo_hint: string;
+  quality_score: number;
   url: string;
   reason: string;
   status: 'recommended' | 'opened' | 'completed';

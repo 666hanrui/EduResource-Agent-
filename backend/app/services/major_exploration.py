@@ -13,7 +13,14 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
-from ..data.major_catalog import DEFAULT_TEMPLATE, TEMPLATES, CareerProfile, MajorTemplate
+from ..data.major_catalog import (
+    DEFAULT_TEMPLATE,
+    RESOURCE_SOURCES,
+    TEMPLATES,
+    CareerProfile,
+    MajorTemplate,
+    ResourceSource,
+)
 from ..schemas.exploration import (
     CareerDirection,
     CareerRequirementProfile,
@@ -606,18 +613,42 @@ def _review_next_actions(phase: WorkspacePhase, summary: str) -> list[str]:
 
 def _build_workspace_resources(plan: ExplorationPlan) -> list[WorkspaceResource]:
     resources: list[WorkspaceResource] = []
-    for item in plan.recommended_knowledge[:6]:
+    for idx, item in enumerate(plan.recommended_knowledge[:6]):
+        source = _pick_resource_source(item, idx)
         query = quote(f"{plan.major} {item.knowledge_name} 入门 学习资源")
         resources.append(
             WorkspaceResource(
-                resource_id=f"res_{_slug(item.knowledge_id)}",
+                resource_id=f"res_{_slug(item.knowledge_id)}-{source.source_key}",
                 knowledge_id=item.knowledge_id,
                 title=item.knowledge_name,
-                url=f"https://www.bilibili.com/search?keyword={query}",
-                reason=item.reason,
+                resource_type=source.resource_type,
+                source_key=source.source_key,
+                source_name=source.source_name,
+                logo_hint=source.logo_hint,
+                quality_score=_resource_quality_score(item.suggested_difficulty, source),
+                url=source.url_template.format(query=query),
+                reason=f"{item.reason} 来源：{source.source_name}，适合{_source_best_for_text(source)}。",
             )
         )
     return resources
+
+
+def _pick_resource_source(item: RecommendedKnowledge, index: int) -> ResourceSource:
+    title = item.knowledge_name
+    reason = item.reason
+    for source in RESOURCE_SOURCES:
+        if any(keyword in title or keyword in reason for keyword in source.best_for):
+            return source
+    return RESOURCE_SOURCES[index % len(RESOURCE_SOURCES)]
+
+
+def _resource_quality_score(difficulty: int, source: ResourceSource) -> int:
+    difficulty_bonus = max(0, 4 - difficulty) * 2
+    return min(98, source.quality_score + difficulty_bonus)
+
+
+def _source_best_for_text(source: ResourceSource) -> str:
+    return "、".join(source.best_for[:3])
 
 
 def _normalize_values(values: list[str]) -> list[str]:

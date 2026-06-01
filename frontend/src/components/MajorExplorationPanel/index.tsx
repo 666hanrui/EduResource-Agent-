@@ -554,15 +554,24 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
                     {workspace.resources.map((resource) => (
                       <div key={resource.resource_id} style={resourceCardStyle}>
                         <div style={scoreHeaderStyle}>
-                          <strong>{resource.title}</strong>
-                          <span style={resourceStatusStyle(resource.status)}>
-                            {resource.status === 'completed'
-                              ? '已完成'
-                              : resource.status === 'opened'
-                                ? '已打开'
-                                : '待学习'}
-                          </span>
+                          <div style={resourceTitleStyle}>
+                            <span style={sourceBadgeStyle}>{resource.logo_hint}</span>
+                            <strong>{resource.title}</strong>
+                          </div>
+                          <div style={resourceMetaStyle}>
+                            <span style={qualityStyle}>{resource.quality_score}</span>
+                            <span style={resourceStatusStyle(resource.status)}>
+                              {resource.status === 'completed'
+                                ? '已完成'
+                                : resource.status === 'opened'
+                                  ? '已打开'
+                                  : '待学习'}
+                            </span>
+                          </div>
                         </div>
+                        <p style={probeStyle}>
+                          {resource.source_name} / {resource.resource_type}
+                        </p>
                         <p style={mutedTextStyle}>{resource.reason}</p>
                         <div style={resourceActionsStyle}>
                           <button
@@ -1010,6 +1019,43 @@ const resourceCardStyle: CSSProperties = {
   borderRadius: 6,
   padding: 10,
   background: '#fbfcfd',
+};
+
+const resourceTitleStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  minWidth: 0,
+};
+
+const sourceBadgeStyle: CSSProperties = {
+  display: 'inline-grid',
+  placeItems: 'center',
+  minWidth: 26,
+  height: 22,
+  padding: '0 5px',
+  borderRadius: 4,
+  background: '#1f2328',
+  color: '#fff',
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const resourceMetaStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+};
+
+const qualityStyle: CSSProperties = {
+  minWidth: 30,
+  textAlign: 'center',
+  padding: '2px 6px',
+  borderRadius: 999,
+  background: '#e6f4f1',
+  color: '#256f6c',
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 const resourceActionsStyle: CSSProperties = {

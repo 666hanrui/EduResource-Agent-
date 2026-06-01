@@ -11,6 +11,17 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class ResourceSource:
+    source_key: str
+    source_name: str
+    logo_hint: str
+    url_template: str
+    resource_type: str
+    quality_score: int
+    best_for: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class CareerProfile:
     title: str
     direction: str
@@ -241,4 +252,44 @@ TEMPLATES: tuple[MajorTemplate, ...] = (
     COMPUTER_TEMPLATE,
     ELECTRONICS_TEMPLATE,
     BUSINESS_TEMPLATE,
+)
+
+
+RESOURCE_SOURCES: tuple[ResourceSource, ...] = (
+    ResourceSource(
+        source_key="bilibili",
+        source_name="Bilibili",
+        logo_hint="B",
+        url_template="https://search.bilibili.com/all?keyword={query}",
+        resource_type="video",
+        quality_score=82,
+        best_for=("入门", "演示", "实验", "可视化", "教程"),
+    ),
+    ResourceSource(
+        source_key="mooc",
+        source_name="中国大学 MOOC",
+        logo_hint="MOOC",
+        url_template="https://www.icourse163.org/search.htm?search={query}",
+        resource_type="course",
+        quality_score=90,
+        best_for=("课程", "基础", "核心", "系统学习", "大学"),
+    ),
+    ResourceSource(
+        source_key="github",
+        source_name="GitHub",
+        logo_hint="GH",
+        url_template="https://github.com/search?q={query}",
+        resource_type="article",
+        quality_score=78,
+        best_for=("项目", "代码", "Git", "开源", "实践"),
+    ),
+    ResourceSource(
+        source_key="zhihu",
+        source_name="知乎",
+        logo_hint="知",
+        url_template="https://www.zhihu.com/search?type=content&q={query}",
+        resource_type="article",
+        quality_score=72,
+        best_for=("经验", "方向", "职业", "案例", "方法"),
+    ),
 )

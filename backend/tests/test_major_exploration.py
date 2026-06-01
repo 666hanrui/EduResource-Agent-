@@ -204,6 +204,12 @@ def test_workspace_resource_status_and_report() -> None:
     )
     resource = workspace.resources[0]
 
+    assert resource.source_key
+    assert resource.source_name
+    assert resource.logo_hint
+    assert resource.quality_score >= 70
+    assert resource.resource_type in {"article", "course", "video", "search"}
+
     opened = update_workspace_resource(
         workspace_id=workspace.workspace_id,
         resource_id=resource.resource_id,
@@ -222,6 +228,22 @@ def test_workspace_resource_status_and_report() -> None:
     assert completed.resources[0].completed_at is not None
     assert "学习资源使用记录" in report.markdown
     assert resource.title in report.markdown
+
+
+def test_workspace_resources_include_multiple_sources_when_possible() -> None:
+    plan = build_major_exploration_plan(ExplorationRequest(major="软件工程"))
+    workspace = create_exploration_workspace(
+        student_id="stu_a",
+        plan=plan,
+        direction_id=plan.career_directions[0].id,
+    )
+
+    sources = {item.source_key for item in workspace.resources}
+
+    assert workspace.resources
+    assert all(item.quality_score > 0 for item in workspace.resources)
+    assert all(item.source_name in item.reason for item in workspace.resources)
+    assert len(sources) >= 2
 
 
 def test_exploration_coach_suggests_next_actions() -> None:
