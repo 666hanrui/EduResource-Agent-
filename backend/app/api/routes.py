@@ -55,6 +55,7 @@ from ..services.major_exploration import (
     update_workspace_resource,
     update_workspace_task,
 )
+from ..services.digital_human_actions import DigitalHumanAction, list_digital_human_actions
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,12 @@ def build_router(ctx: AppContext) -> APIRouter:
     @router.get("/health")
     async def health() -> dict:
         return {"status": "ok", "agents": ctx.registry.all_names()}
+
+    @router.get("/digital-human/actions", response_model=list[DigitalHumanAction])
+    async def digital_human_actions() -> list[DigitalHumanAction]:
+        """Return the action contract a digital human may use to operate the app."""
+
+        return list_digital_human_actions()
 
     # ──────────────────────── 专业探索模块 ────────────────────────
 

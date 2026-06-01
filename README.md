@@ -22,6 +22,7 @@
 | [docs/04-ui-sketch.md](docs/04-ui-sketch.md) | 杀手锏一/二的 UI 草图 |
 | [docs/05-agent-prompts.md](docs/05-agent-prompts.md) | 7 个 Agent 的 Prompt 模板 |
 | [docs/06-repo-reuse-analysis.md](docs/06-repo-reuse-analysis.md) | career-planning-agent 复用分析 |
+| [docs/08-digital-human-operator-plan.md](docs/08-digital-human-operator-plan.md) | 数字人操作全功能规划 |
 
 ## 代码
 
