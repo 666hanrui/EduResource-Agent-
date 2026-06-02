@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 class GenerateSelectionContext(BaseModel):
     """从上游模块进入资源生成时携带的选择理由。"""
 
-    source: Literal["manual", "exploration", "coach", "digital_human"] = "manual"
+    source: Literal["manual", "exploration", "coach", "digital_human", "teacher_console"] = "manual"
     reason: str = Field(default="")
     suggested_difficulty: int | None = Field(default=None, ge=1, le=5)
 
