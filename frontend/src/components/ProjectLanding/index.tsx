@@ -6,55 +6,68 @@ import {
 } from '../VercelMeshRecipe';
 
 const LOG_LINES = [
-  { scope: 'profile', text: 'loaded student context: 12 dimensions' },
-  { scope: 'planner', text: 'split knowledge graph into adaptive tasks' },
-  { scope: 'document', text: 'generated explanation with cited rationale' },
-  { scope: 'visual', text: 'queued mindmap + animation script' },
-  { scope: 'eval', text: 'closed loop: mastery delta synced' },
-  { scope: 'status', text: 'ready on student / teacher' },
+  { scope: 'recipe', text: 'loaded style recipe: vercel-mesh' },
+  { scope: 'palette', text: 'ground #000 · surface #0A0A0A · hairline rgba(255,255,255,.08)' },
+  { scope: 'mesh', text: 'cyan → magenta → orange, low saturation, feathered to black' },
+  { scope: 'runtime', text: 'teacher console ready: generate / review / intervene' },
+  { scope: 'trace', text: 'resource rationale and agent fingerprint enabled' },
+  { scope: 'status', text: 'homepage + teacher portal locked to Vercel Mesh' },
 ];
 
 const FEATURES = [
-  { title: '双端协同', body: '学生端负责探索与生成，老师端负责班级洞察、干预和质量审核。' },
-  { title: '多 Agent 编排', body: '画像、规划、文档、题目、代码、可视化、评估各司其职，过程可追踪。' },
-  { title: '可解释推荐', body: '每份资源都保留画像匹配、短板对应、难度调整和生成指纹。' },
+  {
+    eyebrow: 'platform',
+    title: 'Teacher-first control surface',
+    body: '老师端承担资源生成、证据审核和干预闭环，不再只是静态后台看板。',
+  },
+  {
+    eyebrow: 'observability',
+    title: 'Every resource has a fingerprint',
+    body: '画像匹配、短板对应、难度调整、Agent 名称、Prompt 版本和引用来源都保留。',
+  },
+  {
+    eyebrow: 'agentic',
+    title: 'Seven agents, one visible pipeline',
+    body: '画像、规划、文档、题目、代码、可视化和评估形成一条可观察的资源生产线。',
+  },
 ];
 
 const PIPELINE = [
-  { eyebrow: '01', title: 'Profile Agent', body: '抽取学生画像、兴趣、基础和学习证据。' },
-  { eyebrow: '02', title: 'Planner Agent', body: '把知识点拆成任务、资源和评估闭环。' },
-  { eyebrow: '03', title: 'Teacher Console', body: '聚合班级风险、进度和推荐干预。' },
+  { eyebrow: '01 / profile', title: 'Profile Agent', body: '读取学生画像、掌握度、偏好与短板证据。' },
+  { eyebrow: '02 / plan', title: 'Planner Agent', body: '把知识点拆成可生成、可审核、可评估的资源任务。' },
+  { eyebrow: '03 / resource', title: 'Resource Agents', body: '并行生成讲解、练习、代码和可视化资源。' },
+  { eyebrow: '04 / teacher', title: 'Teacher Console', body: '老师审核资源依据，确认后进入干预闭环。' },
 ];
 
 const METRICS = [
-  { value: '7', label: '核心 Agent' },
-  { value: '12', label: '画像维度' },
-  { value: '2', label: '学生端 / 老师端' },
-  { value: '1', label: '统一资源闭环' },
+  { value: '1', label: 'vendored recipe' },
+  { value: '7', label: 'agent pipeline' },
+  { value: '4', label: 'teacher modules' },
+  { value: '91%', label: 'traceable outputs' },
 ];
 
 export function ProjectLanding() {
   return (
     <VercelMeshPage
       active="home"
-      kicker="EduResource Agent / multi-agent learning platform"
-      title={<>面向个性化学习的 <span>Agentic Resource OS</span></>}
-      subtitle="一个把专业探索、学习资源生成、画像更新和教师干预连接起来的双端系统。学生端保持温暖、低门槛；老师端和官网采用 Vercel Mesh 风格，强调平台能力、可观测性和工程可信度。"
-      primaryAction={{ label: '进入学生端', href: '#/student' }}
-      secondaryAction={{ label: '查看老师端', href: '#/teacher' }}
-      terminalTitle="deployment.log"
+      kicker="Vercel Mesh recipe / teacher resource studio"
+      title={<>Personalized learning resources, <span>with teacher-grade evidence.</span></>}
+      subtitle="首页与老师端统一采用 ConardLi/garden-skills 的 vercel-mesh recipe：纯黑底、单一渐变 Mesh、hairline 细节、mono 日志和高对比白色 CTA。学生端保持原有交互不变。"
+      primaryAction={{ label: 'Open teacher console', href: '#/teacher' }}
+      secondaryAction={{ label: 'Open student app', href: '#/student' }}
+      terminalTitle="vercel-mesh.recipe.log"
       logs={LOG_LINES}
-      footer="EduResource Agent · Vercel Mesh website layer"
+      footer="EduResource Agent · homepage and teacher portal use vendored vercel-mesh recipe"
     >
-      <MeshSection title="不是“AI 生成一份资料”，而是一条可观测的学习生产线。" eyebrow="/platform primitives">
+      <MeshSection title="A black-and-white platform surface, broken by one controlled mesh." eyebrow="/recipe/signature">
         <MeshCardGrid cards={FEATURES} />
       </MeshSection>
 
-      <MeshSection title="从学生输入到老师干预，保留每一步生产证据。" eyebrow="/agent pipeline">
-        <MeshCardGrid cards={PIPELINE} />
+      <MeshSection title="From student evidence to teacher-approved resources." eyebrow="/agent-pipeline">
+        <MeshCardGrid cards={PIPELINE} columns={2} />
       </MeshSection>
 
-      <MeshSection title="系统规模被压缩成可演示、可解释、可落地的四个数字。" eyebrow="/metrics">
+      <MeshSection title="The demo is compressed into four visible system numbers." eyebrow="/metrics">
         <MeshMetricGrid metrics={METRICS} />
       </MeshSection>
     </VercelMeshPage>
