@@ -16,19 +16,31 @@ ToolName = Literal[
     "generate_visual",
     "generate_code",
     "evaluate_learning",
+    "finish",
 ]
 
 
 class MainAgentDecision(BaseModel):
-    """One MainAgent decision: call one tool or finish."""
+    """MainAgent 决策：单轮可并行调用多个工具。
+
+    向后兼容保留 tool_name（单工具），新代码请使用 tool_names。
+    """
 
     action: Literal["call_tool", "finish"]
+    # 单工具（旧接口，兼容保留）
     tool_name: ToolName | None = None
+    # 多工具并行（新接口，优先使用）
+    tool_names: list[ToolName] = Field(
+        default_factory=list,
+        description="本轮并行调用的工具列表；finish 时为空",
+    )
     reason: str = ""
     args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolCallRecord(BaseModel):
+    """单次工具调用的记录，写入 ToolCallingState.history。"""
+
     tool_name: str
     status: Literal["ok", "error"]
     reason: str = ""
@@ -38,10 +50,13 @@ class ToolCallRecord(BaseModel):
 
 
 class ToolCallingState(TypedDict, total=False):
+    """MainAgent 决策循环共享状态。"""
+
     task_id: str
     req: GenerateRequest
     outputs: GenerateOutputs
-    history: list[dict[str, Any]]
+    # history 改为 ToolCallRecord 列表（强类型，方便 summary 构建）
+    history: list[ToolCallRecord]
     decision: MainAgentDecision | None
     iterations: int
     max_tool_calls: int

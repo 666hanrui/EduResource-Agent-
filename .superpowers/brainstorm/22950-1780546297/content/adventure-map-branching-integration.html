@@ -1,0 +1,345 @@
+<style>
+  .branch-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .branch-lead {
+    max-width: 960px;
+  }
+
+  .branch-stage {
+    position: relative;
+    margin-top: 18px;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid rgba(20, 61, 95, 0.18);
+    box-shadow: 0 28px 74px rgba(25, 65, 94, 0.22);
+    aspect-ratio: 1586 / 992;
+    background: #dbeefa;
+  }
+
+  .branch-stage img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .branch-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.04), transparent 36%),
+      linear-gradient(180deg, transparent 62%, rgba(23, 69, 49, 0.08));
+    pointer-events: none;
+  }
+
+  .branch-title {
+    position: absolute;
+    left: 5%;
+    top: 5.5%;
+    z-index: 4;
+    color: #103a65;
+    text-shadow: 0 2px 0 rgba(255,255,255,0.56);
+  }
+
+  .branch-title strong {
+    display: block;
+    font-size: clamp(32px, 5vw, 66px);
+    line-height: 0.98;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+
+  .branch-title span {
+    display: block;
+    margin-top: 12px;
+    color: #2c5e82;
+    font-size: clamp(13px, 1.3vw, 18px);
+    font-weight: 800;
+  }
+
+  .map-node {
+    position: absolute;
+    z-index: 6;
+    min-width: 126px;
+    max-width: 172px;
+    padding: 9px 11px 10px;
+    border-radius: 10px;
+    background: rgba(10, 59, 104, 0.94);
+    color: #fff;
+    box-shadow: 0 12px 25px rgba(10, 41, 75, 0.24);
+    transform: translate(-50%, -50%);
+  }
+
+  .map-node strong {
+    display: block;
+    font-size: clamp(14px, 1.45vw, 20px);
+    line-height: 1.1;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .map-node span {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: #fff6d9;
+    color: #153c61;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .map-node small {
+    display: block;
+    margin-top: 5px;
+    color: rgba(255,255,255,0.78);
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .map-node::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -24px;
+    width: 34px;
+    height: 18px;
+    border-radius: 999px;
+    background: #fff;
+    border: 5px solid #37a9f5;
+    box-shadow: 0 0 0 5px rgba(65, 176, 246, 0.23);
+    transform: translateX(-50%);
+  }
+
+  .map-node--current {
+    outline: 4px solid rgba(58, 174, 248, 0.36);
+  }
+
+  .map-node--challenge {
+    background: rgba(135, 79, 18, 0.95);
+  }
+
+  .map-node--done {
+    background: rgba(18, 105, 82, 0.94);
+  }
+
+  .map-node--locked {
+    background: rgba(55, 70, 82, 0.86);
+  }
+
+  .map-node--changed {
+    background: rgba(82, 72, 138, 0.94);
+  }
+
+  .map-hub {
+    position: absolute;
+    z-index: 7;
+    left: 18%;
+    top: 69%;
+    width: min(240px, 21vw);
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.92);
+    color: #133e5d;
+    box-shadow: 0 14px 30px rgba(28, 70, 100, 0.18);
+  }
+
+  .map-hub strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #0d3559;
+  }
+
+  .map-hub span {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #eaf5ff;
+    color: #10537f;
+    font-weight: 900;
+    font-size: 12px;
+  }
+
+  .branch-note {
+    position: absolute;
+    z-index: 7;
+    right: 3.2%;
+    bottom: 4%;
+    width: min(300px, 25vw);
+    padding: 13px 15px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.92);
+    color: #17425f;
+    box-shadow: 0 14px 30px rgba(28, 70, 100, 0.17);
+  }
+
+  .branch-note strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #0e3559;
+  }
+
+  .integration-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 18px;
+  }
+
+  .integration-card {
+    background: #fff;
+    border: 1px solid #d8e3ee;
+    border-radius: 16px;
+    padding: 16px 18px;
+    color: #29495f;
+  }
+
+  .integration-card h3 {
+    margin-bottom: 9px;
+    color: #143959;
+  }
+
+  .integration-card ul {
+    margin-left: 18px;
+  }
+
+  .integration-card li {
+    margin-bottom: 7px;
+  }
+
+  .data-flow {
+    display: grid;
+    gap: 9px;
+    margin-top: 10px;
+  }
+
+  .data-flow div {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: #f4f8fb;
+    font-size: 13px;
+  }
+
+  .data-flow strong {
+    color: #12466c;
+  }
+
+  @media (max-width: 900px) {
+    .branch-stage {
+      aspect-ratio: auto;
+      min-height: 560px;
+    }
+
+    .integration-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .branch-note,
+    .map-hub {
+      display: none;
+    }
+
+    .map-node {
+      min-width: 104px;
+      padding: 7px 9px;
+    }
+
+    .map-node small {
+      display: none;
+    }
+  }
+</style>
+
+<div class="branch-page">
+  <div class="branch-lead">
+    <h2>第二版方向：大学生能力地图，不做竖直闯关</h2>
+    <p class="subtitle">你说的两个问题我都改了：路径不再垂直向上，而是横向展开、多分支；节点也不再是“数学/英语/阅读”这种窄学科，而是大学生探索专业和职业方向时真正要积累的能力、证据和作品。</p>
+  </div>
+
+  <div class="branch-stage">
+    <img src="/files/adventure-map-branching.png" alt="分支式大学生学习探索地图概念">
+    <div class="branch-title">
+      <strong>学习探索地图</strong>
+      <span>按画像、方向、任务和证据实时生成</span>
+    </div>
+
+    <div class="map-hub">
+      <strong>学生当前位置</strong>
+      从当前画像和 workspace 进度计算，不固定站在起点。
+      <span>头像随任务完成移动</span>
+    </div>
+
+    <div class="map-node map-node--current" style="left: 31%; top: 51%;">
+      <strong>专业底座</strong>
+      <span>当前推荐</span>
+      <small>来自 recommended_knowledge + 低分画像维度</small>
+    </div>
+    <div class="map-node map-node--challenge" style="left: 53%; top: 43%;">
+      <strong>核心能力</strong>
+      <span>挑战点</span>
+      <small>来自 match_report 的优先差距</small>
+    </div>
+    <div class="map-node" style="left: 70%; top: 54%;">
+      <strong>项目作品</strong>
+      <span>实践任务</span>
+      <small>来自 exploration_tasks / mini_project</small>
+    </div>
+    <div class="map-node map-node--done" style="left: 44%; top: 72%;">
+      <strong>资源证据</strong>
+      <span>已完成</span>
+      <small>来自 workspace.resources completed</small>
+    </div>
+    <div class="map-node map-node--changed" style="left: 63%; top: 25%;">
+      <strong>方向探索</strong>
+      <span>画像更新</span>
+      <small>来自 career_directions / profile_versions</small>
+    </div>
+    <div class="map-node map-node--locked" style="left: 83%; top: 31%;">
+      <strong>实习作品集</strong>
+      <span>待解锁</span>
+      <small>等短期证据足够再推进</small>
+    </div>
+    <div class="map-node" style="left: 76%; top: 73%;">
+      <strong>沟通协作</strong>
+      <span>软能力</span>
+      <small>来自 12 维画像与教练建议</small>
+    </div>
+
+    <div class="branch-note">
+      <strong>接入原则</strong>
+      底图是静态高质量资产；节点、文案、状态、头像位置全部由现有 plan/workspace 派生。这样看起来像冒险地图，行为上仍然是你的真实探索系统。
+    </div>
+  </div>
+
+  <div class="integration-grid">
+    <div class="integration-card">
+      <h3>为什么这比一条学习路径更适合大学生</h3>
+      <ul>
+        <li>大学生不是只按科目闯关，而是在专业基础、方向判断、项目实践、资源证据、实习准备之间来回探索。</li>
+        <li>地图应展示“当前为什么推荐这里”，而不是假装所有人都沿同一条路走。</li>
+        <li>节点可以有分支和回路：补基础、做项目、更新画像、换方向，都应该能反映在地图上。</li>
+      </ul>
+    </div>
+
+    <div class="integration-card">
+      <h3>怎么接入现有数据并实时显示</h3>
+      <div class="data-flow">
+        <div><strong>plan.knowledge_map</strong><span>生成专业底座、核心能力、方向探索、实践任务这些地图节点。</span></div>
+        <div><strong>plan.recommended_knowledge</strong><span>决定当前推荐节点，并把 reason 传给生成模块。</span></div>
+        <div><strong>match_reports</strong><span>把优先差距变成挑战点，比如核心能力、沟通协作、作品集。</span></div>
+        <div><strong>workspace.phases</strong><span>任务 done 后，节点变已完成，头像移动到最新完成/当前任务附近。</span></div>
+        <div><strong>workspace.resources</strong><span>资源 opened/completed 后，资源证据节点实时变状态。</span></div>
+        <div><strong>profile_versions</strong><span>画像被更新后，相关节点高亮“画像变化”。</span></div>
+      </div>
+    </div>
+  </div>
+</div>

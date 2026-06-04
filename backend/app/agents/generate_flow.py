@@ -1,28 +1,30 @@
 """
-GenerateFlow —— 演示主链路。
+GenerateFlow —— 演示主链路（固定流水线版本）。
 
 把 7 个 Agent 串成一次完整资源生成调度：
 
     ProfileAgent
         │
         ▼
-    PlannerAgent
+    PlannerAgent          ← 决定要调哪些生成 Agent（动态！）
         │
         ├──► DocumentAgent ┐
-        ├──► ExerciseAgent │  (并行三件套)
+        ├──► ExerciseAgent │  (并行，仅当 Planner 输出中包含时才调)
         └──► VisualAgent   ┘
               │
               ▼
-        CodeAgent           (依赖 Document，便于 step_comments 引用)
+        CodeAgent           (依赖 Document，Planner 指定才调)
               │
               ▼
         EvaluationAgent     (拿 Exercise 题目当模拟答题，给出闭环反馈)
 
 设计要点：
+- 并行生成 Agent 由 PlannerAgent.tasks 动态决定，不再硬编码
+- 每个 Agent 读取 Planner 为其定制的 params（difficulty/focus/style_hint）
 - 共用同一个 task_id：AgentTracePanel 一次订阅全程亮 7 行
-- 下游需要上游输出 → 这里直接编排，不走 Orchestrator.run_plan 的静态 TaskPlan
-- 任一 Agent 抛错 → 捕获后发 task.summary error，但不让其余阶段被吞
 - 失败兜底已在每个 Agent 内部实现，本层只编排
+
+若需 LLM 动态决策调度顺序，请使用 ToolCallingFlow（langgraph_tool_calling_flow.py）。
 """
 
 from __future__ import annotations
@@ -146,77 +148,110 @@ class GenerateFlow:
             outputs.plan = plan
 
             kb = plan.knowledge_breakdown
-            base_params = _apply_selection_context(
-                _pick_params(plan, fallback_focus=req.knowledge_name),
-                req.selection_context,
-            )
             profile_summary = ProfileSummary(
                 weakness=profile_result.profile.weakness,
                 preference=list(profile_result.profile.preference),
             )
 
-            # 3) Document / Exercise / Visual 并行
-            doc_agent: DocumentAgent = self._agent("DocumentAgent")
-            ex_agent: ExerciseAgent = self._agent("ExerciseAgent")
-            vis_agent: VisualAgent = self._agent("VisualAgent")
+            # 3) 并行三件套——由 Planner.tasks 动态决定调哪几个，每个读自己的 params
+            parallel_tasks = []
+            planned_agents = {t.agent for t in plan.tasks if not t.depends_on}
 
-            doc_task = asyncio.create_task(
-                doc_agent.run(
-                    task_id,
-                    DocumentAgentInput(
-                        knowledge_breakdown=kb,
-                        params=base_params,
-                        profile_summary=profile_summary,
-                    ),
+            if "DocumentAgent" in planned_agents:
+                doc_agent: DocumentAgent = self._agent("DocumentAgent")
+                doc_params = _apply_selection_context(
+                    _pick_params_for_agent(plan, "DocumentAgent", req.knowledge_name),
+                    req.selection_context,
                 )
-            )
-            ex_task = asyncio.create_task(
-                ex_agent.run(
-                    task_id,
-                    ExerciseAgentInput(
-                        knowledge_breakdown=kb,
-                        params=base_params,
-                        profile_summary=profile_summary,
-                        count=req.exercise_count,
-                    ),
+                parallel_tasks.append(
+                    asyncio.create_task(
+                        doc_agent.run(
+                            task_id,
+                            DocumentAgentInput(
+                                knowledge_breakdown=kb,
+                                params=doc_params,
+                                profile_summary=profile_summary,
+                            ),
+                        )
+                    )
                 )
-            )
-            vis_task = asyncio.create_task(
-                vis_agent.run(
-                    task_id,
-                    VisualAgentInput(
-                        knowledge_breakdown=kb,
-                        params=base_params,
-                        profile_summary=profile_summary,
-                    ),
-                )
-            )
 
-            doc_res, ex_res, vis_res = await asyncio.gather(
-                doc_task, ex_task, vis_task, return_exceptions=True
-            )
-            outputs.document = _maybe_assign(outputs.errors, "DocumentAgent", doc_res)
-            outputs.exercise = _maybe_assign(outputs.errors, "ExerciseAgent", ex_res)
-            outputs.visual = _maybe_assign(outputs.errors, "VisualAgent", vis_res)
-
-            # 4) CodeAgent —— 依赖 Document（已经跑完，可以放心串）
-            code_agent: CodeAgent = self._agent("CodeAgent")
-            code_langs = [
-                lang for lang in req.languages if lang in ("python", "java")
-            ] or ["python", "java"]
-            try:
-                outputs.code = await code_agent.run(
-                    task_id,
-                    CodeAgentInput(
-                        knowledge_breakdown=kb,
-                        params=base_params,
-                        profile_summary=profile_summary,
-                        languages=code_langs,  # type: ignore[arg-type]
-                    ),
+            if "ExerciseAgent" in planned_agents:
+                ex_agent: ExerciseAgent = self._agent("ExerciseAgent")
+                ex_params = _apply_selection_context(
+                    _pick_params_for_agent(plan, "ExerciseAgent", req.knowledge_name),
+                    req.selection_context,
                 )
-            except Exception as exc:
-                logger.exception("CodeAgent 失败 task_id=%s", task_id)
-                outputs.errors["CodeAgent"] = str(exc)
+                parallel_tasks.append(
+                    asyncio.create_task(
+                        ex_agent.run(
+                            task_id,
+                            ExerciseAgentInput(
+                                knowledge_breakdown=kb,
+                                params=ex_params,
+                                profile_summary=profile_summary,
+                                count=req.exercise_count,
+                            ),
+                        )
+                    )
+                )
+
+            if "VisualAgent" in planned_agents:
+                vis_agent: VisualAgent = self._agent("VisualAgent")
+                vis_params = _apply_selection_context(
+                    _pick_params_for_agent(plan, "VisualAgent", req.knowledge_name),
+                    req.selection_context,
+                )
+                parallel_tasks.append(
+                    asyncio.create_task(
+                        vis_agent.run(
+                            task_id,
+                            VisualAgentInput(
+                                knowledge_breakdown=kb,
+                                params=vis_params,
+                                profile_summary=profile_summary,
+                            ),
+                        )
+                    )
+                )
+
+            # 并行执行，结果按加入顺序对应
+            results = await asyncio.gather(*parallel_tasks, return_exceptions=True) if parallel_tasks else []
+            result_iter = iter(results)
+            if "DocumentAgent" in planned_agents:
+                outputs.document = _maybe_assign(outputs.errors, "DocumentAgent", next(result_iter))
+            if "ExerciseAgent" in planned_agents:
+                outputs.exercise = _maybe_assign(outputs.errors, "ExerciseAgent", next(result_iter))
+            if "VisualAgent" in planned_agents:
+                outputs.visual = _maybe_assign(outputs.errors, "VisualAgent", next(result_iter))
+
+            # 4) CodeAgent —— 依赖 Document（已跑完，才可以串）；Planner 指定才调
+            planned_with_deps = {t.agent for t in plan.tasks if t.depends_on}
+            if "CodeAgent" in planned_with_deps and outputs.document is not None:
+                code_agent: CodeAgent = self._agent("CodeAgent")
+                code_langs = [
+                    lang for lang in req.languages if lang in ("python", "java")
+                ] or ["python", "java"]
+                code_params = _apply_selection_context(
+                    _pick_params_for_agent(plan, "CodeAgent", req.knowledge_name),
+                    req.selection_context,
+                )
+                try:
+                    outputs.code = await code_agent.run(
+                        task_id,
+                        CodeAgentInput(
+                            knowledge_breakdown=kb,
+                            params=code_params,
+                            profile_summary=profile_summary,
+                            languages=code_langs,  # type: ignore[arg-type]
+                        ),
+                    )
+                except Exception as exc:
+                    logger.exception("CodeAgent 失败 task_id=%s", task_id)
+                    outputs.errors["CodeAgent"] = str(exc)
+            elif "CodeAgent" in planned_with_deps and outputs.document is None:
+                logger.warning("CodeAgent 跳过：DocumentAgent 失败，无法生成代码 task_id=%s", task_id)
+                outputs.errors["CodeAgent"] = "DocumentAgent 失败，跳过代码生成"
 
             # 5) EvaluationAgent —— 拿 Exercise 输出当"模拟答题"，闭环反馈画像
             evaluation_agent: EvaluationAgent = self._agent("EvaluationAgent")
@@ -303,9 +338,10 @@ def _apply_selection_context(
 
 
 def _pick_params(plan: PlannerOutput, fallback_focus: str) -> ResourceTaskParams:
-    """从 PlannerOutput.tasks 里挑一份 params 作为下游通用参数。
+    """从 PlannerOutput.tasks 里挑一份通用 params（兜底用）。
 
     优先 DocumentAgent 的，其次第一个；再次给个默认值。
+    新代码应优先使用 _pick_params_for_agent() 取各 agent 专属 params。
     """
     for t in plan.tasks:
         if t.agent == "DocumentAgent":
@@ -313,6 +349,20 @@ def _pick_params(plan: PlannerOutput, fallback_focus: str) -> ResourceTaskParams
     if plan.tasks:
         return plan.tasks[0].params
     return ResourceTaskParams(focus=fallback_focus, reason="planner 未给出 task")
+
+
+def _pick_params_for_agent(
+    plan: PlannerOutput, agent_name: str, fallback_focus: str
+) -> ResourceTaskParams:
+    """从 PlannerOutput.tasks 中取指定 Agent 的专属 params。
+
+    Planner 为每个 Agent 定制了 difficulty/focus/style_hint，应优先使用。
+    若 Planner 未包含该 Agent，则退回到通用 params。
+    """
+    for t in plan.tasks:
+        if t.agent == agent_name:
+            return t.params
+    return _pick_params(plan, fallback_focus)
 
 
 def _maybe_assign(errors: dict[str, str], name: str, value: Any):

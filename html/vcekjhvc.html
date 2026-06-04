@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STELLARIA · 星海博物馆 — 人类太空探索的档案与现场</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<style>
+  :root {
+    --ink: oklch(0.10 0.015 250);
+    --void: oklch(0.06 0.012 260);
+    --panel: oklch(0.13 0.018 250);
+    --panel-2: oklch(0.16 0.020 250);
+    --line: oklch(0.28 0.020 250);
+    --line-soft: oklch(0.22 0.018 250);
+    --mist: oklch(0.66 0.012 250);
+    --bone: oklch(0.94 0.012 80);
+    --bone-dim: oklch(0.82 0.012 80);
+    --ember: oklch(0.78 0.13 65);
+    --ember-deep: oklch(0.62 0.14 55);
+    --cosmic: oklch(0.66 0.085 220);
+
+    --font-display: 'Instrument Serif', 'Songti SC', serif;
+    --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --pad-x: clamp(24px, 5vw, 80px);
+    --gap-section: clamp(96px, 14vw, 180px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  body {
+    /* very subtle vignette to deepen edges */
+    background:
+      radial-gradient(ellipse at 50% 0%, oklch(0.14 0.02 250) 0%, var(--ink) 55%, var(--void) 100%);
+    background-attachment: fixed;
+  }
+
+  ::selection { background: var(--ember); color: var(--ink); }
+
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+  /* ---------- typography helpers ---------- */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.015em;
+  }
+  .italic { font-style: italic; color: var(--ember); }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mist);
+  }
+  .num {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1;
+  }
+
+  p { text-wrap: pretty; max-width: 62ch; }
+
+  /* ---------- starfield canvas ---------- */
+  .stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ---------- nav ---------- */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    padding: 18px var(--pad-x);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease;
+    border-bottom: 1px solid transparent;
+  }
+  .nav.scrolled {
+    background: oklch(0.10 0.015 250 / 0.78);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 0.02em;
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    border: 1px solid var(--bone);
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .brand-mark::before, .brand-mark::after {
+    content: ""; position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--bone-dim);
+  }
+  .brand-mark::before { transform: scale(0.5); opacity: 0.6; }
+  .brand-mark::after  { transform: scale(0.18); background: var(--ember); border-color: var(--ember); opacity: 0.9; }
+  .brand-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mist);
+    margin-left: 6px;
+    border-left: 1px solid var(--line);
+    padding-left: 10px;
+  }
+  .nav-links {
+    display: flex; gap: 36px;
+    justify-self: center;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .nav-links a {
+    color: var(--bone-dim);
+    transition: color 0.2s;
+    position: relative;
+    padding: 4px 0;
+  }
+  .nav-links a:hover { color: var(--bone); }
+  .nav-links a::after {
+    content: ""; position: absolute; left: 0; bottom: 0;
+    width: 100%; height: 1px;
+    background: var(--ember);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  .nav-links a:hover::after { transform: scaleX(1); }
+  .nav-cta {
+    justify-self: end;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--bone);
+    padding: 10px 20px;
+    border-radius: 999px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .nav-cta:hover { background: var(--bone); color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .nav { grid-template-columns: 1fr auto; }
+    .nav-links { display: none; }
+    .brand-meta { display: none; }
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    padding: 0 var(--pad-x);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .hero-planet {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    display: block;
+  }
+  .hero-orbit-line {
+    position: absolute;
+    right: -10vw; top: 18%;
+    width: min(70vh, 60vw);
+    aspect-ratio: 1 / 1;
+    border: 1px solid oklch(0.32 0.02 250 / 0.22);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-orbit-line::before {
+    content: ""; position: absolute; inset: 0;
+    border: 1px dashed oklch(0.28 0.02 250 / 0.18);
+    border-radius: 50%;
+    transform: scale(1.35) rotate(-20deg);
+  }
+  @media (max-width: 760px) {
+    .hero-orbit-line { display: none; }
+  }
+
+  .hero-coords {
+    position: absolute;
+    z-index: 3;
+    top: 90px;
+    right: var(--pad-x);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    text-align: right;
+    line-height: 1.7;
+    letter-spacing: 0.05em;
+  }
+  .hero-coords b { color: var(--bone); font-weight: 400; }
+  .hero-coords .live { color: var(--ember); }
+
+  .hero-meta-l {
+    position: absolute;
+    z-index: 3;
+    top: 90px;
+    left: var(--pad-x);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.05em;
+    line-height: 1.7;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding-bottom: clamp(60px, 10vh, 140px);
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .hero-eyebrow {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 32px;
+  }
+  .hero-eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ember);
+    box-shadow: 0 0 10px var(--ember);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .hero-title {
+    font-size: clamp(60px, 11vw, 168px);
+    line-height: 1.0;
+    letter-spacing: 0;
+    margin-bottom: 36px;
+  }
+  .hero-title .row {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.04em;
+  }
+  .hero-title .row + .row { margin-top: 4px; }
+  .hero-title .italic {
+    margin-left: 0.04em;
+    letter-spacing: 0.01em;
+  }
+  .hero-title .row span {
+    display: inline-block;
+    transform: translateY(105%);
+    animation: rise 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .hero-title .row:nth-child(2) span { animation-delay: 0.12s; }
+  @keyframes rise {
+    to { transform: translateY(0); }
+  }
+
+  .hero-bottom {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 40px;
+    align-items: end;
+    padding-top: 40px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .hero-bottom-l {
+    color: var(--bone-dim);
+    max-width: 44ch;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .hero-bottom-l .lead-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mist);
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .hero-bottom-l .lead-label::before {
+    content: "";
+    width: 24px; height: 1px;
+    background: var(--mist);
+  }
+  .hero-bottom-l p {
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--bone-dim);
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .hero-bottom-c {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    color: var(--mist);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .scroll-line {
+    width: 1px; height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--bone));
+    position: relative;
+    overflow: hidden;
+  }
+  .scroll-line::after {
+    content: ""; position: absolute; left: 0; right: 0;
+    height: 30%;
+    background: var(--ember);
+    animation: scrollHint 2.4s ease-in-out infinite;
+  }
+  @keyframes scrollHint {
+    0% { top: -30%; }
+    100% { top: 100%; }
+  }
+  .hero-bottom-r {
+    display: flex; gap: 24px; justify-content: flex-end;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.05em;
+  }
+  .hero-bottom-r div b { display: block; color: var(--bone); font-weight: 400; font-size: 13px; margin-bottom: 4px; }
+
+  @media (max-width: 760px) {
+    .hero-coords, .hero-meta-l { font-size: 10px; }
+    .hero-bottom { grid-template-columns: 1fr; gap: 24px; }
+    .hero-bottom-r { justify-content: flex-start; }
+    .hero-bottom-c { display: none; }
+  }
+
+  /* ---------- section base ---------- */
+  section { position: relative; z-index: 1; }
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--pad-x);
+  }
+  .section-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 60px;
+    align-items: end;
+    padding-bottom: 56px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 64px;
+  }
+  .section-head .num-tag {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mist);
+    letter-spacing: 0.1em;
+  }
+  .section-head h2 {
+    font-size: clamp(36px, 5vw, 68px);
+  }
+  .section-head .desc {
+    grid-column: 2;
+    color: var(--bone-dim);
+    font-size: 15px;
+    max-width: 56ch;
+    justify-self: end;
+  }
+  @media (max-width: 760px) {
+    .section-head { grid-template-columns: 1fr; gap: 24px; }
+    .section-head .desc { grid-column: 1; justify-self: start; }
+  }
+
+  /* ---------- intro / mission ---------- */
+  .intro {
+    padding: var(--gap-section) 0 calc(var(--gap-section) * 0.6);
+  }
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: clamp(40px, 8vw, 120px);
+    align-items: start;
+  }
+  .intro-grid .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mist);
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .intro-grid .body {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 3.4vw, 46px);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--bone);
+  }
+  .intro-grid .body em {
+    font-style: italic;
+    color: var(--ember);
+  }
+  .intro-grid .body .small {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--mist);
+    margin-top: 36px;
+    max-width: 50ch;
+  }
+  @media (max-width: 760px) {
+    .intro-grid { grid-template-columns: 1fr; gap: 24px; }
+  }
+
+  /* ---------- exhibitions ---------- */
+  .exhibits { padding: calc(var(--gap-section) * 0.5) 0 var(--gap-section); }
+
+  .exhibit-list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .exhibit {
+    display: grid;
+    grid-template-columns: 80px 1fr 1.1fr;
+    gap: 48px;
+    padding: 48px 0;
+    border-top: 1px solid var(--line-soft);
+    align-items: center;
+    position: relative;
+    transition: padding 0.4s ease;
+    cursor: pointer;
+  }
+  .exhibit:last-child { border-bottom: 1px solid var(--line-soft); }
+  .exhibit:hover { padding: 56px 0; }
+  .exhibit:hover .exhibit-title { color: var(--ember); }
+  .exhibit:hover .exhibit-image { transform: scale(1.02); }
+  .exhibit:hover .exhibit-arrow { transform: translateX(8px); color: var(--ember); }
+
+  .exhibit-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--mist);
+    letter-spacing: 0.1em;
+    align-self: start;
+    padding-top: 4px;
+  }
+
+  .exhibit-text { display: flex; flex-direction: column; gap: 18px; max-width: 42ch; }
+  .exhibit-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ember);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .exhibit-tag::before {
+    content: ""; width: 16px; height: 1px; background: var(--ember);
+  }
+  .exhibit-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 4vw, 56px);
+    line-height: 1.05;
+    transition: color 0.3s ease;
+  }
+  .exhibit-title em { font-style: italic; color: var(--ember); }
+  .exhibit-desc { color: var(--bone-dim); font-size: 15px; line-height: 1.6; }
+
+  .exhibit-foot {
+    display: flex; gap: 28px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.05em;
+    padding-top: 8px;
+  }
+  .exhibit-foot b { color: var(--bone); font-weight: 400; }
+
+  .exhibit-image {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background:
+      radial-gradient(ellipse at 50% 50%, oklch(0.13 0.02 250) 0%, var(--void) 80%);
+    border: 1px solid var(--line-soft);
+    overflow: hidden;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .exhibit-image canvas.planet-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .exhibit-image .scene-stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(220,230,245,0.7), transparent),
+      radial-gradient(1px 1px at 78% 32%, rgba(220,230,245,0.5), transparent),
+      radial-gradient(1px 1px at 34% 64%, rgba(220,230,245,0.6), transparent),
+      radial-gradient(1px 1px at 88% 78%, rgba(245,200,140,0.5), transparent),
+      radial-gradient(1px 1px at 56% 12%, rgba(220,230,245,0.4), transparent),
+      radial-gradient(1px 1px at 22% 84%, rgba(220,230,245,0.5), transparent),
+      radial-gradient(1px 1px at 64% 48%, rgba(220,230,245,0.3), transparent);
+    pointer-events: none;
+  }
+  .exhibit-image .label-tag {
+    position: absolute;
+    bottom: 14px; left: 14px;
+    z-index: 3;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--bone-dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: oklch(0.06 0.012 260 / 0.55);
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .exhibit-image .label-tag::before {
+    content: "";
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ember);
+    box-shadow: 0 0 8px var(--ember);
+  }
+  .exhibit-image .corner {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: var(--bone-dim);
+    border-style: solid;
+    border-width: 0;
+    z-index: 3;
+  }
+  .exhibit-image .corner.tl { top: 12px; left: 12px; border-top-width: 1px; border-left-width: 1px; }
+  .exhibit-image .corner.tr { top: 12px; right: 12px; border-top-width: 1px; border-right-width: 1px; }
+  .exhibit-image .corner.bl { bottom: 12px; left: 12px; border-bottom-width: 1px; border-left-width: 1px; }
+  .exhibit-image .corner.br { bottom: 12px; right: 12px; border-bottom-width: 1px; border-right-width: 1px; }
+  .exhibit-image .coord {
+    position: absolute;
+    top: 14px; right: 14px;
+    z-index: 3;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--mist);
+    letter-spacing: 0.12em;
+    text-align: right;
+    line-height: 1.6;
+  }
+  .exhibit-image .coord b { color: var(--bone); font-weight: 400; }
+
+  .exhibit-arrow {
+    position: absolute;
+    top: 48px; right: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--bone);
+    letter-spacing: 0.05em;
+    transition: transform 0.3s ease, color 0.3s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  @media (max-width: 960px) {
+    .exhibit { grid-template-columns: 1fr; gap: 24px; padding: 40px 0; }
+    .exhibit:hover { padding: 40px 0; }
+    .exhibit-num { padding-top: 0; }
+    .exhibit-arrow { position: static; margin-top: 8px; }
+  }
+
+  /* ---------- timeline ---------- */
+  .timeline { padding: var(--gap-section) 0; }
+
+  .timeline-wrap {
+    position: relative;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 var(--pad-x);
+  }
+
+  .timeline-rail {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: clamp(120px, 18vw, 220px);
+    width: 1px;
+    background: var(--line);
+  }
+  .timeline-rail::before, .timeline-rail::after {
+    content: "";
+    position: absolute; left: -3px;
+    width: 7px; height: 7px;
+    border: 1px solid var(--bone);
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .timeline-rail::before { top: -4px; }
+  .timeline-rail::after { bottom: -4px; }
+
+  .milestone {
+    display: grid;
+    grid-template-columns: clamp(120px, 18vw, 220px) 1fr;
+    gap: clamp(40px, 6vw, 88px);
+    padding: 40px 0;
+    align-items: start;
+    position: relative;
+  }
+  .milestone-year {
+    font-family: var(--font-display);
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 1;
+    color: var(--bone);
+    text-align: right;
+    padding-right: clamp(20px, 3vw, 32px);
+    position: relative;
+  }
+  .milestone-year .month {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 6px;
+    font-feature-settings: "tnum" 1;
+  }
+  .milestone-dot {
+    position: absolute;
+    right: -5px;
+    top: 18px;
+    width: 9px; height: 9px;
+    background: var(--ember);
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px var(--ink), 0 0 14px var(--ember);
+  }
+  .milestone-body {
+    padding-left: clamp(20px, 3vw, 32px);
+    border-left: 0;
+  }
+  .milestone-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cosmic);
+    margin-bottom: 12px;
+  }
+  .milestone-title {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 2.6vw, 34px);
+    line-height: 1.15;
+    margin-bottom: 14px;
+    color: var(--bone);
+  }
+  .milestone-desc {
+    color: var(--bone-dim);
+    font-size: 14.5px;
+    line-height: 1.7;
+    max-width: 56ch;
+  }
+  .milestone-meta {
+    display: flex; gap: 24px;
+    margin-top: 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.04em;
+  }
+  .milestone-meta b { color: var(--bone); font-weight: 400; }
+
+  @media (max-width: 760px) {
+    .timeline-rail { left: 16px; }
+    .milestone { grid-template-columns: 90px 1fr; gap: 24px; padding: 28px 0; }
+    .milestone-year { font-size: 32px; padding-right: 12px; }
+    .milestone-dot { right: -5px; top: 12px; }
+  }
+
+  /* ---------- reservation CTA ---------- */
+  .reserve {
+    padding: var(--gap-section) 0;
+  }
+  .reserve-card {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 80% 100%, oklch(0.17 0.025 250) 0%, transparent 60%),
+      var(--panel);
+    border: 1px solid var(--line);
+    padding: clamp(40px, 6vw, 80px);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: clamp(40px, 6vw, 80px);
+    align-items: center;
+  }
+  .reserve-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+  .reserve-card::after {
+    content: "";
+    position: absolute;
+    top: 30px; right: 30px;
+    width: 140px; height: 140px;
+    border: 1px solid oklch(0.30 0.02 250 / 0.4);
+    border-radius: 50%;
+    box-shadow:
+      inset 0 0 0 30px oklch(0.30 0.02 250 / 0.15),
+      inset 0 0 0 60px oklch(0.30 0.02 250 / 0.08);
+    pointer-events: none;
+  }
+  .reserve-left { position: relative; z-index: 2; }
+  .reserve-eyebrow {
+    color: var(--ember);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .reserve-title {
+    font-family: var(--font-display);
+    font-size: clamp(40px, 5.4vw, 80px);
+    line-height: 1;
+    margin-bottom: 28px;
+  }
+  .reserve-title em { font-style: italic; color: var(--ember); }
+  .reserve-desc {
+    color: var(--bone-dim);
+    font-size: 16px;
+    margin-bottom: 36px;
+    max-width: 44ch;
+  }
+  .reserve-actions {
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  }
+  .btn-primary {
+    background: var(--bone);
+    color: var(--ink);
+    padding: 18px 32px;
+    border-radius: 999px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    display: inline-flex; align-items: center; gap: 10px;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .btn-primary:hover { background: var(--ember); transform: translateY(-1px); }
+  .btn-ghost {
+    color: var(--bone);
+    padding: 18px 24px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    display: inline-flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--line);
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--ember); border-color: var(--ember); }
+
+  /* ticket */
+  .ticket {
+    position: relative;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    padding: 32px;
+    z-index: 2;
+    /* perforated edge with mask */
+    --perf: radial-gradient(circle at 0 50%, transparent 6px, black 6.5px) left/12px 12px repeat-y,
+            radial-gradient(circle at 100% 50%, transparent 6px, black 6.5px) right/12px 12px repeat-y;
+  }
+  .ticket::before, .ticket::after {
+    content: "";
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--ink);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .ticket::before { left: -6px; }
+  .ticket::after { right: -6px; }
+
+  .ticket-head {
+    display: flex; justify-content: space-between; align-items: start;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed var(--line);
+    margin-bottom: 24px;
+  }
+  .ticket-brand {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 0.04em;
+  }
+  .ticket-brand small {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--mist);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .ticket-id {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--mist);
+    text-align: right;
+    letter-spacing: 0.1em;
+  }
+  .ticket-id b { color: var(--bone); font-weight: 400; display: block; font-size: 13px; margin-bottom: 2px; }
+
+  .ticket-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 16px;
+    margin-bottom: 24px;
+  }
+  .ticket-cell .label {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--mist);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .ticket-cell .value {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--bone);
+    line-height: 1.1;
+  }
+  .ticket-cell .value small {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--mist);
+    margin-left: 6px;
+    letter-spacing: 0;
+  }
+
+  .ticket-foot {
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ticket-bars {
+    display: flex; gap: 2px; align-items: end;
+  }
+  .ticket-bars span {
+    display: block;
+    width: 2px;
+    background: var(--bone);
+  }
+  .ticket-stamp {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ember);
+    letter-spacing: 0.15em;
+    border: 1px solid var(--ember);
+    padding: 6px 10px;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 880px) {
+    .reserve-card { grid-template-columns: 1fr; }
+    .reserve-card::after { display: none; }
+  }
+
+  /* ---------- footer ---------- */
+  footer {
+    border-top: 1px solid var(--line-soft);
+    padding: 80px 0 40px;
+    margin-top: 40px;
+    position: relative;
+    z-index: 2;
+    background: var(--void);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(3, 1fr);
+    gap: 60px;
+    padding-bottom: 60px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .footer-brand .logo {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    margin-bottom: 16px;
+  }
+  .footer-brand .tagline {
+    color: var(--mist);
+    font-size: 14px;
+    max-width: 32ch;
+    margin-bottom: 28px;
+  }
+  .newsletter {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 4px 4px 20px;
+    max-width: 340px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .newsletter:focus-within { border-color: var(--bone); }
+  .newsletter input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--bone);
+    font: inherit;
+    font-size: 13px;
+    padding: 10px 0;
+    outline: none;
+  }
+  .newsletter input::placeholder { color: var(--mist); }
+  .newsletter button {
+    background: var(--bone);
+    color: var(--ink);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    transition: background 0.2s;
+  }
+  .newsletter button:hover { background: var(--ember); }
+
+  .footer-col h4 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-bottom: 20px;
+  }
+  .footer-col ul { list-style: none; }
+  .footer-col li {
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: var(--bone-dim);
+    transition: color 0.2s;
+  }
+  .footer-col li:hover { color: var(--bone); cursor: pointer; }
+  .footer-col li b { color: var(--bone); font-weight: 400; display: block; }
+  .footer-col li small { color: var(--mist); font-size: 12px; }
+
+  .footer-mega {
+    font-family: var(--font-display);
+    font-size: clamp(80px, 22vw, 320px);
+    line-height: 0.85;
+    letter-spacing: -0.02em;
+    color: oklch(0.18 0.02 250);
+    margin: 60px 0 40px;
+    text-align: center;
+    user-select: none;
+  }
+
+  .footer-bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mist);
+    letter-spacing: 0.05em;
+  }
+  .footer-bot a:hover { color: var(--bone); }
+  .footer-status { display: flex; align-items: center; gap: 8px; }
+  .footer-status .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ember);
+    box-shadow: 0 0 8px var(--ember);
+  }
+
+  @media (max-width: 880px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+    .footer-brand { grid-column: span 2; }
+  }
+  @media (max-width: 520px) {
+    .footer-grid { grid-template-columns: 1fr; }
+    .footer-brand { grid-column: span 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<canvas class="stars" id="stars"></canvas>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <span>STELLARIA</span>
+    <span class="brand-meta">Est. 2031 · MOSCOW · TOKYO · 上海</span>
+  </div>
+  <div class="nav-links">
+    <a href="#exhibits">展厅</a>
+    <a href="#timeline">编年史</a>
+    <a href="#reserve">参观</a>
+    <a href="#archive">档案</a>
+    <a href="#about">关于</a>
+  </div>
+  <a href="#reserve" class="nav-cta">预约参观 →</a>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <canvas class="hero-planet" id="hero-planet"></canvas>
+  <div class="hero-orbit-line"></div>
+
+  <div class="hero-meta-l">
+    <div><b>ARCHIVE No. 014</b></div>
+    <div>Spring — Autumn, 2046</div>
+    <div style="margin-top: 16px;">策展 / 林知远</div>
+    <div>STELLARIA 馆藏部</div>
+  </div>
+
+  <div class="hero-coords">
+    <div class="live">● LIVE FROM ORBIT · ISS</div>
+    <div><b>51.6446° N</b></div>
+    <div><b>·  82.7° W</b></div>
+    <div style="margin-top: 14px;">ALT 408 KM</div>
+    <div>VEL 27 600 KM/H</div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      <span class="eyebrow">A Museum Without Gravity · 一座没有重力的博物馆</span>
+    </div>
+
+    <h1 class="hero-title display">
+      <span class="row"><span>穿越<em class="italic">浩瀚</em></span></span>
+      <span class="row"><span>收藏<em class="italic">星辰</em></span></span>
+    </h1>
+
+    <div class="hero-bottom">
+      <div class="hero-bottom-l">
+        <span class="lead-label">馆所宣言 / Manifesto</span>
+        <p>从 1957 年第一颗人造卫星离开地球，到 2046 年人类首次踏上火卫一。我们用 80 余件原件、3 万册档案、9 个沉浸展厅，重述这场尚未结束的旅程。</p>
+      </div>
+      <div class="hero-bottom-c">
+        <span>SCROLL</span>
+        <div class="scroll-line"></div>
+      </div>
+      <div class="hero-bottom-r">
+        <div><b>09:00 — 21:30</b><span>每日开馆</span></div>
+        <div><b>9 个展厅</b><span>常设 + 临展</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ INTRO ============ -->
+<section class="intro" id="about">
+  <div class="container">
+    <div class="intro-grid">
+      <div class="label">001 — 馆长寄语</div>
+      <div class="body">
+        我们不<em>展示</em>太空。<br>
+        我们让你<em>站在</em>太空里，<br>
+        听 1969 年那一声 <em>"a small step"</em><br>
+        在你耳边复活。
+        <span class="small">
+          STELLARIA 由前 NASA 工程师与艺术家共同筹建，是全球首个以"沉浸式档案"为策展语言的太空主题博物馆。从苏联第一颗 R-7 火箭的钛合金残片，到中国天宫空间站的训练实物，每一件展品都附有 7 至 90 分钟的环境重建。
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXHIBITS ============ -->
+<section class="exhibits" id="exhibits">
+  <div class="container">
+    <div class="section-head">
+      <span class="num-tag">II / 核心展厅</span>
+      <h2 class="display">四个展厅<em class="italic">,</em><br>四种<em class="italic">看见太空的方式</em></h2>
+      <p class="desc">每一个展厅都是一段独立的旅程，平均观展时长 45 分钟。建议按编号顺序参观，亦可凭兴趣自由组合 —— 我们准备了 12 条延伸观展路线供你选择。</p>
+    </div>
+
+    <div class="exhibit-list">
+
+      <article class="exhibit">
+        <div class="exhibit-num">001 / 04</div>
+        <div class="exhibit-text">
+          <span class="exhibit-tag">PERMANENT · HALL A</span>
+          <h3 class="exhibit-title">登月时代<em>.</em></h3>
+          <p class="exhibit-desc">从 1961 年肯尼迪的演讲，到 1972 年阿波罗 17 号最后一次月面驻留 —— 重现那段被 4 亿人共同凝视的 11 年。展厅中央是 1:1 复刻的鹰号着陆器舱内空间。</p>
+          <div class="exhibit-foot">
+            <span><b>1961 — 1972</b></span>
+            <span><b>展厅 A</b> · 1 200㎡</span>
+            <span><b>45 分钟</b></span>
+          </div>
+        </div>
+        <div class="exhibit-image">
+          <div class="scene-stars"></div>
+          <canvas class="planet-canvas" data-planet="moon"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <div class="coord"><b>LUNA</b><br>3 474 km · ⌀</div>
+          <span class="label-tag">HALL A · MOON</span>
+        </div>
+        <span class="exhibit-arrow">进入展厅 →</span>
+      </article>
+
+      <article class="exhibit">
+        <div class="exhibit-num">002 / 04</div>
+        <div class="exhibit-text">
+          <span class="exhibit-tag">PERMANENT · HALL B</span>
+          <h3 class="exhibit-title">空间站<em>生活</em></h3>
+          <p class="exhibit-desc">在失重中如何吃饭、睡觉、剪指甲、读一封家书？联合 7 位前驻站航天员口述史，1:1 还原天宫与国际空间站的居住舱。来访者可以躺进真正的睡袋。</p>
+          <div class="exhibit-foot">
+            <span><b>1971 — 至今</b></span>
+            <span><b>展厅 B</b> · 980㎡</span>
+            <span><b>40 分钟</b></span>
+          </div>
+        </div>
+        <div class="exhibit-image">
+          <div class="scene-stars"></div>
+          <canvas class="planet-canvas" data-planet="station"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <div class="coord"><b>ISS</b><br>109 m · ↔</div>
+          <span class="label-tag">HALL B · SPACE STATION</span>
+        </div>
+        <span class="exhibit-arrow">进入展厅 →</span>
+      </article>
+
+      <article class="exhibit">
+        <div class="exhibit-num">003 / 04</div>
+        <div class="exhibit-text">
+          <span class="exhibit-tag">PERMANENT · HALL C</span>
+          <h3 class="exhibit-title">火星<em>计划</em></h3>
+          <p class="exhibit-desc">从 Viking 1 号到祝融号，再到 2046 年 Ares 五号载人任务 —— 红色行星上的 70 年勘测史，与一座按真实地形复刻的杰泽罗陨石坑步道。</p>
+          <div class="exhibit-foot">
+            <span><b>1976 — 进行中</b></span>
+            <span><b>展厅 C</b> · 1 600㎡</span>
+            <span><b>55 分钟</b></span>
+          </div>
+        </div>
+        <div class="exhibit-image">
+          <div class="scene-stars"></div>
+          <canvas class="planet-canvas" data-planet="mars"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <div class="coord"><b>MARS</b><br>6 779 km · ⌀</div>
+          <span class="label-tag">HALL C · RED PLANET</span>
+        </div>
+        <span class="exhibit-arrow">进入展厅 →</span>
+      </article>
+
+      <article class="exhibit">
+        <div class="exhibit-num">004 / 04</div>
+        <div class="exhibit-text">
+          <span class="exhibit-tag">PERMANENT · HALL D</span>
+          <h3 class="exhibit-title">深空<em>探索</em></h3>
+          <p class="exhibit-desc">两台旅行者号正在 240 亿公里外回望我们，James Webb 在 L2 拉格朗日点拍下宇宙最早的婴儿照。展厅里悬挂一张直径 9 米的实时星图。</p>
+          <div class="exhibit-foot">
+            <span><b>1977 — 永远</b></span>
+            <span><b>展厅 D</b> · 1 100㎡</span>
+            <span><b>50 分钟</b></span>
+          </div>
+        </div>
+        <div class="exhibit-image">
+          <div class="scene-stars"></div>
+          <canvas class="planet-canvas" data-planet="galaxy"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <div class="coord"><b>DEEP FIELD</b><br>13.5 B LY</div>
+          <span class="label-tag">HALL D · DEEP FIELD</span>
+        </div>
+        <span class="exhibit-arrow">进入展厅 →</span>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIMELINE ============ -->
+<section class="timeline" id="timeline">
+  <div class="container">
+    <div class="section-head">
+      <span class="num-tag">III / 编年史</span>
+      <h2 class="display">人类离开<br>地球的<em class="italic">每一步</em></h2>
+      <p class="desc">不到 90 年时间，从一颗哔哔作响的小球，到把一台钢琴大小的望远镜送到 150 万公里外。这些是被馆藏档案永久保留的关键节点。</p>
+    </div>
+  </div>
+
+  <div class="timeline-wrap">
+    <div class="timeline-rail"></div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        1957
+        <span class="month">10 / 04 · USSR</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">SPUTNIK 1 · 第一颗人造卫星</div>
+        <h3 class="milestone-title">第一次，人造物体绕地球而行</h3>
+        <p class="milestone-desc">直径 58 厘米的金属球在拜科努尔升空，每 96 分钟绕地球一圈，发出"哔——哔——"的无线电信号。这一刻，太空时代正式开始。</p>
+        <div class="milestone-meta">
+          <span><b>质量</b> 83.6 kg</span>
+          <span><b>轨道</b> 215 — 939 km</span>
+          <span><b>馆藏</b> 1/1 复刻原件</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        1961
+        <span class="month">04 / 12 · USSR</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">VOSTOK 1 · 第一位人类宇航员</div>
+        <h3 class="milestone-title">尤里·加加林：「我看见了地球，多么美丽」</h3>
+        <p class="milestone-desc">27 岁的少校升空，在轨 108 分钟。当他回到地面，整个 20 世纪的科学想象第一次被身体证实。馆内陈列其原版头盔记录册。</p>
+        <div class="milestone-meta">
+          <span><b>飞行时长</b> 108 min</span>
+          <span><b>最大高度</b> 327 km</span>
+          <span><b>馆藏</b> 头盔 · 飞行日志</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        1969
+        <span class="month">07 / 20 · USA</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">APOLLO 11 · 月面着陆</div>
+        <h3 class="milestone-title">"这是个人的一小步，是人类的一大步"</h3>
+        <p class="milestone-desc">阿姆斯特朗踏上静海基地的时刻，全球约 6 亿人同时凝视屏幕。鹰号着陆器、月面采样工具、原始通讯录音，构成本馆 A 厅的核心叙事。</p>
+        <div class="milestone-meta">
+          <span><b>月面驻留</b> 21h 36m</span>
+          <span><b>采样质量</b> 21.5 kg</span>
+          <span><b>馆藏</b> 月壤碎片 0.4 g</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        1990
+        <span class="month">04 / 24 · NASA / ESA</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">HUBBLE · 哈勃空间望远镜入轨</div>
+        <h3 class="milestone-title">人类的第一只"轨道之眼"</h3>
+        <p class="milestone-desc">在 547 公里高度持续工作 35 年，拍下超过 150 万张照片，重写了宇宙学教科书。"哈勃深场"那张布满数千个星系的照片，至今仍在馆内 D 厅放大投影。</p>
+        <div class="milestone-meta">
+          <span><b>主镜直径</b> 2.4 m</span>
+          <span><b>已运行</b> 35 年+</span>
+          <span><b>馆藏</b> 备份镜片 1 / 7</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        1998
+        <span class="month">11 / 20 · 国际合作</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">ISS · 国际空间站第一个舱段</div>
+        <h3 class="milestone-title">人类在轨道上有了"家"</h3>
+        <p class="milestone-desc">15 个国家 / 50 余次发射 / 累计已驻 270+ 人。这是人类有史以来最大规模的和平合作工程。B 厅可进入 1:1 复刻的"团结号"节点舱。</p>
+        <div class="milestone-meta">
+          <span><b>轨道高度</b> 408 km</span>
+          <span><b>累计驻留</b> 9 800+ 天</span>
+          <span><b>馆藏</b> 工具袋 · 太阳翼样品</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        2012
+        <span class="month">08 / 06 · NASA</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">CURIOSITY · 好奇号火星着陆</div>
+        <h3 class="milestone-title">"7 分钟恐惧"，一辆小汽车降落火星</h3>
+        <p class="milestone-desc">通过空中吊车系统精准放置在盖尔陨石坑。它在火星上工作至今 14 年，行驶 33 公里，发现古河床与有机化合物，确认火星曾经宜居。</p>
+        <div class="milestone-meta">
+          <span><b>质量</b> 899 kg</span>
+          <span><b>已行驶</b> 33 km</span>
+          <span><b>馆藏</b> 工程备份件 1:1</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        2021
+        <span class="month">12 / 25 · NASA / ESA / CSA</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">JWST · 詹姆斯·韦伯空间望远镜</div>
+        <h3 class="milestone-title">看到 135 亿年前的第一缕星光</h3>
+        <p class="milestone-desc">部署在距地球 150 万公里的 L2 点，主镜由 18 块六边形金箔反射镜拼合。它正在告诉我们关于宇宙最早期的故事 —— 这部故事我们才刚翻开第一页。</p>
+        <div class="milestone-meta">
+          <span><b>主镜直径</b> 6.5 m</span>
+          <span><b>距地距离</b> 1.5 M km</span>
+          <span><b>馆藏</b> 全尺寸主镜模型</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="milestone-year">
+        2046
+        <span class="month">03 / 14 · INTL.</span>
+        <span class="milestone-dot"></span>
+      </div>
+      <div class="milestone-body">
+        <div class="milestone-tag">ARES V · 火卫一首次载人任务</div>
+        <h3 class="milestone-title">人类第一次抵达另一颗行星的卫星</h3>
+        <p class="milestone-desc">由 17 国联合发起的 Ares V 任务，6 名宇航员在火卫一驻留 32 天。本馆 C 厅 2046 春季临展 —— 「红色海岸线」 —— 即基于这次任务全部原始数据策划。</p>
+        <div class="milestone-meta">
+          <span><b>船员</b> 6 人</span>
+          <span><b>驻留</b> 32 天</span>
+          <span><b>馆藏</b> 火卫一表岩屑 12 g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESERVATION ============ -->
+<section class="reserve" id="reserve">
+  <div class="container">
+    <div class="section-head">
+      <span class="num-tag">IV / 参观</span>
+      <h2 class="display">预约一段<br><em class="italic">无重力的</em>下午</h2>
+      <p class="desc">所有展厅采用预约制。日票包含 4 个常设展厅，可选 1 场策展人导览。学生与学龄前儿童免费，70 岁以上长者享专属时段。</p>
+    </div>
+
+    <div class="reserve-card">
+      <div class="reserve-left">
+        <div class="reserve-eyebrow">VISIT · 预约参观</div>
+        <h3 class="reserve-title">三步，<br>抵达<em>星海</em>。</h3>
+        <p class="reserve-desc">选择日期与时段，填写参观信息，凭电子票券于馆门口星图扫码入馆。每日开放 1 800 人次，建议提前 7 天预约。</p>
+        <div class="reserve-actions">
+          <a href="#" class="btn-primary">立即预约 →</a>
+          <a href="#" class="btn-ghost">查看导览路线</a>
+        </div>
+      </div>
+
+      <div class="ticket">
+        <div class="ticket-head">
+          <div class="ticket-brand">
+            STELLARIA
+            <small>Day Pass · 日票</small>
+          </div>
+          <div class="ticket-id">
+            <b>No. 04 / 28 / 2046</b>
+            ID · ST-46-04-2810
+          </div>
+        </div>
+        <div class="ticket-grid">
+          <div class="ticket-cell">
+            <div class="label">DATE / 日期</div>
+            <div class="value">04. 28<small>SUN</small></div>
+          </div>
+          <div class="ticket-cell">
+            <div class="label">TIME / 时段</div>
+            <div class="value">14:00<small>— 17:00</small></div>
+          </div>
+          <div class="ticket-cell">
+            <div class="label">HALL / 展厅</div>
+            <div class="value">A · B · C · D</div>
+          </div>
+          <div class="ticket-cell">
+            <div class="label">GUESTS / 人数</div>
+            <div class="value">2<small>位成人</small></div>
+          </div>
+        </div>
+        <div class="ticket-foot">
+          <div class="ticket-bars">
+            <span style="height: 22px;"></span><span style="height: 14px;"></span>
+            <span style="height: 26px;"></span><span style="height: 10px;"></span>
+            <span style="height: 18px;"></span><span style="height: 24px;"></span>
+            <span style="height: 12px;"></span><span style="height: 20px;"></span>
+            <span style="height: 28px;"></span><span style="height: 14px;"></span>
+            <span style="height: 22px;"></span><span style="height: 16px;"></span>
+            <span style="height: 26px;"></span><span style="height: 10px;"></span>
+            <span style="height: 18px;"></span>
+          </div>
+          <div class="ticket-stamp">CONFIRMED</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer id="archive">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">STELLARIA · 星海博物馆</div>
+        <div class="tagline">人类太空探索的档案、现场与下一站。我们不只是回望过去 —— 我们也为未来 50 年的太空文明留下证据。</div>
+        <form class="newsletter" onsubmit="event.preventDefault(); this.querySelector('button').textContent='已订阅';">
+          <input type="email" placeholder="你的邮箱地址" required>
+          <button type="submit">订阅</button>
+        </form>
+      </div>
+
+      <div class="footer-col">
+        <h4>展览</h4>
+        <ul>
+          <li>登月时代</li>
+          <li>空间站生活</li>
+          <li>火星计划</li>
+          <li>深空探索</li>
+          <li>临展 · 红色海岸线</li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>访问</h4>
+        <ul>
+          <li><b>09:00 — 21:30</b><small>每日开馆 · 周一闭馆</small></li>
+          <li><b>+86 21 5555 0408</b><small>访客服务</small></li>
+          <li><b>上海市浦东新区</b><small>张衡路 1957 号</small></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>档案 / 联系</h4>
+        <ul>
+          <li>研究档案库</li>
+          <li>策展人计划</li>
+          <li>学校与团体</li>
+          <li>媒体咨询</li>
+          <li>加入 STELLARIA</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-mega">STELLARIA</div>
+
+    <div class="footer-bot">
+      <div class="footer-status">
+        <span class="dot"></span>
+        <span>系统运行中 · UPLINK STABLE · 51.6446° N · 82.7° W</span>
+      </div>
+      <div>© 2046 STELLARIA Foundation · 沪 ICP 备 2031-0408 号</div>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+  import * as THREE from 'three';
+
+  /* ===================================================================
+     PROCEDURAL PLANET SHADERS
+     - One mesh per planet, shared SphereGeometry
+     - FBM (simplex) noise drives surface variation
+     - Per-type branch (earth / moon / mars / gas / ocean-world)
+     - Separate atmosphere shell with Fresnel + additive blend
+     ================================================================= */
+
+  const NOISE_GLSL = `
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+    float snoise(vec3 v) {
+      const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+      const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+      vec3 i  = floor(v + dot(v, C.yyy));
+      vec3 x0 = v - i + dot(i, C.xxx);
+      vec3 g = step(x0.yzx, x0.xyz);
+      vec3 l = 1.0 - g;
+      vec3 i1 = min(g.xyz, l.zxy);
+      vec3 i2 = max(g.xyz, l.zxy);
+      vec3 x1 = x0 - i1 + C.xxx;
+      vec3 x2 = x0 - i2 + C.yyy;
+      vec3 x3 = x0 - D.yyy;
+      i = mod289(i);
+      vec4 p = permute(permute(permute(
+        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+      float n_ = 0.142857142857;
+      vec3 ns = n_ * D.wyz - D.xzx;
+      vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+      vec4 x_ = floor(j * ns.z);
+      vec4 y_ = floor(j - 7.0 * x_);
+      vec4 x = x_ * ns.x + ns.yyyy;
+      vec4 y = y_ * ns.x + ns.yyyy;
+      vec4 h = 1.0 - abs(x) - abs(y);
+      vec4 b0 = vec4(x.xy, y.xy);
+      vec4 b1 = vec4(x.zw, y.zw);
+      vec4 s0 = floor(b0) * 2.0 + 1.0;
+      vec4 s1 = floor(b1) * 2.0 + 1.0;
+      vec4 sh = -step(h, vec4(0.0));
+      vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+      vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+      vec3 p0 = vec3(a0.xy, h.x);
+      vec3 p1 = vec3(a0.zw, h.y);
+      vec3 p2 = vec3(a1.xy, h.z);
+      vec3 p3 = vec3(a1.zw, h.w);
+      vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+      p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+      vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+      m = m * m;
+      return 42.0 * dot(m * m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+    }
+    float fbm(vec3 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 5; i++) {
+        v += a * snoise(p);
+        p *= 2.02;
+        a *= 0.5;
+      }
+      return v;
+    }
+  `;
+
+  const PLANET_V = `
+    varying vec3 vNormalObj;     // object-space (for caps / bands / noise sampling alignment)
+    varying vec3 vNormalWorld;   // world-space (correct lighting against fixed sun)
+    varying vec3 vViewNormal;    // view-space (Fresnel rim against camera)
+    varying vec3 vModelPos;
+    void main() {
+      vNormalObj = normalize(normal);
+      vNormalWorld = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+      vViewNormal = normalize(normalMatrix * normal);
+      vModelPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const PLANET_F = `
+    precision highp float;
+    varying vec3 vNormalObj;
+    varying vec3 vNormalWorld;
+    varying vec3 vViewNormal;
+    varying vec3 vModelPos;
+    uniform float uTime;
+    uniform vec3 uLightDir;     // world space
+    uniform vec3 uColA;
+    uniform vec3 uColB;
+    uniform vec3 uColC;
+    uniform vec3 uColD;
+    uniform float uType;        // 0 ocean, 1 moon, 2 mars, 3 gas, 4 earth
+    uniform float uNoiseScale;
+    uniform vec3 uAtmoColor;
+    uniform float uAtmoStrength;
+    uniform float uAmbient;
+    ${NOISE_GLSL}
+
+    void main() {
+      // Lighting uses WORLD-space normal so the sun stays fixed while the planet spins.
+      vec3 Nw = normalize(vNormalWorld);
+      vec3 L  = normalize(uLightDir);
+      float NdotL = dot(Nw, L);
+      float light = clamp(NdotL, 0.0, 1.0);
+      // Object-space normal for features that should follow the spin axis (poles / bands)
+      vec3 N = normalize(vNormalObj);
+
+      vec3 p = vModelPos * uNoiseScale;
+      vec3 surface;
+
+      if (uType < 0.5) {
+        // ----- OCEAN WORLD (hero) -----
+        float h = fbm(p);
+        float deep = smoothstep(-0.4, 0.05, h);
+        vec3 water = mix(uColC * 0.55, uColC, deep);
+        vec3 land  = mix(uColA, uColB, smoothstep(0.05, 0.35, h));
+        float landMask = smoothstep(0.18, 0.26, h);
+        surface = mix(water, land, landMask);
+        // wispy upper-atmosphere clouds (slow drift)
+        float clouds = fbm(p * 1.3 + vec3(uTime * 0.012, 0.0, uTime * 0.006));
+        surface = mix(surface, vec3(0.92, 0.96, 1.0), smoothstep(0.30, 0.55, clouds) * 0.40);
+        // ice toward poles
+        float lat = abs(N.y);
+        surface = mix(surface, vec3(0.88, 0.93, 0.96), smoothstep(0.78, 0.95, lat) * 0.7);
+
+      } else if (uType < 1.5) {
+        // ----- MOON -----
+        float h = fbm(p * 1.4);
+        float craters = fbm(p * 4.5);
+        surface = mix(uColC, uColA, smoothstep(-0.3, 0.45, h));
+        surface = mix(surface, uColB, smoothstep(0.4, 0.75, craters) * 0.55);
+        // dark mare patches (large smooth basins)
+        float mare = fbm(p * 0.7);
+        surface = mix(surface, uColC * 0.55, smoothstep(0.45, 0.85, mare) * 0.85);
+        // tiny crater-rim brightening
+        float rim = abs(fbm(p * 8.0));
+        surface += vec3(0.06) * smoothstep(0.65, 0.85, rim);
+
+      } else if (uType < 2.5) {
+        // ----- MARS -----
+        float h = fbm(p);
+        surface = mix(uColC, uColA, smoothstep(-0.25, 0.25, h));
+        surface = mix(surface, uColB, smoothstep(0.30, 0.55, h));
+        // dust/canyon detail
+        float detail = fbm(p * 3.0);
+        surface = mix(surface, surface * 0.78, smoothstep(0.25, 0.6, detail) * 0.4);
+        // polar ice caps
+        float lat = abs(N.y);
+        float capNoise = fbm(p * 2.0) * 0.05;
+        surface = mix(surface, vec3(0.96, 0.95, 0.92),
+                     smoothstep(0.82 + capNoise, 0.92 + capNoise, lat) * 0.95);
+
+      } else if (uType < 3.5) {
+        // ----- GAS GIANT -----
+        // latitudinal bands warped by noise
+        float warp = fbm(p * 0.8) * 0.25;
+        float band = sin((vModelPos.y + warp) * 14.0);
+        float bandMix = smoothstep(-0.2, 0.4, band);
+        surface = mix(uColC, uColA, bandMix);
+        surface = mix(surface, uColB, smoothstep(0.5, 1.0, band));
+        // turbulent storms
+        float storm = fbm(p * 2.2 + vec3(uTime * 0.02, 0.0, 0.0));
+        surface = mix(surface, uColD, smoothstep(0.45, 0.72, storm) * 0.55);
+        // giant great-spot-style oval near a latitude
+        float spot = exp(-pow((vModelPos.y + 0.18) * 5.0, 2.0)
+                        - pow(vModelPos.x * 2.0, 2.0)) * step(0.0, vModelPos.z);
+        surface = mix(surface, uColD * 1.1, spot * 0.6);
+
+      } else {
+        // ----- EARTH (Hall B) -----
+        float h = fbm(p * 1.15);
+        float landMask = smoothstep(0.0, 0.08, h);
+        vec3 ocean = mix(uColC * 0.7, uColC, smoothstep(-0.4, 0.0, h));
+        // land variation: coast / forest / mountain / desert
+        float climate = fbm(p * 2.0 + 11.0);
+        vec3 land = mix(uColA, uColB, smoothstep(0.1, 0.55, h + climate * 0.3));
+        // arid/desert biomes
+        land = mix(land, vec3(0.78, 0.62, 0.42), smoothstep(0.55, 0.85, climate) * 0.5);
+        surface = mix(ocean, land, landMask);
+        // clouds
+        float clouds = fbm(p * 1.7 + vec3(uTime * 0.025, 0.0, uTime * 0.012));
+        surface = mix(surface, vec3(0.97), smoothstep(0.30, 0.58, clouds) * 0.65);
+        // ice caps
+        float lat = abs(N.y);
+        surface = mix(surface, vec3(0.95, 0.97, 1.0), smoothstep(0.83, 0.95, lat) * 0.85);
+      }
+
+      // ---- lighting model ----
+      // Wrap-around diffuse: dark side gets a touch of fill instead of pitch black
+      float wrap = clamp(NdotL * 0.5 + 0.5, 0.0, 1.0);
+      float diffuse = mix(wrap * wrap * 0.30, 1.0, light);
+      vec3 lit = surface * diffuse;
+
+      // Cool ambient bounce in atmosphere color
+      lit += surface * uAtmoColor * uAmbient;
+
+      // Warm terminator glow at the day/night boundary
+      float term = smoothstep(-0.20, 0.02, NdotL) * (1.0 - smoothstep(0.02, 0.30, NdotL));
+      lit += vec3(1.0, 0.55, 0.25) * term * 0.22;
+
+      // Atmospheric rim on the planet's lit hemisphere (bridges into the outer halo)
+      float fres = pow(1.0 - max(0.0, vViewNormal.z), 2.2);
+      lit += uAtmoColor * fres * uAtmoStrength * smoothstep(-0.20, 0.55, NdotL);
+
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  const ATMO_V = `
+    varying vec3 vViewNormal;
+    varying vec3 vNormalWorld;
+    void main() {
+      vViewNormal = normalize(normalMatrix * normal);
+      vNormalWorld = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const ATMO_F = `
+    precision highp float;
+    varying vec3 vViewNormal;
+    varying vec3 vNormalWorld;
+    uniform vec3 uColor;
+    uniform float uIntensity;
+    uniform vec3 uLightDir;
+    void main() {
+      // BackSide: visible faces have normals pointing away from camera (z < 0).
+      // 'edge' = 1 at silhouette, 0 at center. Higher exponent = thinner, sharper rim.
+      float edge = pow(clamp(1.0 + vViewNormal.z, 0.0, 1.0), 3.5);
+      // Modulate by sun-facing — atmosphere glows brighter on lit hemisphere,
+      // dim but still slightly visible on the night side for a "twilight halo"
+      float lit = clamp(dot(normalize(vNormalWorld), normalize(uLightDir)), -1.0, 1.0);
+      float litFactor = mix(0.18, 1.0, smoothstep(-0.35, 0.40, lit));
+      gl_FragColor = vec4(uColor * litFactor, edge * uIntensity * litFactor);
+    }
+  `;
+
+  /* ----------------- presets ----------------- */
+  const PRESETS = {
+    hero: {
+      // Cinematic Earth-like world (uses richer EARTH shader branch)
+      type: 4.0,
+      colA: [0.32, 0.55, 0.38],   // verdant land
+      colB: [0.74, 0.62, 0.40],   // warm sand / mountain
+      colC: [0.08, 0.30, 0.52],   // vivid ocean
+      colD: [0.0, 0.0, 0.0],
+      noiseScale: 1.55,
+      atmoColor: [0.50, 0.78, 1.0],
+      atmoStrength: 0.55,         // inner rim glow on planet body
+      atmoOuter: 0.85,            // outer halo intensity (thinner shell now)
+      atmoSize: 1.025,            // very thin shell — atmosphere reads as glow, not ring
+      ambient: 0.06,              // tinted ambient on dark side
+      lightDir: [0.50, 0.20, 0.85], // light comes from front-right, lights ~70% of visible disc
+      tilt: 0.38,
+      rotSpeed: 0.040, fov: 26, dist: 5.4,
+      planetScale: 1.0, position: [1.2, 0.55, 0],
+    },
+    moon: {
+      type: 1.0,
+      colA: [0.66, 0.62, 0.55],
+      colB: [0.85, 0.82, 0.74],
+      colC: [0.22, 0.20, 0.18],
+      colD: [0.0, 0.0, 0.0],
+      noiseScale: 2.1,
+      atmoColor: [0.55, 0.55, 0.55],
+      atmoStrength: 0.04, atmoOuter: 0.0, atmoSize: 1.0,
+      ambient: 0.025,
+      lightDir: [0.45, 0.20, 0.85], tilt: 0.18,
+      rotSpeed: 0.030, fov: 26, dist: 5.2,
+      planetScale: 1.0, position: [0, 0, 0],
+    },
+    earth: {
+      type: 4.0,
+      colA: [0.30, 0.50, 0.30],   // forest land
+      colB: [0.62, 0.50, 0.34],   // mountain
+      colC: [0.07, 0.27, 0.45],   // ocean
+      colD: [0.0, 0.0, 0.0],
+      noiseScale: 1.85,
+      atmoColor: [0.45, 0.74, 1.0],
+      atmoStrength: 0.55, atmoOuter: 0.7, atmoSize: 1.025,
+      ambient: 0.05,
+      lightDir: [0.50, 0.25, 0.85], tilt: 0.40,
+      rotSpeed: 0.058, fov: 26, dist: 5.2,
+      planetScale: 1.0, position: [0, 0, 0],
+    },
+    mars: {
+      type: 2.0,
+      colA: [0.72, 0.36, 0.20],
+      colB: [0.86, 0.55, 0.34],
+      colC: [0.32, 0.12, 0.07],
+      colD: [0.0, 0.0, 0.0],
+      noiseScale: 1.85,
+      atmoColor: [0.92, 0.62, 0.42],
+      atmoStrength: 0.20, atmoOuter: 0.20, atmoSize: 1.018,
+      ambient: 0.04,
+      lightDir: [0.50, 0.25, 0.85], tilt: 0.42,
+      rotSpeed: 0.040, fov: 26, dist: 5.2,
+      planetScale: 1.0, position: [0, 0, 0],
+    },
+    gas: {
+      type: 3.0,
+      colA: [0.82, 0.66, 0.46],
+      colB: [0.92, 0.83, 0.65],
+      colC: [0.40, 0.27, 0.18],
+      colD: [0.78, 0.40, 0.26],
+      noiseScale: 1.6,
+      atmoColor: [0.96, 0.78, 0.55],
+      atmoStrength: 0.28, atmoOuter: 0.38, atmoSize: 1.022,
+      ambient: 0.05,
+      lightDir: [0.55, 0.15, 0.85], tilt: 0.10,
+      rotSpeed: 0.082, fov: 26, dist: 5.0,
+      planetScale: 1.05, position: [0, 0, 0],
+    },
+  };
+
+  /* ----------------- planet factory ----------------- */
+  const SHARED_GEO = new THREE.SphereGeometry(1, 128, 128);
+  const SHARED_ATMO_GEO = new THREE.SphereGeometry(1, 64, 64);
+
+  function makePlanet(canvas, presetKey) {
+    const p = PRESETS[presetKey];
+    const renderer = new THREE.WebGLRenderer({
+      canvas, antialias: true, alpha: true, powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(p.fov, 1, 0.1, 100);
+    camera.position.set(0, 0, p.dist);
+
+    const lightDir = new THREE.Vector3(...p.lightDir).normalize();
+
+    const planetMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uLightDir: { value: lightDir.clone() },
+        uColA: { value: new THREE.Color(...p.colA) },
+        uColB: { value: new THREE.Color(...p.colB) },
+        uColC: { value: new THREE.Color(...p.colC) },
+        uColD: { value: new THREE.Color(...p.colD) },
+        uType: { value: p.type },
+        uNoiseScale: { value: p.noiseScale },
+        uAtmoColor: { value: new THREE.Color(...p.atmoColor) },
+        uAtmoStrength: { value: p.atmoStrength },
+        uAmbient: { value: p.ambient ?? 0.05 },
+      },
+      vertexShader: PLANET_V,
+      fragmentShader: PLANET_F,
+    });
+
+    const planet = new THREE.Mesh(SHARED_GEO, planetMat);
+    planet.scale.setScalar(p.planetScale);
+    planet.position.set(...p.position);
+    planet.rotation.z = p.tilt;
+    scene.add(planet);
+
+    let atmo = null, atmoMat = null;
+    if (p.atmoOuter > 0.01) {
+      atmoMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color(...p.atmoColor) },
+          uIntensity: { value: p.atmoOuter },
+          uLightDir: { value: lightDir.clone() },
+        },
+        vertexShader: ATMO_V,
+        fragmentShader: ATMO_F,
+        side: THREE.BackSide,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      atmo = new THREE.Mesh(SHARED_ATMO_GEO, atmoMat);
+      atmo.scale.setScalar(p.planetScale * p.atmoSize);
+      atmo.position.copy(planet.position);
+      scene.add(atmo);
+    }
+
+    function resize() {
+      const w = canvas.clientWidth | 0;
+      const h = canvas.clientHeight | 0;
+      if (w === 0 || h === 0) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    new ResizeObserver(resize).observe(canvas);
+
+    return {
+      planet, planetMat, scene, camera, renderer,
+      visible: true,
+      preset: p,
+      render() { renderer.render(scene, camera); },
+    };
+  }
+
+  /* ----------------- space station factory ----------------- */
+  function makeStation(canvas) {
+    const renderer = new THREE.WebGLRenderer({
+      canvas, antialias: true, alpha: true, powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 100);
+    // Move camera further away to make the station look smaller (from 5.2 to 7.2)
+    camera.position.set(0, 0, 7.2);
+
+    // Warm main light (sunlight)
+    const dirLight = new THREE.DirectionalLight(0xfff4e6, 3.5);
+    dirLight.position.set(3, 2, 4);
+    scene.add(dirLight);
+
+    // Cool rim light (earth bounce)
+    const rimLight = new THREE.DirectionalLight(0x4080ff, 2.0);
+    rimLight.position.set(-3, -2, -2);
+    scene.add(rimLight);
+
+    const ambLight = new THREE.AmbientLight(0x202a3a, 1.5);
+    scene.add(ambLight);
+
+    const outerGroup = new THREE.Group();
+    const station = new THREE.Group();
+    
+    // materials
+    const matSilver = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 0.9, roughness: 0.2 });
+    const matDark = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.5 });
+    const matBlue = new THREE.MeshStandardMaterial({ 
+      color: 0x051a4a, 
+      metalness: 0.6, 
+      roughness: 0.3,
+      emissive: 0x021030,
+      emissiveIntensity: 0.5
+    });
+    const matGold = new THREE.MeshStandardMaterial({ color: 0xcca300, metalness: 0.8, roughness: 0.3 });
+    const matGlow = new THREE.MeshBasicMaterial({ color: 0xffddaa });
+
+    // main cylinder core
+    const coreGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 16);
+    const core = new THREE.Mesh(coreGeo, matSilver);
+    core.rotation.z = Math.PI / 2;
+    station.add(core);
+
+    // central node
+    const centerGeo = new THREE.SphereGeometry(0.16, 16, 16);
+    const centerMod = new THREE.Mesh(centerGeo, matSilver);
+    station.add(centerMod);
+
+    // solar panels
+    const panelGeo = new THREE.BoxGeometry(0.5, 0.015, 2.0);
+    
+    // Group panels to add structural details
+    const createPanel = (x) => {
+      const group = new THREE.Group();
+      const p = new THREE.Mesh(panelGeo, matBlue);
+      group.add(p);
+      
+      // Panel spine
+      const spineGeo = new THREE.BoxGeometry(0.04, 0.03, 2.05);
+      const spine = new THREE.Mesh(spineGeo, matDark);
+      group.add(spine);
+      
+      group.position.set(x, 0, 0);
+      return group;
+    };
+
+    station.add(createPanel(-0.8));
+    station.add(createPanel(-1.5));
+    station.add(createPanel(0.8));
+    station.add(createPanel(1.5));
+
+    // truss
+    const trussGeo = new THREE.BoxGeometry(3.8, 0.04, 0.04);
+    const truss = new THREE.Mesh(trussGeo, matGold);
+    station.add(truss);
+
+    // lower modules (habitat/labs)
+    const botModGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.7, 16);
+    const botMod = new THREE.Mesh(botModGeo, matSilver);
+    botMod.position.set(0, -0.45, 0);
+    station.add(botMod);
+
+    // upper modules
+    const topModGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 16);
+    const topMod = new THREE.Mesh(topModGeo, matSilver);
+    topMod.position.set(0.2, 0.35, 0);
+    station.add(topMod);
+
+    // add some tiny lights (windows / beacons)
+    const lightGeo = new THREE.SphereGeometry(0.015, 8, 8);
+    const l1 = new THREE.Mesh(lightGeo, matGlow);
+    l1.position.set(0, -0.6, 0.12);
+    station.add(l1);
+    
+    const l2 = new THREE.Mesh(lightGeo, matGlow);
+    l2.position.set(0.2, 0.4, 0.1);
+    station.add(l2);
+
+    // Initial rotation for a nice isometric angle
+    station.rotation.x = 0.4;
+    station.rotation.y = -0.2;
+    station.rotation.z = 0.3;
+    
+    // Scale down the entire station slightly to make it look more delicate
+    station.scale.setScalar(0.85);
+
+    outerGroup.add(station);
+    scene.add(outerGroup);
+
+    function resize() {
+      const w = canvas.clientWidth | 0;
+      const h = canvas.clientHeight | 0;
+      if (w === 0 || h === 0) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    new ResizeObserver(resize).observe(canvas);
+
+    return {
+      planet: outerGroup,
+      planetMat: { uniforms: { uTime: { value: 0 } } },
+      scene, camera, renderer,
+      visible: true,
+      preset: { rotSpeed: 0.12 }, // slightly slower, more majestic rotation
+      render() { renderer.render(scene, camera); },
+    };
+  }
+
+  /* ----------------- galaxy factory ----------------- */
+  function makeGalaxy(canvas) {
+    const renderer = new THREE.WebGLRenderer({
+      canvas, antialias: true, alpha: true, powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+    camera.position.set(0, 3.5, 7.0);
+    camera.lookAt(0, 0, 0);
+
+    // Create a soft glowing particle texture using canvas
+    const texCanvas = document.createElement('canvas');
+    texCanvas.width = 64;
+    texCanvas.height = 64;
+    const ctx = texCanvas.getContext('2d');
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+    const texture = new THREE.CanvasTexture(texCanvas);
+
+    const count = 12000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    
+    const colorCore = new THREE.Color(0xffeebb);
+    const colorEdge = new THREE.Color(0x1155ff);
+    const colorDust = new THREE.Color(0xcc4466);
+
+    for(let i = 0; i < count; i++) {
+        const radius = Math.random() * 3.2;
+        const spinAngle = radius * 3.0;
+        const branchAngle = ((i % 4) / 4) * Math.PI * 2;
+        
+        // Add organic noise to the spiral arms
+        const randomX = (Math.random() - 0.5) * 1.2 * (2.0 - radius * 0.4);
+        const randomY = (Math.random() - 0.5) * 0.6 * Math.exp(-radius * 1.5); // Thinner at the edges
+        const randomZ = (Math.random() - 0.5) * 1.2 * (2.0 - radius * 0.4);
+
+        positions[i*3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+        positions[i*3+1] = randomY; 
+        positions[i*3+2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+        const mixed = colorCore.clone();
+        if (Math.random() > 0.85 && radius > 0.8) {
+            mixed.lerp(colorDust, Math.random());
+        } else {
+            mixed.lerp(colorEdge, Math.min(radius / 2.8, 1.0));
+        }
+        
+        colors[i*3] = mixed.r;
+        colors[i*3+1] = mixed.g;
+        colors[i*3+2] = mixed.b;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 0.18,
+        map: texture,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        vertexColors: true,
+        opacity: 0.9
+    });
+
+    const galaxy = new THREE.Points(geometry, material);
+    
+    // Central supermassive glow
+    const coreGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const coreMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff, 
+        transparent: true, 
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending 
+    });
+    const coreGlow = new THREE.Mesh(coreGeo, coreMat);
+    
+    const group = new THREE.Group();
+    group.add(galaxy);
+    group.add(coreGlow);
+
+    group.rotation.x = 0.5;
+    group.rotation.z = 0.2;
+    scene.add(group);
+
+    function resize() {
+      const w = canvas.clientWidth | 0;
+      const h = canvas.clientHeight | 0;
+      if (w === 0 || h === 0) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    new ResizeObserver(resize).observe(canvas);
+
+    return {
+      planet: group,
+      planetMat: null,
+      scene, camera, renderer,
+      visible: true,
+      preset: { rotSpeed: 0.08 },
+      render() { renderer.render(scene, camera); },
+    };
+  }
+
+  /* ----------------- init all planets ----------------- */
+  const planets = [];
+
+  // --- hero ---
+  const heroCanvas = document.getElementById('hero-planet');
+  if (heroCanvas) {
+    const hero = heroCanvas.parentElement;
+    function sizeHero() {
+      heroCanvas.style.width = hero.clientWidth + 'px';
+      heroCanvas.style.height = hero.clientHeight + 'px';
+    }
+    sizeHero();
+    new ResizeObserver(sizeHero).observe(hero);
+    const heroPlanet = makePlanet(heroCanvas, 'hero');
+
+    // Adjust composition based on aspect ratio. The planet sits in the
+    // upper-right quadrant so the title at bottom-left has clean breathing room.
+    function reposeHero() {
+      const aspect = hero.clientWidth / hero.clientHeight;
+      let pos, scale;
+      if (aspect > 1.9) {
+        // ultrawide
+        pos = [1.15, 0.30, 0]; scale = 0.68;
+      } else if (aspect > 1.4) {
+        // standard desktop
+        pos = [0.85, 0.30, 0]; scale = 0.58;
+      } else if (aspect > 1.0) {
+        // narrow desktop / landscape tablet
+        pos = [0.55, 0.45, 0]; scale = 0.48;
+      } else if (aspect > 0.7) {
+        // portrait tablet
+        pos = [0.20, 0.80, 0]; scale = 0.45;
+      } else {
+        // mobile portrait
+        pos = [0.0, 0.95, 0]; scale = 0.42;
+      }
+      heroPlanet.planet.position.set(...pos);
+      heroPlanet.planet.scale.setScalar(scale);
+      const atmo = heroPlanet.scene.children.find(o => o !== heroPlanet.planet && o.isMesh);
+      if (atmo) {
+        atmo.position.copy(heroPlanet.planet.position);
+        atmo.scale.setScalar(scale * heroPlanet.preset.atmoSize);
+      }
+    }
+    reposeHero();
+    new ResizeObserver(reposeHero).observe(hero);
+
+    heroCanvas._planet = heroPlanet;
+    planets.push(heroPlanet);
+  }
+
+  // --- exhibits ---
+  document.querySelectorAll('canvas.planet-canvas').forEach(c => {
+    const key = c.dataset.planet;
+    if (key === 'station') {
+      const inst = makeStation(c);
+      c._planet = inst;
+      planets.push(inst);
+      return;
+    }
+    if (key === 'galaxy') {
+      const inst = makeGalaxy(c);
+      c._planet = inst;
+      planets.push(inst);
+      return;
+    }
+    if (!PRESETS[key]) return;
+    const inst = makePlanet(c, key);
+    c._planet = inst;
+    planets.push(inst);
+  });
+
+  /* ----------------- visibility pause ----------------- */
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const p = e.target._planet;
+      if (p) p.visible = e.isIntersecting;
+    }
+  }, { rootMargin: '120px', threshold: 0.0 });
+
+  for (const p of planets) io.observe(p.renderer.domElement);
+
+  /* ----------------- single render loop ----------------- */
+  const start = performance.now();
+  let lastT = 0;
+  function loop(now) {
+    const t = (now - start) / 1000;
+    for (const p of planets) {
+      if (!p.visible) continue;
+      
+      // Safely update uTime uniform if it exists
+      if (p.planetMat && p.planetMat.uniforms && p.planetMat.uniforms.uTime) {
+        p.planetMat.uniforms.uTime.value = t;
+      }
+      
+      if (!reduced) {
+        // Make sure we rotate the planet object, not something else
+        if (p.planet) {
+          if (p.planet.rotation) {
+            p.planet.rotation.y = t * (p.preset?.rotSpeed || 0.05);
+          }
+        }
+      }
+      if (p.render) {
+        p.render();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+</script>
+
+<script>
+  /* ----------- Starfield ----------- */
+  (function () {
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+    let w, h, dpr;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = canvas.width = window.innerWidth * dpr;
+      h = canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      generate();
+    }
+
+    function generate() {
+      const count = Math.floor((window.innerWidth * window.innerHeight) / 4500);
+      stars = new Array(count).fill(0).map(() => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.2 * dpr + 0.2 * dpr,
+        a: Math.random() * 0.6 + 0.2,
+        s: Math.random() * 0.012 + 0.003,
+        phase: Math.random() * Math.PI * 2,
+        warm: Math.random() < 0.08, // a few warm-tinted stars
+      }));
+    }
+
+    let t = 0;
+    function frame() {
+      t += 0.6;
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        const alpha = s.a * (0.55 + 0.45 * Math.sin(t * s.s + s.phase));
+        ctx.beginPath();
+        ctx.fillStyle = s.warm
+          ? `rgba(245, 200, 140, ${alpha})`
+          : `rgba(220, 230, 245, ${alpha})`;
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      requestAnimationFrame(frame);
+    } else {
+      // single static draw
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(220, 230, 245, ${s.a})`;
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  })();
+
+  /* ----------- Nav scroll state ----------- */
+  (function () {
+    const nav = document.getElementById('nav');
+    function onScroll() {
+      if (window.scrollY > 60) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  /* ----------- Live UTC clock for hero ----------- */
+  (function () {
+    const live = document.querySelector('.hero-coords .live');
+    if (!live) return;
+    function tick() {
+      const d = new Date();
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      const ss = String(d.getUTCSeconds()).padStart(2, '0');
+      live.textContent = `● LIVE · UTC ${hh}:${mm}:${ss}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  /* ----------- Smooth anchor scroll (no scrollIntoView) ----------- */
+  (function () {
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const id = a.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        if (!target) return;
+        e.preventDefault();
+        const top = target.getBoundingClientRect().top + window.scrollY - 60;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

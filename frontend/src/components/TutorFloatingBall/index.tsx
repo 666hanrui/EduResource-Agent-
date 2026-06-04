@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import { TutorLive2D } from '../TutorLivePanel/TutorLive2D';
 
 interface Message {
   id: string;
@@ -14,19 +13,23 @@ interface Props {
 }
 
 const QUICK_QUESTIONS = [
-  '单链表插入的指针修改顺序是什么？',
-  '二叉树的前中后序遍历有什么区别？',
-  '系统画像中的8维和12维是什么？',
+  '我的当前推荐为什么是这里？',
+  '我下一步应该先补哪类证据？',
+  '系统画像中的12维是什么？',
   '打开专业探索',
   '打开资源生成'
 ];
+
+const TUTOR_AVATAR_SRC = '/assets/ai-tutor-chibi.png';
+const AVATAR_WIDTH = 150;
+const AVATAR_HEIGHT = 205;
 
 export function TutorFloatingBall({ onCommand }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(true);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  
+
   const dragStart = useRef({ x: 0, y: 0 });
   const ballStart = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
@@ -35,7 +38,7 @@ export function TutorFloatingBall({ onCommand }: Props) {
     {
       id: 'welcome',
       sender: 'tutor',
-      text: '你好！我是你的 AI 智能助教『小灵』。很高兴为你服务！你可以随时向我提问有关数据结构（链表、二叉树）或者学习画像的问题。',
+      text: '你好，我是你的 AI 学习向导「小灵」。我可以陪你看探索地图、解释为什么推荐某个能力区，也可以帮你切到专业探索或资源生成。',
       ts: new Date()
     }
   ]);
@@ -45,9 +48,12 @@ export function TutorFloatingBall({ onCommand }: Props) {
 
   // Initialize position on mount (bottom-right of page, left of AgentTracePanel)
   useEffect(() => {
+    const reservedRight = window.innerWidth >= 960 ? 360 + 24 : 16;
+    const nextX = window.innerWidth - reservedRight - AVATAR_WIDTH;
+    const nextY = window.innerHeight - AVATAR_HEIGHT - 40;
     setPosition({
-      x: window.innerWidth - 360 - 24 - 240, // 360px sidebar + 24px gap + 240px avatar width
-      y: window.innerHeight - 320 - 40 // 320px avatar height + 40px gap
+      x: Math.max(8, Math.min(nextX, window.innerWidth - AVATAR_WIDTH - 8)),
+      y: Math.max(8, Math.min(nextY, window.innerHeight - AVATAR_HEIGHT - 8)),
     });
   }, []);
 
@@ -55,8 +61,8 @@ export function TutorFloatingBall({ onCommand }: Props) {
   useEffect(() => {
     const handleResize = () => {
       setPosition(prev => ({
-        x: Math.max(0, Math.min(prev.x, window.innerWidth - 240)),
-        y: Math.max(0, Math.min(prev.y, window.innerHeight - 320))
+        x: Math.max(8, Math.min(prev.x, window.innerWidth - AVATAR_WIDTH - 8)),
+        y: Math.max(8, Math.min(prev.y, window.innerHeight - AVATAR_HEIGHT - 8))
       }));
     };
     window.addEventListener('resize', handleResize);
@@ -111,8 +117,8 @@ export function TutorFloatingBall({ onCommand }: Props) {
       let newY = ballStart.current.y + dy;
 
       // Clamp position within window bounds
-      newX = Math.max(0, Math.min(newX, window.innerWidth - 240));
-      newY = Math.max(0, Math.min(newY, window.innerHeight - 320));
+      newX = Math.max(8, Math.min(newX, window.innerWidth - AVATAR_WIDTH - 8));
+      newY = Math.max(8, Math.min(newY, window.innerHeight - AVATAR_HEIGHT - 8));
 
       setPosition({ x: newX, y: newY });
     };
@@ -221,7 +227,7 @@ export function TutorFloatingBall({ onCommand }: Props) {
   const chatPanelDynamicStyle: CSSProperties = {
     ...chatPanelStyle,
     position: 'fixed',
-    left: position.x - 390 >= 16 ? position.x - 390 : position.x + 250 <= window.innerWidth - 380 ? position.x + 250 : 16,
+    left: position.x - 390 >= 16 ? position.x - 390 : position.x + AVATAR_WIDTH + 16 <= window.innerWidth - 380 ? position.x + AVATAR_WIDTH + 16 : 16,
     top: position.y - 120 >= 16 ? position.y - 120 : 16,
   };
 
@@ -230,7 +236,7 @@ export function TutorFloatingBall({ onCommand }: Props) {
     ...tooltipStyle,
     position: 'fixed',
     left: position.x - 60 >= 16 ? position.x - 60 : 16,
-    top: position.y - 48 >= 16 ? position.y - 48 : position.y + 330,
+    top: position.y - 48 >= 16 ? position.y - 48 : position.y + AVATAR_HEIGHT + 10,
     margin: 0,
   };
 
@@ -324,7 +330,7 @@ export function TutorFloatingBall({ onCommand }: Props) {
             <input 
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder="向 Live2D 助教提问..."
+              placeholder="向小灵提问..."
               style={chatInputStyle}
               disabled={loading}
             />
@@ -339,10 +345,10 @@ export function TutorFloatingBall({ onCommand }: Props) {
         </div>
       )}
 
-      {/* 3. Floating Live2D Character Container */}
+      {/* 3. Floating Q-style AI tutor */}
       <div 
         style={{
-          ...floatingLive2DContainerStyle,
+          ...floatingTutorContainerStyle,
           left: position.x,
           top: position.y,
           cursor: isDragging ? 'grabbing' : 'grab',
@@ -350,15 +356,19 @@ export function TutorFloatingBall({ onCommand }: Props) {
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
-        <TutorLive2D 
-          isSpeaking={loading} 
-          width={240} 
-          height={320} 
-          scale={0.065} 
-          xOffset={25} 
-          yOffset={25} 
+        <img
+          src={TUTOR_AVATAR_SRC}
+          alt="AI 助教小灵"
+          draggable={false}
+          style={{
+            ...tutorAvatarImageStyle,
+            animation: loading ? 'tutor-chibi-speaking 950ms ease-in-out infinite' : 'tutor-float 3s ease-in-out infinite',
+          }}
         />
-        {/* Soft shadow background glow */}
+        <div style={tutorNameplateStyle}>
+          <strong>小灵</strong>
+          <span>{loading ? '思考中' : '学习向导'}</span>
+        </div>
         <div style={backShadowStyle} />
       </div>
     </div>
@@ -367,15 +377,46 @@ export function TutorFloatingBall({ onCommand }: Props) {
 
 // ──────────────────────── CSS Styles ────────────────────────
 
-const floatingLive2DContainerStyle: CSSProperties = {
+const floatingTutorContainerStyle: CSSProperties = {
   position: 'fixed',
-  width: 240,
-  height: 320,
+  width: AVATAR_WIDTH,
+  height: AVATAR_HEIGHT,
   zIndex: 9999,
   touchAction: 'none',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+};
+
+const tutorAvatarImageStyle: CSSProperties = {
+  position: 'relative',
+  zIndex: 2,
+  width: '100%',
+  height: '100%',
+  objectFit: 'contain',
+  userSelect: 'none',
+  pointerEvents: 'auto',
+  filter: 'drop-shadow(0 16px 22px rgba(15, 45, 78, 0.18))',
+};
+
+const tutorNameplateStyle: CSSProperties = {
+  position: 'absolute',
+  left: 30,
+  right: 30,
+  bottom: 6,
+  zIndex: 3,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  padding: '7px 10px',
+  borderRadius: 999,
+  background: 'rgba(255, 253, 246, 0.9)',
+  border: '2px solid rgba(36, 28, 21, 0.82)',
+  boxShadow: '3px 3px 0 rgba(36, 28, 21, 0.72)',
+  color: '#241C15',
+  fontSize: 12,
+  fontWeight: 800,
 };
 
 const backShadowStyle: CSSProperties = {
@@ -640,6 +681,11 @@ const ANIMATION_STYLES = `
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+@keyframes tutor-chibi-speaking {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-7px) rotate(0.6deg); }
 }
 
 .dot {

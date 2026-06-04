@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vercel Mesh - Property Panel Style</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap');
+
+    :root {
+      --ground: #000000;
+      --app-bg: #050505;
+      --panel-bg: #0A0A0A;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-subtle: rgba(255, 255, 255, 0.05);
+      
+      --text-main: #EDEDED;
+      --text-muted: #888888;
+      --text-dim: #444444;
+      
+      --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+      --font-mono: "Geist Mono", monospace;
+    }
+
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      background-color: var(--ground);
+      font-family: var(--font-sans); color: var(--text-main);
+      overflow: hidden; -webkit-font-smoothing: antialiased;
+    }
+
+    /* * 1. 模拟底层 SaaS 应用界面 (解决“空洞”感)
+     * 让 Modal 有真实的背景依托
+     */
+    .mock-app {
+      position: absolute; inset: 0; display: flex; z-index: 0;
+      background: var(--app-bg);
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .mock-sidebar { width: 240px; border-right: 1px solid var(--border-subtle); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .mock-main { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+    .mock-skeleton-line { height: 12px; background: rgba(255,255,255,0.03); border-radius: 4px; }
+    .mock-skeleton-box { height: 120px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; }
+
+    /* * 2. 遮罩层 (毛玻璃) 
+     */
+    .overlay {
+      position: fixed; inset: 0; z-index: 10;
+      background: rgba(0, 0, 0, 0.5); /* 压暗底层 */
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); /* 真实毛玻璃折射 */
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    /* * 3. 核心面板 (紧凑属性栏风格)
+     */
+    .panel {
+      position: relative;
+      width: 520px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      overflow: hidden; /* 切割内部 Mesh */
+    }
+
+    /* 面板内部的顶级 Mesh 渐变 (极为克制地贴在顶部) */
+    .panel-mesh {
+      position: absolute; top: -60px; left: 0; right: 0; height: 140px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(0, 112, 243, 0.15) 0%, rgba(255, 0, 128, 0.08) 50%, transparent 70%);
+      filter: blur(24px); pointer-events: none; z-index: 0;
+    }
+
+    .panel-inner { position: relative; z-index: 1; padding: 24px; display: flex; flex-direction: column; }
+
+    /* 头部 */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .title-group { display: flex; align-items: center; gap: 12px; }
+    .title { margin: 0; font-size: 16px; font-weight: 500; }
+    .badge { font-family: var(--font-mono); font-size: 11px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); border-radius: 4px; color: var(--text-muted); }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; transition: color 0.2s; }
+    .close-btn:hover { color: #fff; }
+
+    /* 列表布局 (Property Rows) - 解决空洞感的核心 */
+    .prop-list { display: flex; flex-direction: column; }
+    .prop-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid var(--border-subtle);
+    }
+    .prop-row:first-child { border-top: 1px solid var(--border-subtle); }
+    
+    .prop-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+    .prop-label svg { color: var(--text-dim); }
+    
+    .prop-value { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    
+    .tag {
+      font-size: 12px; padding: 4px 8px; border-radius: 6px;
+      background: var(--ground); border: 1px solid var(--border);
+      color: var(--text-main); font-weight: 400; box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* 难度控制条 */
+    .diff-track { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 8px; border: 1px solid var(--border-subtle); }
+    .diff-node { font-family: var(--font-mono); font-size: 11px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-dim); }
+    .diff-node.from { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px dashed var(--text-muted); }
+    .diff-node.active { background: #fff; color: #000; font-weight: 600; box-shadow: 0 0 12px rgba(255,255,255,0.2); }
+    .diff-arrow { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
+
+    /* 终端块 */
+    .terminal { margin-top: 24px; background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: var(--font-mono); font-size: 11.5px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.8); }
+    .term-line { display: flex; justify-content: space-between; }
+    .t-key { color: var(--text-muted); }
+    .t-val { color: var(--text-main); }
+    .t-log { color: #666; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+    .cursor { width: 6px; height: 12px; background: #666; animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* 资料参考卡片 */
+    .source-box { margin-top: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+    .source-box:hover { background: rgba(255,255,255,0.04); border-color: var(--border); }
+    .source-title { font-size: 12px; display: flex; align-items: center; gap: 8px; color: #ccc; }
+    .source-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+    /* 底部操作区 */
+    .footer { margin-top: 24px; padding-top: 16px; display: flex; justify-content: flex-end; }
+    .btn-primary { background: #fff; color: #000; font-family: var(--font-sans); font-size: 13px; font-weight: 500; border: none; border-radius: 6px; padding: 0 16px; height: 32px; cursor: pointer; transition: transform 0.1s, background 0.2s; box-shadow: 0 2px 8px rgba(255,255,255,0.1); }
+    .btn-primary:hover { transform: scale(0.97); background: #f0f0f0; }
+
+  </style>
+</head>
+<body>
+
+  <div class="mock-app">
+    <div class="mock-sidebar">
+      <div class="mock-skeleton-line" style="width: 40px; height: 24px; margin-bottom: 24px;"></div>
+      <div class="mock-skeleton-line" style="width: 80%;"></div>
+      <div class="mock-skeleton-line" style="width: 60%;"></div>
+      <div class="mock-skeleton-line" style="width: 70%;"></div>
+    </div>
+    <div class="mock-main">
+      <div class="mock-skeleton-line" style="width: 200px; height: 24px;"></div>
+      <div class="mock-skeleton-box"></div>
+      <div class="mock-skeleton-box" style="height: 300px;"></div>
+    </div>
+  </div>
+
+  <div class="overlay">
+    
+    <div class="panel">
+      <div class="panel-mesh"></div>
+
+      <div class="panel-inner">
+        
+        <header class="header">
+          <div class="title-group">
+            <h3 class="title">Generation Rationale</h3>
+            <span class="badge">Trace: ab9f23c</span>
+          </div>
+          <button class="close-btn" title="Close">×</button>
+        </header>
+
+        <div class="prop-list">
+          
+          <div class="prop-row">
+            <div class="prop-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Profile Context
+            </div>
+            <div class="prop-value">
+              <span class="tag">Weak Logic</span>
+              <span class="tag">Spatial Deficit</span>
+            </div>
+          </div>
+
+          <div class="prop-row">
+            <div class="prop-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+              Addressed Weakness
+            </div>
+            <div class="prop-value">
+              <span class="tag">Geometry Axioms</span>
+            </div>
+          </div>
+
+          <div class="prop-row">
+            <div class="prop-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Difficulty Shift
+            </div>
+            <div class="prop-value">
+              <div class="diff-track">
+                <div class="diff-node">1</div>
+                <div class="diff-node">2</div>
+                <div class="diff-node from">3</div>
+                <span class="diff-arrow">→</span>
+                <div class="diff-node active">4</div>
+                <div class="diff-node">5</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="terminal">
+          <div class="term-line"><span class="t-key">agent.node</span><span class="t-val">math-edu-gen-v2</span></div>
+          <div class="term-line"><span class="t-key">model.runtime</span><span class="t-val">gpt-4o-2024-05-13</span></div>
+          <div class="t-log">
+            > Fetching academic vectors... DONE <div class="cursor"></div>
+          </div>
+        </div>
+
+        <div class="source-box">
+          <div class="source-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Math Textbook Vol.2
+          </div>
+          <div class="source-meta">Pg. 42 • Match 89%</div>
+        </div>
+
+        <div class="footer">
+          <button class="btn-primary">Acknowledge</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

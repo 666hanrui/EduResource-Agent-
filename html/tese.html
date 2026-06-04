@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沉浸式学习地图</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: sans-serif;
+  }
+
+  /* ====== 地图容器 ====== */
+  .map-container {
+    position: relative;
+    width: 1000px;
+    height: 700px;
+    /* 【极其重要】这里换成你上传的那张原图的路径 */
+    background-image: url('https://via.placeholder.com/1000x700?text=Please+Replace+With+Your+Map+Image'); 
+    background-size: cover;
+    background-position: center;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  /* ====== 交互控制台 ====== */
+  .controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.9);
+    padding: 10px 20px;
+    border-radius: 30px;
+    display: flex;
+    gap: 15px;
+    z-index: 100;
+  }
+
+  button {
+    padding: 8px 16px;
+    border: none;
+    background: #1e40af;
+    color: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+  }
+
+  button:hover {
+    background: #2563eb;
+  }
+
+  /* ====== 主角样式 ====== */
+  .character {
+    position: absolute;
+    /* 主角默认大小，这里用一个色块代替，实际项目中请换成行走动作的透明 GIF 或 PNG */
+    width: 40px; 
+    height: 80px;
+    background: #ff4757; 
+    border-radius: 20px 20px 5px 5px;
+    /* 将定位基准点放在主角脚底 */
+    transform-origin: bottom center; 
+    /* 核心！让主角移动时有真实走路的过渡时间和速率 */
+    transition: left 1.5s ease-in-out, top 1.5s ease-in-out, transform 1.5s ease-in-out;
+    z-index: 50;
+    box-shadow: 0 10px 10px rgba(0,0,0,0.3);
+  }
+
+  .character::after {
+    content: '主角';
+    color: white;
+    font-size: 12px;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* ====== 隐藏的触发热区（覆盖在图上的节点） ====== */
+  .hotspot {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%); /* 居中对齐 */
+    border: 2px solid #fff;
+    transition: 0.3s;
+  }
+
+  .hotspot:hover {
+    background: rgba(255, 193, 7, 0.8);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="map-container" id="mapBox">
+  <div class="character" id="hero"></div>
+
+  <div class="controls">
+    <button onclick="movePrev()">⬅️ 上一步</button>
+    <span id="statusText" style="line-height: 34px; font-weight: bold; color:#333;">当前: 1 起点</span>
+    <button onclick="moveNext()">下一步 ➡️</button>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // 核心坐标配置 (对应你原图里的9个节点)
+  // 你需要微调这里的 left 和 top 百分比，让它们精准贴合你原图中的路牌底座
+  // scale 代表近大远小：山底下的主角大(1.0)，山顶上的主角小(0.4)
+  // ==========================================
+  const pathNodes = [
+    { id: 1, name: "起点", left: "12%", top: "85%", scale: 1.0 },
+    { id: 2, name: "数学", left: "42%", top: "72%", scale: 0.85 },
+    { id: 3, name: "英语", left: "37%", top: "56%", scale: 0.75 },
+    { id: 4, name: "编程", left: "51%", top: "45%", scale: 0.65 },
+    { id: 5, name: "阅读", left: "73%", top: "37%", scale: 0.55 },
+    { id: 6, name: "科学", left: "68%", top: "58%", scale: 0.60 }, // 注意这条路有绕回的折线
+    { id: 7, name: "复习", left: "85%", top: "40%", scale: 0.50 },
+    { id: 8, name: "考试", left: "76%", top: "22%", scale: 0.45 },
+    { id: 9, name: "奖励", left: "91%", top: "15%", scale: 0.40 }
+  ];
+
+  let currentIndex = 0;
+  const hero = document.getElementById('hero');
+  const mapBox = document.getElementById('mapBox');
+  const statusText = document.getElementById('statusText');
+
+  // 初始化地图：生成点击热区并定位主角
+  function initMap() {
+    pathNodes.forEach((node, index) => {
+      // 生成透明热区，方便用户直接点击地图上的点
+      const hotspot = document.createElement('div');
+      hotspot.className = 'hotspot';
+      hotspot.style.left = node.left;
+      hotspot.style.top = node.top;
+      hotspot.title = node.name;
+      hotspot.onclick = () => moveToNode(index);
+      mapBox.appendChild(hotspot);
+    });
+
+    // 主角初始化位置
+    updateHeroPosition();
+  }
+
+  // 移动主角的逻辑
+  function moveToNode(index) {
+    if (index < 0 || index >= pathNodes.length) return;
+    currentIndex = index;
+    updateHeroPosition();
+  }
+
+  function moveNext() {
+    if (currentIndex < pathNodes.length - 1) {
+      currentIndex++;
+      updateHeroPosition();
+    }
+  }
+
+  function movePrev() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateHeroPosition();
+    }
+  }
+
+  // 更新主角坐标和大小（透视效果核心）
+  function updateHeroPosition() {
+    const targetNode = pathNodes[currentIndex];
+    
+    // 移动位置
+    hero.style.left = targetNode.left;
+    hero.style.top = targetNode.top;
+    
+    // 缩放模拟 3D 景深：越往山上走，scale 越小，视觉上人就越远
+    // 负的位移是为了让角色的脚底正好踩在坐标点上
+    hero.style.transform = `translate(-50%, -100%) scale(${targetNode.scale})`;
+    
+    statusText.innerText = `当前: ${targetNode.id} ${targetNode.name}`;
+    
+    // 这里可以接入你的业务逻辑：
+    // 比如：到达某个点后，弹出一个做题的 Modal 弹窗
+    // console.log("触发业务模块：", targetNode.name);
+  }
+
+  // 启动
+  window.onload = initMap;
+</script>
+
+</body>
+</html>

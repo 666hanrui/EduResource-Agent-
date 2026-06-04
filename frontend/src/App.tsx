@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { AgentTracePanel } from './components/AgentTracePanel';
+import { AgentFlowViz } from './components/AgentFlowViz';
 import { CoachWorkbenchPanel } from './components/CoachWorkbenchPanel';
 import { MajorExplorationPanel } from './components/MajorExplorationPanel';
 import { ResultsPanel } from './components/ResultsPanel';
@@ -416,7 +416,19 @@ export function App() {
         </div>
       </main>
 
-      <AgentTracePanel taskId={taskId} title={taskId ? `${knowledgeName} · ${studentId}` : '还没开工'} />
+      {/* Agent Flow 可视化面板（右侧）*/}
+      <aside style={{
+        position: 'relative',
+        zIndex: 1,
+        width: 460,
+        height: 'calc(100vh - 36px)',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0,
+      }}>
+        <AgentFlowViz taskId={taskId} />
+      </aside>
       <TutorFloatingBall onCommand={handleTutorCommand} />
     </div>
   );

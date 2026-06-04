@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { RationalePanel } from '../RationalePanel';
-import { VercelMeshNav as MeshNav } from '../VercelMeshRecipe';
+import { CinematicFooter, CinematicMasthead, useCinematicReveal } from '../ProjectLanding';
 import type { GenerateResults, Rationale } from '../../types/resources';
 import '../../vercel-mesh.css';
+import '../ProjectLanding/cinematic-resource.css';
 import './teacher-mesh.css';
-import { DEMO_RATIONALE, STUDENTS, TAB_ITEMS } from './model';
+import { AGENTS, DEMO_RATIONALE, STUDENTS, TAB_ITEMS } from './model';
 import type { ReviewItem, RunState, Student, TabKey } from './model';
 import {
   GeneratorPanel,
@@ -26,6 +27,7 @@ export function TeacherPortal() {
   const [error, setError] = useState<string | null>(null);
   const [rationale, setRationale] = useState<Rationale | null>(null);
   const pollRef = useRef<number | null>(null);
+  useCinematicReveal();
 
   const activeStudent = STUDENTS.find((item) => item.id === studentId) ?? STUDENTS[1];
 
@@ -106,47 +108,108 @@ export function TeacherPortal() {
   };
 
   return (
-    <div className="mesh-page">
-      <div className="mesh-shell teacher-studio-shell">
-        <MeshNav active="teacher" />
-        <main className="mesh-main teacher-studio-main">
-          <section className="teacher-studio-hero">
-            <div className="teacher-studio-copy">
-              <div className="mesh-kicker"><span className="mesh-pulse" /> Teacher Resource Studio / Vercel Mesh</div>
-              <h1 className="teacher-studio-title">Generate personalized learning resources <span>with evidence.</span></h1>
-              <p className="mesh-subtitle">老师从画像、短板证据和 Agent 生产线出发，生成、审核并下发可解释的个性化学习资源包。</p>
-              <div className="mesh-actions">
-                <button className="mesh-primary-button" onClick={() => setActive('generator')}>Generate bundle</button>
-                <button className="mesh-ghost-button" onClick={() => setActive('review')}>Review queue</button>
+    <div className="cinematic-page teacher-cinematic-page">
+      <CinematicMasthead active="teacher" />
+      <section className="cinematic-hero teacher-cinematic-hero">
+        <div className="cinematic-hero__media">
+          <img className="cinematic-hero__img" src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=2400&q=88" alt="老师资源工作室" />
+          <div className="cinematic-hero__veil" />
+          <div className="cinematic-grain" />
+        </div>
+        <div className="cinematic-hero__content">
+          <div className="cinematic-hero__lede">
+            <div className="cinematic-eyebrow">
+              <span className="num">T° 01</span>
+              <span className="bar" />
+              <span>Teacher Resource Studio</span>
+            </div>
+            <h1 className="cinematic-hero__title teacher-cinematic-title">
+              <span className="word">Generate</span>{' '}
+              <span className="word">resources</span>{' '}
+              <span className="word">with</span>{' '}
+              <span className="word"><em>teacher</em></span>{' '}
+              <span className="word"><em>evidence.</em></span>
+            </h1>
+            <div className="cinematic-byline">
+              <em>{activeStudent.id}</em>
+              <span className="cinematic-dot" />
+              <span>{activeStudent.focus}</span>
+              <span className="cinematic-dot" />
+              <span>掌握度 {activeStudent.mastery}%</span>
+            </div>
+            <div className="cinematic-hero__meta">
+              <div className="cinematic-meta-cell">
+                <span className="cinematic-meta-label">Current student</span>
+                <span className="cinematic-meta-value">{activeStudent.id}</span>
+              </div>
+              <div className="cinematic-meta-cell">
+                <span className="cinematic-meta-label">Knowledge</span>
+                <span className="cinematic-meta-value">{knowledgeName}</span>
+              </div>
+              <div className="cinematic-meta-cell">
+                <span className="cinematic-meta-label">Runtime</span>
+                <span className="cinematic-meta-value">{taskId ? taskId : 'Standby'}</span>
+              </div>
+              <button className="cinematic-button cinematic-button--light" onClick={() => setActive('generator')}>Generate</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="teacher-cinematic-main">
+        <section className="cinematic-section">
+          <div className="cinematic-section__inner">
+            <div className="cinematic-section__head cinematic-reveal">
+              <div>
+                <span className="cinematic-eyebrow"><span className="num">01</span><span className="bar" />Teacher console</span>
+                <h2 className="cinematic-section__title">Generate, review, and intervene from one <em>studio surface.</em></h2>
+              </div>
+              <div className="cinematic-section__aside">Active student<br />{activeStudent.risk} risk<br />{runState}</div>
+            </div>
+
+            <div className="teacher-cinematic-spread cinematic-reveal">
+              <div className="teacher-cinematic-statement">
+                <p className="cinematic-pull">老师端不是后台表格，而是资源生产工作室：先看风险和证据，再生成、审核、下发。</p>
+                <div className="cinematic-body">
+                  <p>当前学生：{activeStudent.id}；短板：{activeStudent.evidence}。</p>
+                  <p>点击下方模块可以切换总览、生成、审核和干预闭环。生成调用真实 `/api/generate`，并由主 Agent 拆解后派发。</p>
+                </div>
+              </div>
+              <div className="teacher-cinematic-terminal">
+                <div className="teacher-cinematic-terminal__bar">teacher-console.log</div>
+                <div className="teacher-cinematic-terminal__body">
+                  <TeacherLog scope="profile" text={`loaded ${activeStudent.id}: ${activeStudent.focus}`} />
+                  <TeacherLog scope="risk" text={`${activeStudent.risk.toUpperCase()} · mastery ${activeStudent.mastery}%`} />
+                  <TeacherLog scope="main" text="PlannerAgent owns the learning DAG blueprint" />
+                  <TeacherLog scope="dispatch" text="Orchestrator routes one task_id through all agents" />
+                  <TeacherLog scope="trace" text={taskId ? `active task ${taskId}` : 'waiting for teacher command'} />
+                </div>
               </div>
             </div>
-            <div className="mesh-terminal teacher-studio-terminal">
-              <div className="mesh-terminal-bar"><div className="mesh-dots"><span /><span /><span /></div><span>teacher-console.log</span></div>
-              <div className="mesh-terminal-body">
-                <TeacherLog scope="profile" text={`loaded ${activeStudent.id}: ${activeStudent.focus}`} />
-                <TeacherLog scope="risk" text={`${activeStudent.risk.toUpperCase()} · mastery ${activeStudent.mastery}%`} />
-                <TeacherLog scope="agent" text="7-agent DAG ready" />
-                <TeacherLog scope="trace" text={taskId ? `active task ${taskId}` : 'waiting for teacher command'} />
-              </div>
+
+            <MainAgentTopology runState={runState} taskId={taskId} />
+
+            <nav className="teacher-studio-tabs cinematic-reveal" aria-label="Teacher studio modules">
+              {TAB_ITEMS.map((tab) => (
+                <button key={tab.key} className={active === tab.key ? 'teacher-studio-tab is-active' : 'teacher-studio-tab'} onClick={() => setActive(tab.key)}>
+                  <strong>{tab.title}</strong><span>{tab.caption}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="teacher-cinematic-panels cinematic-reveal">
+              {active === 'overview' && <OverviewPanel metrics={metrics} onChooseStudent={chooseStudent} />}
+              {active === 'generator' && <GeneratorPanel studentId={studentId} knowledgeId={knowledgeId} knowledgeName={knowledgeName} goal={goal} runState={runState} taskId={taskId} error={error} onStudentId={setStudentId} onKnowledgeId={setKnowledgeId} onKnowledgeName={setKnowledgeName} onGoal={setGoal} onGenerate={generate} />}
+              {active === 'review' && <ReviewPanel reviews={reviews} onOpen={setRationale} />}
+              {active === 'intervention' && <InterventionPanel activeStudent={activeStudent} onChooseStudent={chooseStudent} />}
             </div>
-          </section>
-
-          <nav className="teacher-studio-tabs" aria-label="Teacher studio modules">
-            {TAB_ITEMS.map((tab) => (
-              <button key={tab.key} className={active === tab.key ? 'teacher-studio-tab is-active' : 'teacher-studio-tab'} onClick={() => setActive(tab.key)}>
-                <strong>{tab.title}</strong><span>{tab.caption}</span>
-              </button>
-            ))}
-          </nav>
-
-          {active === 'overview' && <OverviewPanel metrics={metrics} onChooseStudent={chooseStudent} />}
-          {active === 'generator' && <GeneratorPanel studentId={studentId} knowledgeId={knowledgeId} knowledgeName={knowledgeName} goal={goal} runState={runState} taskId={taskId} error={error} onStudentId={setStudentId} onKnowledgeId={setKnowledgeId} onKnowledgeName={setKnowledgeName} onGoal={setGoal} onGenerate={generate} />}
-          {active === 'review' && <ReviewPanel reviews={reviews} onOpen={setRationale} />}
-          {active === 'intervention' && <InterventionPanel activeStudent={activeStudent} onChooseStudent={chooseStudent} />}
-        </main>
-        <footer className="mesh-footer">Teacher Resource Studio · Vercel Mesh visual language · Personalized learning loop</footer>
-        {rationale && <RationalePanel rationale={rationale} title="老师审核视角：这份资源为什么被生成？" onClose={() => setRationale(null)} />}
-      </div>
+          </div>
+        </section>
+      </main>
+      <CinematicFooter />
+      <div className="cinematic-rail cinematic-rail--left"><span className="tick" /><span>Teacher Studio · MMXXVI</span></div>
+      <div className="cinematic-rail cinematic-rail--right"><span>Evidence first</span><span className="tick" /></div>
+      {rationale && <RationalePanel rationale={rationale} title="老师审核视角：这份资源为什么被生成？" onClose={() => setRationale(null)} />}
     </div>
   );
 }
@@ -165,4 +228,48 @@ function buildReviewItems({ results, studentId, knowledgeName }: { results: Gene
   if (results.visual) list.push({ id: 'visual', title: `${knowledgeName} · 思维导图与动画`, type: 'Visual', student: studentId, status: 'pending', agent: results.visual.rationale.agent_name, reason: results.visual.rationale.matched_profile[0] ?? '根据图解偏好生成可视化资源。', rationale: results.visual.rationale });
   if (results.code) list.push({ id: 'code', title: `${knowledgeName} · 双语代码案例`, type: 'Code', student: studentId, status: 'pending', agent: results.code.rationale.agent_name, reason: results.code.rationale.matched_profile[0] ?? '根据编程语言偏好生成代码案例。', rationale: results.code.rationale });
   return list;
+}
+
+function MainAgentTopology({ runState, taskId }: { runState: RunState; taskId: string | null }) {
+  const workerAgents = AGENTS.filter(([name]) => name !== 'PlannerAgent');
+  const status = taskId ? (runState === 'done' ? 'done' : runState === 'error' ? 'error' : 'running') : 'waiting';
+
+  return (
+    <section className="teacher-main-agent-map cinematic-reveal in" aria-label="主控 Agent 拓扑">
+      <div className="teacher-main-agent-map__head">
+        <span className="cinematic-eyebrow"><span className="num">DAG</span><span className="bar" />Main agent topology</span>
+        <div className={`teacher-main-agent-map__status is-${status}`}>
+          {taskId ? taskId : 'no active task'}
+        </div>
+      </div>
+
+      <div className="teacher-main-agent-map__grid">
+        <div className="teacher-main-agent-node teacher-main-agent-node--control">
+          <span>Control layer</span>
+          <strong>Orchestrator / GenerateFlow</strong>
+          <p>统一接收老师目标、绑定 task_id、驱动 SSE 事件流。</p>
+        </div>
+
+        <div className="teacher-main-agent-arrow" aria-hidden="true">→</div>
+
+        <div className="teacher-main-agent-node teacher-main-agent-node--main">
+          <span>Main Agent</span>
+          <strong>PlannerAgent</strong>
+          <p>读取画像和知识点，拆出讲解、题目、代码、可视化与评估任务。</p>
+        </div>
+
+        <div className="teacher-main-agent-arrow" aria-hidden="true">→</div>
+
+        <div className="teacher-main-agent-workers">
+          {workerAgents.map(([name, label, body]) => (
+            <div className="teacher-main-agent-worker" key={name}>
+              <span>{label}</span>
+              <strong>{name}</strong>
+              <p>{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

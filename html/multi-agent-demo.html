@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduResource · 多 Agent 协同演示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Tokens ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream:    #faf6f0;
+      --cream-2:  #f3ede3;
+      --sand:     #e8dece;
+      --warm-100: #fff8f0;
+      --amber:    #e8935a;
+      --amber-2:  #d4784a;
+      --teal:     #5ba8a0;
+      --teal-2:   #3d8a82;
+      --indigo:   #6b7fd4;
+      --rose:     #d4726b;
+      --sage:     #7aad85;
+      --text-primary: #2c2420;
+      --text-secondary: #7a6e66;
+      --text-muted: #aea69e;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 4px 32px rgba(0,0,0,0.08);
+      --shadow-lg: 0 12px 48px rgba(0,0,0,0.14);
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background: var(--cream);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Blob background ─── */
+    .bg-blobs {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
+      animation: blob-drift 12s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 520px; height: 520px; background: radial-gradient(circle, #f5ddc8, #f0c9a0); top: -100px; left: -80px; animation-delay: 0s; }
+    .blob-2 { width: 400px; height: 400px; background: radial-gradient(circle, #cce8e0, #a8d8d0); bottom: -60px; right: -60px; animation-delay: -4s; }
+    .blob-3 { width: 300px; height: 300px; background: radial-gradient(circle, #e8c8d8, #d4b0c8); top: 40%; left: 50%; animation-delay: -8s; }
+    @keyframes blob-drift {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(30px, -20px) scale(1.05); }
+      100% { transform: translate(-20px, 30px) scale(0.95); }
+    }
+
+    /* ─── Layout ─── */
+    .page { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ─── Header ─── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 48px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--amber), var(--teal));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text { font-size: 20px; font-weight: 700; color: var(--amber); letter-spacing: -0.5px; }
+    .logo-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .header-badge {
+      background: rgba(255,255,255,0.7); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ─── Hero ─── */
+    .hero {
+      padding: 20px 48px 0;
+      max-width: 680px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text-primary);
+      letter-spacing: -1px;
+    }
+    .hero h1 em { font-style: normal; color: var(--amber); }
+    .hero p {
+      margin-top: 12px;
+      font-size: 15px; color: var(--text-secondary); line-height: 1.7;
+    }
+
+    /* ─── Main grid ─── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      padding: 32px 48px 48px;
+      flex: 1;
+    }
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+      header, .hero, .main-grid { padding-left: 24px; padding-right: 24px; }
+    }
+
+    /* ─── Flow canvas card ─── */
+    .flow-card {
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .card-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+
+    /* ─── Agent Flow Diagram ─── */
+    .flow-diagram {
+      position: relative;
+      height: 260px;
+      overflow: visible;
+    }
+    svg.flow-svg { width: 100%; height: 100%; overflow: visible; }
+
+    /* Node styles */
+    .node-group { cursor: default; }
+    .node-rect {
+      rx: 10; ry: 10;
+      fill: white;
+      stroke: var(--sand);
+      stroke-width: 1.5;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
+      transition: all 0.4s ease;
+    }
+    .node-rect.active {
+      stroke: var(--amber);
+      stroke-width: 2;
+      filter: drop-shadow(0 4px 16px rgba(232,147,90,0.3));
+    }
+    .node-rect.done {
+      stroke: var(--sage);
+      stroke-width: 2;
+      fill: #f0faf2;
+      filter: drop-shadow(0 2px 12px rgba(122,173,133,0.2));
+    }
+    .node-rect.error {
+      stroke: var(--rose);
+      stroke-width: 2;
+      fill: #fff0f0;
+    }
+    .node-icon { font-size: 13px; }
+    .node-name { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; fill: var(--text-primary); }
+    .node-status-text { font-family: 'Inter', sans-serif; font-size: 9.5px; fill: var(--text-muted); }
+    .node-time { font-family: 'JetBrains Mono', monospace; font-size: 9px; fill: var(--amber); }
+
+    /* Edge styles */
+    .edge { fill: none; stroke: var(--sand); stroke-width: 1.5; stroke-dasharray: 4 3; transition: stroke 0.4s, stroke-dasharray 0.4s; }
+    .edge.active { stroke: var(--amber); stroke-dasharray: none; animation: edge-flow 1s linear infinite; }
+    .edge.done { stroke: var(--sage); stroke-dasharray: none; }
+    @keyframes edge-flow {
+      to { stroke-dashoffset: -10; }
+    }
+
+    /* ─── Status badge on node ─── */
+    .status-dot { transition: fill 0.4s; }
+
+    /* ─── Trigger section ─── */
+    .trigger-row { display: flex; gap: 10px; align-items: center; }
+    .input-knowledge {
+      flex: 1;
+      background: rgba(255,255,255,0.8);
+      border: 1.5px solid var(--sand);
+      border-radius: 100px; padding: 10px 18px;
+      font-size: 13px; color: var(--text-primary);
+      outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .input-knowledge::placeholder { color: var(--text-muted); }
+    .input-knowledge:focus { border-color: var(--amber); }
+    .btn-run {
+      background: linear-gradient(135deg, var(--amber), var(--amber-2));
+      border: none; border-radius: 100px;
+      padding: 10px 22px; color: white;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      white-space: nowrap; font-family: inherit;
+      box-shadow: 0 4px 16px rgba(232,147,90,0.35);
+    }
+    .btn-run:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,147,90,0.45); }
+    .btn-run:active { transform: translateY(0); }
+    .btn-run:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-mode {
+      background: rgba(255,255,255,0.7);
+      border: 1.5px solid var(--sand);
+      border-radius: 100px; padding: 10px 16px;
+      font-size: 12px; color: var(--text-secondary);
+      cursor: pointer; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-mode:hover { border-color: var(--teal); color: var(--teal); }
+    .btn-mode.active { background: var(--teal); color: white; border-color: var(--teal); }
+
+    /* ─── Right panel: Console + Stats ─── */
+    .right-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    .console-card {
+      background: #1e1a16;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      flex: 1;
+      display: flex; flex-direction: column;
+    }
+    .console-header {
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .traffic-lights { display: flex; gap: 6px; }
+    .tl { width: 10px; height: 10px; border-radius: 50%; }
+    .tl-r { background: #ff5f57; }
+    .tl-y { background: #febc2e; }
+    .tl-g { background: #28c840; }
+    .console-title {
+      margin-left: 6px;
+      font-size: 11px; font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.5px;
+    }
+    .console-body {
+      flex: 1; padding: 16px 20px;
+      overflow-y: auto; min-height: 240px; max-height: 340px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .console-body::-webkit-scrollbar { width: 4px; }
+    .console-body::-webkit-scrollbar-track { background: transparent; }
+    .console-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    .log-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; line-height: 1.8;
+      display: flex; gap: 10px; align-items: flex-start;
+      animation: log-in 0.25s ease;
+    }
+    @keyframes log-in {
+      from { opacity: 0; transform: translateX(-6px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .log-tag {
+      font-size: 10px; font-weight: 600; white-space: nowrap;
+      padding: 1px 6px; border-radius: 4px; margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .tag-profile  { background: rgba(107,127,212,0.25); color: #8fa0e8; }
+    .tag-planner  { background: rgba(232,147,90,0.25);  color: #e8935a; }
+    .tag-doc      { background: rgba(91,168,160,0.25);  color: #5ba8a0; }
+    .tag-exercise { background: rgba(212,114,107,0.25); color: #d4726b; }
+    .tag-visual   { background: rgba(122,173,133,0.25); color: #7aad85; }
+    .tag-code     { background: rgba(255,255,255,0.1);  color: #d4d0c8; }
+    .tag-eval     { background: rgba(212,178,100,0.25); color: #d4b264; }
+    .tag-main     { background: rgba(232,147,90,0.15);  color: #c87840; }
+    .tag-sys      { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
+    .log-msg { color: rgba(255,255,255,0.75); }
+    .log-msg.muted { color: rgba(255,255,255,0.35); }
+    .log-check { color: #7aad85; }
+    .log-arrow { color: rgba(255,255,255,0.2); }
+
+    /* ─── Stats card ─── */
+    .stats-card {
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .stat-item {
+      background: var(--warm-100);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.8);
+    }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--amber); line-height: 1; }
+    .stat-value.teal { color: var(--teal); }
+    .stat-value.indigo { color: var(--indigo); }
+    .stat-value.sage { color: var(--sage); }
+    .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.3px; }
+
+    /* ─── Mode toggle ─── */
+    .mode-toggle {
+      display: flex; gap: 8px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 100px; padding: 3px;
+      border: 1px solid rgba(255,255,255,0.8);
+    }
+    .mode-btn {
+      flex: 1; padding: 6px 12px;
+      border-radius: 100px; border: none;
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+      background: transparent; color: var(--text-muted);
+      font-family: inherit;
+    }
+    .mode-btn.active {
+      background: white;
+      color: var(--amber);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* ─── Spinner ─── */
+    .spinner {
+      display: inline-block; width: 10px; height: 10px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Overall progress bar ─── */
+    .progress-bar-wrap {
+      height: 4px; background: var(--sand);
+      border-radius: 4px; overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--amber), var(--teal));
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+<div class="bg-blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="page">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎓</div>
+      <div>
+        <div class="logo-text">EduResource</div>
+        <div class="logo-sub">动态更新的多 Agent 协同教育系统</div>
+      </div>
+    </div>
+    <div class="header-badge">
+      <span class="badge-dot"></span>
+      <span id="header-status">就绪，等待触发</span>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>从一句轻声的提问，到<br/><em>一套量身定制的学习资源</em>。</h1>
+    <p>7 个 Agent 协同工作：画像分析 → 任务规划 → 并行生成 → 闭环评估，全程实时可见。</p>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+    <!-- Left: Flow diagram + controls -->
+    <div class="flow-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="card-label">Agent 协作流程</span>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="mode-fixed" onclick="setMode('fixed')">固定流水线</button>
+          <button class="mode-btn" id="mode-tc" onclick="setMode('tool-calling')">MainAgent 决策</button>
+        </div>
+      </div>
+
+      <!-- SVG Flow Diagram -->
+      <div class="flow-diagram">
+        <svg class="flow-svg" viewBox="0 0 820 240" id="flow-svg">
+          <!-- Defs: arrowhead -->
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#c8c0b8" />
+            </marker>
+            <marker id="arrow-active" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#e8935a" />
+            </marker>
+            <marker id="arrow-done" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#7aad85" />
+            </marker>
+          </defs>
+
+          <!-- Edges -->
+          <!-- Profile → Planner -->
+          <path id="edge-profile-planner" class="edge" d="M 148,80 L 200,80" marker-end="url(#arrow)" />
+          <!-- Planner → Document -->
+          <path id="edge-planner-doc" class="edge" d="M 348,68 C 390,68 390,50 430,50" marker-end="url(#arrow)" />
+          <!-- Planner → Exercise -->
+          <path id="edge-planner-ex" class="edge" d="M 348,80 L 430,120" marker-end="url(#arrow)" />
+          <!-- Planner → Visual -->
+          <path id="edge-planner-vis" class="edge" d="M 348,92 C 390,92 390,190 430,190" marker-end="url(#arrow)" />
+          <!-- Document → Code -->
+          <path id="edge-doc-code" class="edge" d="M 568,50 C 610,50 610,120 650,120" marker-end="url(#arrow)" />
+          <!-- Exercise → Eval -->
+          <path id="edge-ex-eval" class="edge" d="M 568,120 L 650,120" marker-end="url(#arrow)" />
+          <!-- Visual → Eval (hidden, show only if active) -->
+          <path id="edge-vis-eval" class="edge" d="M 568,190 C 610,190 610,120 650,120" marker-end="url(#arrow)" />
+          <!-- Code → Eval -->
+          <path id="edge-code-eval" class="edge" d="M 788,120 L 820,120" marker-end="url(#arrow)" style="opacity:0" />
+
+          <!-- ── Nodes ── -->
+          <!-- ProfileAgent x=10 y=56 w=138 h=48 -->
+          <g class="node-group" id="node-profile">
+            <rect class="node-rect" x="10" y="56" width="138" height="48" id="rect-profile"/>
+            <text class="node-icon" x="24" y="80">👤</text>
+            <text class="node-name" x="44" y="77">ProfileAgent</text>
+            <text class="node-status-text" x="44" y="90" id="status-profile">画像抽取</text>
+            <circle class="status-dot" cx="128" cy="72" r="4" fill="#c8c0b8" id="dot-profile"/>
+          </g>
+
+          <!-- PlannerAgent x=200 y=56 w=148 h=48 -->
+          <g class="node-group" id="node-planner">
+            <rect class="node-rect" x="200" y="56" width="148" height="48" id="rect-planner"/>
+            <text class="node-icon" x="214" y="80">🗺</text>
+            <text class="node-name" x="234" y="77">PlannerAgent</text>
+            <text class="node-status-text" x="234" y="90" id="status-planner">任务规划</text>
+            <circle class="status-dot" cx="338" cy="72" r="4" fill="#c8c0b8" id="dot-planner"/>
+          </g>
+
+          <!-- DocumentAgent x=430 y=26 w=138 h=48 -->
+          <g class="node-group" id="node-doc">
+            <rect class="node-rect" x="430" y="26" width="138" height="48" id="rect-doc"/>
+            <text class="node-icon" x="444" y="50">📄</text>
+            <text class="node-name" x="464" y="47">DocumentAgent</text>
+            <text class="node-status-text" x="464" y="60" id="status-doc">文档生成</text>
+            <circle class="status-dot" cx="558" cy="42" r="4" fill="#c8c0b8" id="dot-doc"/>
+          </g>
+
+          <!-- ExerciseAgent x=430 y=96 w=138 h=48 -->
+          <g class="node-group" id="node-ex">
+            <rect class="node-rect" x="430" y="96" width="138" height="48" id="rect-ex"/>
+            <text class="node-icon" x="444" y="120">✏️</text>
+            <text class="node-name" x="464" y="117">ExerciseAgent</text>
+            <text class="node-status-text" x="464" y="130" id="status-ex">习题生成</text>
+            <circle class="status-dot" cx="558" cy="112" r="4" fill="#c8c0b8" id="dot-ex"/>
+          </g>
+
+          <!-- VisualAgent x=430 y=166 w=138 h=48 -->
+          <g class="node-group" id="node-vis">
+            <rect class="node-rect" x="430" y="166" width="138" height="48" id="rect-vis"/>
+            <text class="node-icon" x="444" y="190">🎨</text>
+            <text class="node-name" x="464" y="187">VisualAgent</text>
+            <text class="node-status-text" x="464" y="200" id="status-vis">可视化生成</text>
+            <circle class="status-dot" cx="558" cy="182" r="4" fill="#c8c0b8" id="dot-vis"/>
+          </g>
+
+          <!-- CodeAgent x=650 y=96 w=138 h=48 -->
+          <g class="node-group" id="node-code">
+            <rect class="node-rect" x="650" y="96" width="138" height="48" id="rect-code"/>
+            <text class="node-icon" x="664" y="120">💻</text>
+            <text class="node-name" x="684" y="117">CodeAgent</text>
+            <text class="node-status-text" x="684" y="130" id="status-code">代码生成</text>
+            <circle class="status-dot" cx="778" cy="112" r="4" fill="#c8c0b8" id="dot-code"/>
+          </g>
+
+          <!-- EvaluationAgent (shown as final node) -->
+          <!-- Evaluation label at right -->
+          <g id="node-eval-group">
+            <rect class="node-rect" x="650" y="166" width="150" height="48" id="rect-eval"/>
+            <text class="node-icon" x="664" y="190">📊</text>
+            <text class="node-name" x="684" y="187">EvaluationAgent</text>
+            <text class="node-status-text" x="684" y="200" id="status-eval">学习评估</text>
+            <circle class="status-dot" cx="790" cy="182" r="4" fill="#c8c0b8" id="dot-eval"/>
+          </g>
+
+          <!-- MainAgent badge (only shown in tool-calling mode) -->
+          <g id="main-agent-badge" style="opacity:0; transition: opacity 0.4s;">
+            <rect x="310" y="148" width="120" height="30" rx="15" fill="rgba(232,147,90,0.15)" stroke="#e8935a" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="370" y="163" text-anchor="middle" font-size="10" fill="#e8935a" font-weight="600" font-family="Inter">⚡ MainAgent 决策中</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Progress bar -->
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:11px; color:var(--text-muted);" id="progress-label">等待触发…</span>
+          <span style="font-size:11px; color:var(--amber); font-weight:600;" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Trigger row -->
+      <div class="trigger-row">
+        <input class="input-knowledge" id="knowledge-input"
+          type="text" placeholder="输入知识点，如：链表插入、二叉树遍历、快速排序…"
+          value="单链表中间插入" />
+        <button class="btn-run" id="btn-run" onclick="triggerGenerate()">
+          ▶ 开始生成
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Console + Stats -->
+    <div class="right-panel">
+      <!-- Console -->
+      <div class="console-card">
+        <div class="console-header">
+          <div class="traffic-lights">
+            <div class="tl tl-r"></div>
+            <div class="tl tl-y"></div>
+            <div class="tl tl-g"></div>
+          </div>
+          <span class="console-title">agent.log — 实时事件流</span>
+        </div>
+        <div class="console-body" id="console-body">
+          <div class="log-line">
+            <span class="log-tag tag-sys">SYS</span>
+            <span class="log-msg muted">等待触发生成任务…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-card">
+        <span class="card-label">本次运行统计</span>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-agents">0</div>
+            <div class="stat-label">已完成 Agent</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value teal" id="stat-elapsed">—</div>
+            <div class="stat-label">耗时（秒）</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value indigo" id="stat-tokens">—</div>
+            <div class="stat-label">Token 消耗</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value sage" id="stat-mode">固定</div>
+            <div class="stat-label">调度模式</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   State
+═══════════════════════════════════════════ */
+let currentMode = 'fixed';   // 'fixed' | 'tool-calling'
+let isRunning = false;
+let startTime = null;
+let completedAgents = 0;
+let totalTokens = 0;
+let elapsedTimer = null;
+let currentES = null;  // EventSource
+
+const AGENT_MAP = {
+  'ProfileAgent':    { tag: 'PROFILE',  cls: 'tag-profile',  edge: 'edge-profile-planner', dotId: 'dot-profile',  rectId: 'rect-profile',  statusId: 'status-profile'  },
+  'PlannerAgent':    { tag: 'PLANNER',  cls: 'tag-planner',  edge: 'edge-planner-doc',     dotId: 'dot-planner',  rectId: 'rect-planner',  statusId: 'status-planner'  },
+  'DocumentAgent':   { tag: 'DOC',      cls: 'tag-doc',      edge: 'edge-doc-code',        dotId: 'dot-doc',      rectId: 'rect-doc',      statusId: 'status-doc'      },
+  'ExerciseAgent':   { tag: 'EXERCISE', cls: 'tag-exercise', edge: 'edge-ex-eval',         dotId: 'dot-ex',       rectId: 'rect-ex',       statusId: 'status-ex'       },
+  'VisualAgent':     { tag: 'VISUAL',   cls: 'tag-visual',   edge: 'edge-vis-eval',        dotId: 'dot-vis',      rectId: 'rect-vis',      statusId: 'status-vis'      },
+  'CodeAgent':       { tag: 'CODE',     cls: 'tag-code',     edge: 'edge-code-eval',       dotId: 'dot-code',     rectId: 'rect-code',     statusId: 'status-code'     },
+  'EvaluationAgent': { tag: 'EVAL',     cls: 'tag-eval',     edge: null,                   dotId: 'dot-eval',     rectId: 'rect-eval',     statusId: 'status-eval'     },
+  'MainAgent':       { tag: 'MAIN',     cls: 'tag-main',     edge: null,                   dotId: null,           rectId: null,            statusId: null              },
+};
+
+const EDGE_IDS = ['edge-profile-planner','edge-planner-doc','edge-planner-ex','edge-planner-vis','edge-doc-code','edge-ex-eval','edge-vis-eval'];
+
+/* ═══════════════════════════════════════════
+   Mode toggle
+═══════════════════════════════════════════ */
+function setMode(mode) {
+  if (isRunning) return;
+  currentMode = mode;
+  document.getElementById('mode-fixed').classList.toggle('active', mode === 'fixed');
+  document.getElementById('mode-tc').classList.toggle('active', mode === 'tool-calling');
+  document.getElementById('stat-mode').textContent = mode === 'fixed' ? '固定' : 'Agent决策';
+  document.getElementById('main-agent-badge').style.opacity = mode === 'tool-calling' ? '1' : '0';
+  addLog('SYS', 'tag-sys', `切换到${mode === 'fixed' ? '固定流水线' : 'MainAgent 动态决策'}模式`);
+}
+
+/* ═══════════════════════════════════════════
+   Trigger
+═══════════════════════════════════════════ */
+async function triggerGenerate() {
+  if (isRunning) return;
+  const knowledge = document.getElementById('knowledge-input').value.trim() || '单链表中间插入';
+
+  resetUI();
+  isRunning = true;
+  startTime = Date.now();
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-run').innerHTML = '<span class="spinner"></span>运行中…';
+  document.getElementById('header-status').textContent = '运行中…';
+
+  startElapsedTimer();
+
+  const endpoint = currentMode === 'fixed' ? '/api/generate' : '/api/generate/tool-calling';
+  addLog('SYS', 'tag-sys', `→ POST ${endpoint}`);
+
+  try {
+    const res = await fetch(`http://localhost:8000${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        knowledge_id: 'demo_' + Date.now(),
+        knowledge_name: knowledge,
+        exercise_count: 3,
+        languages: ['python', 'java'],
+      }),
+    });
+    const { task_id } = await res.json();
+    addLog('SYS', 'tag-sys', `task_id: ${task_id}`);
+    subscribeSSE(task_id);
+  } catch (e) {
+    addLog('SYS', 'tag-sys', `⚠ 连接失败，启用演示模式…`);
+    runDemoMode(knowledge);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SSE subscription
+═══════════════════════════════════════════ */
+function subscribeSSE(task_id) {
+  const url = `http://localhost:8000/api/tasks/${task_id}/events`;
+  currentES = new EventSource(url);
+
+  currentES.onmessage = (e) => {
+    try {
+      const evt = JSON.parse(e.data);
+      handleEvent(evt);
+    } catch {}
+  };
+
+  currentES.onerror = () => {
+    addLog('SYS', 'tag-sys', '⚠ SSE 连接断开');
+    currentES.close();
+    finishRun();
+  };
+}
+
+function handleEvent(evt) {
+  const { type, agent, payload } = evt;
+  const info = AGENT_MAP[agent];
+  if (!info) return;
+
+  if (type === 'agent.start') {
+    setNodeState(info, 'active', '运行中…');
+    activateEdge(info.edge);
+    addLog(info.tag, info.cls, `${agent} 启动`);
+    setProgress(null);
+  }
+
+  if (type === 'agent.delta') {
+    if (payload.event) {
+      // MainAgent supervisor events
+      if (payload.event === 'supervisor.decision') {
+        const tools = (payload.tool_names || []).join(', ');
+        addLog('MAIN', 'tag-main', `决策→ [${tools}]  ${payload.reason || ''}`);
+      } else if (payload.event === 'supervisor.done') {
+        addLog('MAIN', 'tag-main', `完成 ✓  共 ${payload.iterations} 轮决策`);
+      }
+    } else {
+      const stage = payload.stage || '';
+      if (stage) addLog(info.tag, info.cls, stage);
+    }
+  }
+
+  if (type === 'agent.done') {
+    setNodeState(info, 'done', `✓ ${((payload.elapsed_ms || 0)/1000).toFixed(1)}s`);
+    doneEdge(info.edge);
+    if (payload.token_used) totalTokens += payload.token_used;
+    completedAgents++;
+    document.getElementById('stat-agents').textContent = completedAgents;
+    document.getElementById('stat-tokens').textContent = totalTokens > 0 ? totalTokens : '—';
+    addLog(info.tag, info.cls, `✓ 完成  ${((payload.elapsed_ms||0)/1000).toFixed(1)}s  tokens:${payload.token_used||0}`);
+  }
+
+  if (type === 'agent.error') {
+    setNodeState(info, 'error', '✗ 错误');
+    addLog(info.tag, info.cls, `✗ ${payload.error}`);
+  }
+
+  if (type === 'task.summary') {
+    if (currentES) currentES.close();
+    finishRun(payload);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Demo mode (no backend)
+═══════════════════════════════════════════ */
+function runDemoMode(knowledge) {
+  addLog('SYS', 'tag-sys', `演示模式：${knowledge}`);
+  const sequence = [
+    { delay: 300,  agent: 'ProfileAgent',    type: 'start', msg: '分析对话上下文…' },
+    { delay: 1200, agent: 'ProfileAgent',    type: 'done',  elapsed: 0.9, tokens: 210 },
+    { delay: 1400, agent: 'PlannerAgent',    type: 'start', msg: '规划生成任务 DAG…' },
+    { delay: 2600, agent: 'PlannerAgent',    type: 'delta', msg: currentMode === 'tool-calling' ? '决策→ [generate_document, generate_exercise, generate_visual]' : 'plan_finalized  task_count:4' },
+    { delay: 3200, agent: 'PlannerAgent',    type: 'done',  elapsed: 1.8, tokens: 480 },
+    { delay: 3400, agent: 'DocumentAgent',   type: 'start', msg: '生成文档内容…' },
+    { delay: 3400, agent: 'ExerciseAgent',   type: 'start', msg: '生成练习题…' },
+    { delay: 3400, agent: 'VisualAgent',     type: 'start', msg: '生成可视化数据…' },
+    { delay: 5800, agent: 'DocumentAgent',   type: 'done',  elapsed: 2.4, tokens: 890 },
+    { delay: 6200, agent: 'ExerciseAgent',   type: 'done',  elapsed: 2.8, tokens: 720 },
+    { delay: 6600, agent: 'VisualAgent',     type: 'done',  elapsed: 3.2, tokens: 340 },
+    { delay: 6800, agent: 'CodeAgent',       type: 'start', msg: 'Document 就绪，生成 Python+Java 代码…' },
+    { delay: 9000, agent: 'CodeAgent',       type: 'done',  elapsed: 2.2, tokens: 960 },
+    { delay: 9200, agent: 'EvaluationAgent', type: 'start', msg: '评估答题记录，更新画像…' },
+    { delay: 10200,agent: 'EvaluationAgent', type: 'done',  elapsed: 1.0, tokens: 310 },
+    { delay: 10400,agent: 'SYS',             type: 'summary' },
+  ];
+
+  sequence.forEach(({ delay, agent, type, msg, elapsed, tokens }) => {
+    setTimeout(() => {
+      if (type === 'summary') { finishRun({ status: 'ok' }); return; }
+      const info = AGENT_MAP[agent];
+      if (!info) return;
+
+      if (type === 'start') {
+        setNodeState(info, 'active', '运行中…');
+        activateEdge(info.edge);
+        if (currentMode === 'tool-calling' && agent === 'MainAgent') {
+          addLog('MAIN', 'tag-main', msg);
+        } else {
+          addLog(info.tag, info.cls, `${agent} 启动`);
+        }
+      } else if (type === 'delta') {
+        addLog(info.tag, info.cls, msg);
+      } else if (type === 'done') {
+        setNodeState(info, 'done', `✓ ${elapsed}s`);
+        doneEdge(info.edge);
+        totalTokens += (tokens || 0);
+        completedAgents++;
+        document.getElementById('stat-agents').textContent = completedAgents;
+        document.getElementById('stat-tokens').textContent = totalTokens;
+        addLog(info.tag, info.cls, `✓ 完成  ${elapsed}s  tokens:${tokens}`);
+      }
+      updateProgress();
+    }, delay);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   UI helpers
+═══════════════════════════════════════════ */
+function resetUI() {
+  completedAgents = 0; totalTokens = 0;
+  document.getElementById('console-body').innerHTML = '';
+  document.getElementById('stat-agents').textContent = '0';
+  document.getElementById('stat-elapsed').textContent = '—';
+  document.getElementById('stat-tokens').textContent = '—';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-pct').textContent = '0%';
+  document.getElementById('progress-label').textContent = '初始化…';
+
+  // Reset all nodes
+  Object.values(AGENT_MAP).forEach(info => {
+    if (info.rectId) {
+      const r = document.getElementById(info.rectId);
+      if (r) { r.classList.remove('active','done','error'); }
+    }
+    if (info.dotId) {
+      const d = document.getElementById(info.dotId);
+      if (d) d.setAttribute('fill', '#c8c0b8');
+    }
+    if (info.statusId) {
+      const s = document.getElementById(info.statusId);
+      if (s) s.textContent = s.textContent.replace(/✓.*|运行中…|✗.*/, '').trim() || AGENT_DEFAULTS[info.statusId] || '';
+    }
+  });
+  // Reset edges
+  EDGE_IDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e) { e.classList.remove('active','done'); e.style.opacity = ''; }
+  });
+}
+
+const AGENT_DEFAULTS = {
+  'status-profile': '画像抽取', 'status-planner': '任务规划',
+  'status-doc': '文档生成', 'status-ex': '习题生成',
+  'status-vis': '可视化生成', 'status-code': '代码生成',
+  'status-eval': '学习评估',
+};
+
+function setNodeState(info, state, statusText) {
+  if (!info.rectId) return;
+  const r = document.getElementById(info.rectId);
+  const d = document.getElementById(info.dotId);
+  const s = document.getElementById(info.statusId);
+  if (!r) return;
+  r.classList.remove('active','done','error');
+  r.classList.add(state);
+  if (d) {
+    d.setAttribute('fill', state === 'active' ? '#e8935a' : state === 'done' ? '#7aad85' : '#d4726b');
+  }
+  if (s && statusText) s.textContent = statusText;
+}
+
+function activateEdge(edgeId) {
+  if (!edgeId) return;
+  const e = document.getElementById(edgeId);
+  if (e) { e.classList.add('active'); e.setAttribute('marker-end', 'url(#arrow-active)'); }
+}
+function doneEdge(edgeId) {
+  if (!edgeId) return;
+  const e = document.getElementById(edgeId);
+  if (e) { e.classList.remove('active'); e.classList.add('done'); e.setAttribute('marker-end', 'url(#arrow-done)'); }
+}
+
+function addLog(tag, cls, msg) {
+  const body = document.getElementById('console-body');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-tag ${cls}">${tag}</span><span class="log-msg">${escHtml(msg)}</span>`;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updateProgress() {
+  const total = 7;
+  const pct = Math.min(100, Math.round((completedAgents / total) * 100));
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-label').textContent = `${completedAgents}/${total} Agent 完成`;
+}
+
+function setProgress(pct) {
+  if (pct !== null) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-pct').textContent = pct + '%';
+  }
+}
+
+function startElapsedTimer() {
+  elapsedTimer = setInterval(() => {
+    const sec = ((Date.now() - startTime) / 1000).toFixed(1);
+    document.getElementById('stat-elapsed').textContent = sec + 's';
+  }, 200);
+}
+
+function finishRun(payload) {
+  isRunning = false;
+  clearInterval(elapsedTimer);
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-run').innerHTML = '▶ 开始生成';
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  document.getElementById('stat-elapsed').textContent = elapsed + 's';
+  document.getElementById('header-status').textContent = `完成 · ${elapsed}s`;
+
+  updateProgress();
+  const status = payload?.status || 'ok';
+  addLog('SYS', 'tag-sys', `✓ 任务完成  状态:${status}  耗时:${elapsed}s`);
+}
+</script>
+</body>
+</html>

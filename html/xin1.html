@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vercel Mesh Era - Rationale Panel</title>
+  <style>
+    /* 引入 Vercel 官方字体 Geist & Geist Mono */
+    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap');
+
+    :root {
+      /* Palette */
+      --bg-ground: #000000;
+      --bg-surface1: #0A0A0A;
+      --bg-surface2: #111111;
+      --hairline: rgba(255, 255, 255, 0.08);
+      --hairline-solid: #1F1F1F;
+      --text-primary: #EDEDED;
+      --text-secondary: #888888;
+      
+      /* Typography */
+      --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+      --font-mono: "Geist Mono", monospace;
+      
+      /* Motion */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-ground); /* 纯黑底色 */
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ───────────────────────────
+       主页与触发按钮样式 (新增)
+       ─────────────────────────── */
+    .landing-container {
+      text-align: center;
+      z-index: 1;
+    }
+    .landing-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+    }
+    .landing-subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .btn-trigger {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--hairline);
+      color: var(--text-primary);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 200ms var(--ease-out);
+    }
+    .btn-trigger:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ───────────────────────────
+       弹窗与遮罩层样式 (优化过渡)
+       ─────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      
+      /* 初始隐藏状态 */
+      opacity: 0;
+      visibility: hidden;
+      backdrop-filter: blur(0px);
+      transition: opacity 400ms var(--ease-out), visibility 400ms, backdrop-filter 400ms var(--ease-out);
+    }
+
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+      backdrop-filter: blur(12px);
+    }
+
+    .panel {
+      position: relative;
+      width: 520px;
+      max-height: 85vh;
+      background: var(--bg-surface1);
+      border: 1px solid var(--hairline);
+      border-radius: 16px;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+      
+      /* 初始动画状态 */
+      opacity: 0;
+      transform: scale(0.96) translateY(12px);
+      transition: transform 500ms var(--ease-out), opacity 500ms var(--ease-out);
+    }
+
+    .overlay.show .panel {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    /* 漂浮的 Mesh 动画 */
+    @keyframes meshDrift {
+      0% { transform: scale(1) translate(0, 0); }
+      33% { transform: scale(1.05) translate(2%, 2%); }
+      66% { transform: scale(0.95) translate(-2%, -1%); }
+      100% { transform: scale(1) translate(0, 0); }
+    }
+
+    /* 核心视觉：顶部弥散渐变网格 */
+    .panel-mesh-glow {
+      position: absolute;
+      top: -50px;
+      left: -20%;
+      right: -20%;
+      height: 250px;
+      background: 
+        radial-gradient(ellipse at 30% 20%, rgba(0, 112, 243, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 10%, rgba(255, 0, 128, 0.1) 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 30%, rgba(245, 166, 35, 0.08) 0%, transparent 60%);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+      animation: meshDrift 15s ease-in-out infinite;
+    }
+
+    /* 内部内容 */
+    .panel-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 24px;
+      padding-bottom: 32px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .header-title { 
+      font-size: 16px; 
+      font-weight: 500; 
+      letter-spacing: -0.02em; 
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #EDEDED;
+      box-shadow: 0 0 12px rgba(237, 237, 237, 0.8);
+    }
+
+    .close-btn { 
+      border: none; 
+      background: transparent; 
+      font-size: 20px; 
+      color: var(--text-secondary); 
+      cursor: pointer; 
+      padding: 4px;
+      line-height: 1;
+      transition: color 200ms var(--ease-out);
+    }
+    .close-btn:hover { color: var(--text-primary); }
+
+    .scroll-content { 
+      overflow-y: auto; 
+      flex: 1; 
+      padding-right: 8px; 
+    }
+
+    .scroll-content::-webkit-scrollbar { width: 4px; }
+    .scroll-content::-webkit-scrollbar-thumb { background: var(--hairline-solid); border-radius: 4px; }
+    .scroll-content::-webkit-scrollbar-track { background: transparent; }
+
+    .section { margin-bottom: 32px; }
+    .section:last-child { margin-bottom: 0; }
+
+    .section-header { 
+      display: flex; 
+      align-items: baseline; 
+      gap: 12px; 
+      margin-bottom: 12px;
+    }
+    
+    .badge { 
+      font-family: var(--font-mono); 
+      font-size: 11px; 
+      color: var(--text-secondary); 
+    }
+
+    .section-title { 
+      font-size: 14px; 
+      font-weight: 500; 
+      color: var(--text-primary); 
+    }
+
+    .section-subtitle { 
+      font-size: 13px; 
+      color: var(--text-secondary); 
+      margin-left: auto;
+    }
+
+    .chip-container { display: flex; flex-wrap: wrap; gap: 8px; }
+    
+    .chip { 
+      padding: 6px 12px; 
+      border-radius: 8px; 
+      background: var(--bg-surface2); 
+      border: 1px solid var(--hairline); 
+      color: var(--text-primary); 
+      font-size: 13px; 
+      font-weight: 400; 
+      transition: border-color 200ms var(--ease-out);
+    }
+    .chip:hover { border-color: rgba(255, 255, 255, 0.2); }
+
+    /* Difficulty Bar */
+    .diff-bar { display: flex; gap: 8px; align-items: center; }
+    .diff-level-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    
+    .diff-block { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 8px; 
+      font-size: 14px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-family: var(--font-mono); 
+      background: var(--bg-surface2);
+      border: 1px solid var(--hairline);
+      color: var(--text-secondary);
+      transition: all 200ms var(--ease-out);
+    }
+    .diff-label { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); min-height: 14px; }
+
+    .diff-block.from { 
+      background: var(--bg-ground); 
+      border: 1px dashed rgba(255, 255, 255, 0.3); 
+      color: var(--text-primary); 
+    }
+    
+    .diff-block.target { 
+      background: #FFFFFF; 
+      border: 1px solid #FFFFFF; 
+      color: #000000; 
+      font-weight: 600; 
+    }
+    .diff-label.target-label { color: var(--text-primary); }
+
+    /* Terminal */
+    .terminal-container {
+      background: var(--bg-ground);
+      border: 1px solid var(--hairline-solid);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .terminal-container::before {
+      content: '';
+      position: absolute;
+      bottom: -50px;
+      left: -50%;
+      width: 200%;
+      height: 100px;
+      background: radial-gradient(ellipse at 50% 50%, rgba(0, 112, 243, 0.1), rgba(255, 0, 128, 0.1), transparent 60%);
+      opacity: 0;
+      transition: opacity 300ms var(--ease-out);
+      filter: blur(20px);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .terminal-container:hover::before { opacity: 1; }
+
+    .terminal-row { 
+      display: flex; 
+      gap: 16px; 
+      position: relative;
+      z-index: 1;
+    }
+    .t-key { color: var(--text-secondary); width: 100px; flex-shrink: 0; }
+    .t-val { color: var(--text-primary); }
+    .t-accent { color: #888888; } 
+
+    .source-list { display: grid; gap: 8px; margin-top: 16px; }
+    .source-card { 
+      padding: 12px 16px; 
+      border-radius: 8px; 
+      background: var(--bg-surface2); 
+      border: 1px solid var(--hairline-solid); 
+      display: flex; 
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 200ms var(--ease-out);
+    }
+    .source-card:hover { border-color: rgba(255, 255, 255, 0.15); }
+    .source-title { font-size: 13px; color: var(--text-primary); display: flex; gap: 8px; align-items: center; }
+    .source-meta { display: flex; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+
+    /* Footer CTA */
+    .footer {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-primary {
+      background: #FFFFFF;
+      color: #000000;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      height: 32px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: transform 200ms var(--ease-out), background 200ms;
+    }
+    .btn-primary:hover {
+      background: #EDEDED;
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+
+  <main class="landing-container">
+    <div class="landing-mesh"></div>
+    <h1 class="landing-title">Agentic Workflow Demo</h1>
+    <p class="landing-subtitle">Inspect how the agent deduced the personalized path.</p>
+    <button class="btn-trigger" onclick="openModal()">Inspect Rationale</button>
+  </main>
+
+  <div class="overlay" id="rationale-modal" onclick="closeModal()" aria-hidden="true">
+    
+    <div class="panel" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      
+      <div class="panel-mesh-glow"></div>
+
+      <div class="panel-content">
+        <header class="header">
+          <h3 id="dialog-title" class="header-title">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            Generation Rationale
+          </h3>
+          <button class="close-btn" onclick="closeModal()" aria-label="Close" title="Close">×</button>
+        </header>
+
+        <div class="scroll-content">
+          
+          <section class="section">
+            <div class="section-header">
+              <span class="badge">01</span>
+              <strong class="section-title">Profile Matches</strong>
+            </div>
+            <div class="chip-container">
+              <span class="chip">Weak logical reasoning</span>
+              <span class="chip">Spatial imagination deficit</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-header">
+              <span class="badge">02</span>
+              <strong class="section-title">Addressed Weaknesses</strong>
+            </div>
+            <div class="chip-container">
+              <span class="chip">Solid Geometry Axioms</span>
+              <span class="chip">Auxiliary Line Construction</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-header">
+              <span class="badge">03</span>
+              <strong class="section-title">Difficulty Shift</strong>
+              <span class="section-subtitle">Level 3 → 4</span>
+            </div>
+            <div class="diff-bar">
+              <div class="diff-level-wrapper">
+                <div class="diff-block">1</div>
+                <span class="diff-label"></span>
+              </div>
+              <div class="diff-level-wrapper">
+                <div class="diff-block">2</div>
+                <span class="diff-label"></span>
+              </div>
+              <div class="diff-level-wrapper">
+                <div class="diff-block from">3</div>
+                <span class="diff-label">From</span>
+              </div>
+              <div class="diff-level-wrapper">
+                <div class="diff-block target">4</div>
+                <span class="diff-label target-label">Target</span>
+              </div>
+              <div class="diff-level-wrapper">
+                <div class="diff-block">5</div>
+                <span class="diff-label"></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-header">
+              <span class="badge">04</span>
+              <strong class="section-title">Production Logs</strong>
+            </div>
+            
+            <div class="terminal-container">
+              <div class="terminal-row">
+                <span class="t-key">agent_node</span>
+                <span class="t-val">math-edu-gen-v2</span>
+              </div>
+              <div class="terminal-row">
+                <span class="t-key">prompt_hash</span>
+                <span class="t-val t-accent">ab9f23c</span>
+              </div>
+              <div class="terminal-row">
+                <span class="t-key">runtime</span>
+                <span class="t-val">gpt-4o-2024-05-13</span>
+              </div>
+              <div class="terminal-row" style="margin-top: 8px; color: var(--text-secondary)">
+                <span>> Fetching verified sources... [Done]</span>
+              </div>
+            </div>
+
+            <div class="source-list">
+              <div class="source-card">
+                <div class="source-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                  Math Textbook Vol.2
+                </div>
+                <div class="source-meta">
+                  <span>pg.42</span>
+                  <span>match: 89%</span>
+                </div>
+              </div>
+              <div class="source-card">
+                <div class="source-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                  Geometry DB Archive
+                </div>
+                <div class="source-meta">
+                  <span>pg.105</span>
+                  <span>match: 75%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="footer">
+          <button class="btn-primary" onclick="closeModal()">Understood</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('rationale-modal');
+
+    // 打开弹窗逻辑
+    function openModal() {
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden'; // 防止底层滚动
+    }
+
+    // 关闭弹窗逻辑
+    function closeModal() {
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden', 'true');
+      
+      // 等待 CSS 动画完成后恢复滚动
+      setTimeout(() => {
+        document.body.style.overflow = '';
+      }, 400); // 对应 transition 时间
+    }
+
+    // 键盘 Esc 键关闭监听
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('show')) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

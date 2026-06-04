@@ -2,10 +2,13 @@
 HTTP API 路由。
 
 端点：
-- POST /api/profile/extract           调用 ProfileAgent，返回 task_id
-- POST /api/plan                      调用 PlannerAgent，返回 task_id 与计划
-- GET  /api/tasks/{task_id}/events    订阅 SSE 事件流（杀手锏一的后端入口）
-- GET  /api/health                    健康检查
+- POST /api/profile/extract             调用 ProfileAgent，返回 task_id
+- POST /api/plan                        调用 PlannerAgent，返回 task_id 与计划
+- POST /api/generate                    固定 7 步流水线（GenerateFlow）
+- POST /api/generate/tool-calling       MainAgent 动态决策模式（ToolCallingFlow）
+- GET  /api/tasks/{task_id}/events      订阅 SSE 事件流（NDJSON）
+- GET  /api/tasks/{task_id}/results     获取完整生成产物（ResultsPanel 用）
+- GET  /api/health                      健康检查
 """
 
 from __future__ import annotations
@@ -328,27 +331,61 @@ def build_router(ctx: AppContext) -> APIRouter:
     class GenerateResponse(BaseModel):
         task_id: str
 
+    def _save_outputs(task_id: str, outputs: GenerateOutputs) -> None:
+        """序列化并持久化生成结果（缓存 + SQLite）。"""
+        serialized = _serialize_outputs(outputs)
+        _GENERATE_OUTPUT_CACHE[task_id] = serialized
+        _GENERATE_STORE.save(task_id, serialized)
+
     @router.post("/generate", response_model=GenerateResponse)
     async def generate(payload: GenerateRequest) -> GenerateResponse:
-        """触发完整的 7-Agent DAG 演示流。
+        """固定 7 步流水线（GenerateFlow）。
 
-        前端流程与 /api/plan 一致：
+        生成 agent 由 PlannerAgent 输出动态决定（Document/Exercise/Visual/Code 按需调用）。
+
+        前端流程：
         1. POST 拿 task_id
         2. EventSource("/api/tasks/{task_id}/events") 订阅
-        3. AgentTracePanel 一次订阅看到 7 行 Agent 全亮
-        4. 任务结束后调 /api/tasks/{task_id}/results 拿最终产物（用于 ResultsPanel）
+        3. AgentTracePanel 一次订阅看到全部 Agent 行依次亮起
+        4. 任务结束后调 /api/tasks/{task_id}/results 拿最终产物
         """
         task_id = new_task_id("gen")
 
         async def _run() -> None:
             try:
                 outputs = await ctx.orchestrator.run_generate(task_id, payload)
-                _GENERATE_OUTPUT_CACHE[task_id] = _serialize_outputs(outputs)
-                _GENERATE_STORE.save(task_id, _GENERATE_OUTPUT_CACHE[task_id])
+                _save_outputs(task_id, outputs)
             except Exception:
                 logger.exception("GenerateFlow 失败 task_id=%s", task_id)
             finally:
                 await ctx.event_bus.close_task(task_id)
+
+        asyncio.create_task(_run())
+        return GenerateResponse(task_id=task_id)
+
+    @router.post("/generate/tool-calling", response_model=GenerateResponse)
+    async def generate_tool_calling(payload: GenerateRequest) -> GenerateResponse:
+        """MainAgent Supervisor 动态决策模式（ToolCallingFlow）。
+
+        与 /api/generate 的区别：
+        - /api/generate          固定流水线，快且稳定（推荐演示用）
+        - /api/generate/tool-calling  LLM 每轮决定调哪些工具，支持并行多工具，
+                                      适合展示 Agent 自主规划能力
+
+        SSE 事件流中会额外出现 MainAgent 的 supervisor.start / supervisor.decision /
+        supervisor.done 事件，可在前端 AgentTracePanel 展示调度器思考过程。
+
+        前端流程与 /api/generate 完全一致，只需换端点即可。
+        """
+        task_id = new_task_id("tc")
+
+        async def _run() -> None:
+            try:
+                outputs = await ctx.orchestrator.run_tool_calling(task_id, payload)
+                _save_outputs(task_id, outputs)
+            except Exception:
+                logger.exception("ToolCallingFlow 失败 task_id=%s", task_id)
+            # run_tool_calling 内部已调 event_bus.close_task，此处不再重复
 
         asyncio.create_task(_run())
         return GenerateResponse(task_id=task_id)

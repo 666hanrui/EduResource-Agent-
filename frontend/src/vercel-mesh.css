@@ -1,19 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Outfit:wght@300..800&display=swap');
+
 :root {
   --mesh-black: #000000;
-  --mesh-surface-1: #0a0a0a;
-  --mesh-surface-2: #111111;
-  --mesh-surface-3: #151515;
-  --mesh-hairline: rgba(255, 255, 255, 0.08);
-  --mesh-hairline-strong: rgba(255, 255, 255, 0.16);
-  --mesh-text: #ededed;
-  --mesh-muted: #888888;
-  --mesh-dim: #5f5f5f;
+  --mesh-surface-1: #060606;
+  --mesh-surface-2: #0b0b0c;
+  --mesh-surface-3: #121214;
+  --mesh-hairline: rgba(255, 255, 255, 0.055);
+  --mesh-hairline-strong: rgba(255, 255, 255, 0.12);
+  --mesh-text: #f4f4f5;
+  --mesh-muted: #a1a1aa;
+  --mesh-dim: #52525b;
   --mesh-cyan: #0070f3;
   --mesh-magenta: #ff0080;
   --mesh-orange: #f5a623;
-  --mesh-radius-sm: 8px;
-  --mesh-radius-md: 12px;
-  --mesh-radius-lg: 16px;
+  --mesh-radius-sm: 6px;
+  --mesh-radius-md: 10px;
+  --mesh-radius-lg: 14px;
   --mesh-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -21,8 +23,9 @@
   min-height: 100vh;
   color: var(--mesh-text);
   background: var(--mesh-black);
-  font-family: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Geist", "Outfit", system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
 }
 
 .mesh-page * {
@@ -35,21 +38,24 @@
   min-height: 100vh;
 }
 
+/* Beautiful dynamic 3D-like drifting background mesh */
 .mesh-shell::before {
   content: "";
   position: fixed;
-  inset: -28% -18% auto -18%;
+  inset: -35% -20% auto -20%;
   z-index: -2;
-  height: 760px;
+  height: 900px;
   background:
-    radial-gradient(circle at 22% 36%, rgba(0, 112, 243, 0.42), transparent 28%),
-    radial-gradient(circle at 58% 18%, rgba(255, 0, 128, 0.26), transparent 26%),
-    radial-gradient(circle at 78% 46%, rgba(245, 166, 35, 0.22), transparent 26%);
-  filter: blur(72px) saturate(0.82);
-  opacity: 0.86;
-  animation: mesh-drift 18s var(--mesh-ease) infinite alternate;
+    radial-gradient(circle at 15% 30%, rgba(0, 112, 243, 0.35), transparent 35%),
+    radial-gradient(circle at 50% 15%, rgba(255, 0, 128, 0.22), transparent 30%),
+    radial-gradient(circle at 85% 40%, rgba(245, 166, 35, 0.18), transparent 30%),
+    radial-gradient(circle at 35% 60%, rgba(0, 112, 243, 0.15), transparent 25%);
+  filter: blur(100px) saturate(1.15);
+  opacity: 0.95;
+  animation: mesh-drift 24s ease infinite alternate;
 }
 
+/* Frosted overlay with grid lines */
 .mesh-shell::after {
   content: "";
   position: fixed;
@@ -57,57 +63,72 @@
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.1), #000 72%),
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: auto, 64px 64px, 64px 64px;
-  mask-image: linear-gradient(to bottom, black 0 64%, transparent 100%);
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.9) 70%, #000 100%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: auto, 56px 56px, 56px 56px;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.9) 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.9) 50%, transparent 100%);
 }
 
 .mesh-nav {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  width: min(1180px, calc(100% - 32px));
+  width: min(1200px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 18px 0;
-  backdrop-filter: blur(16px);
+  padding: 16px 20px;
+  margin-top: 12px;
+  border: 1px solid var(--mesh-hairline);
+  border-radius: 999px;
+  background: rgba(6, 6, 6, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .mesh-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: var(--mesh-text);
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   text-decoration: none;
+  font-family: "Outfit", sans-serif;
+  transition: opacity 200ms ease;
+}
+
+.mesh-brand:hover {
+  opacity: 0.9;
 }
 
 .mesh-brand-mark {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--mesh-hairline-strong);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.02));
+  font-family: "Geist Mono", monospace;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .mesh-nav-links {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px;
+  gap: 4px;
+  padding: 3px;
   border: 1px solid var(--mesh-hairline);
   border-radius: 999px;
-  background: rgba(10, 10, 10, 0.72);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .mesh-nav-link,
@@ -117,13 +138,14 @@
   align-items: center;
   justify-content: center;
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 14px;
-  font-weight: 520;
+  font-size: 13.5px;
+  font-weight: 550;
   text-decoration: none;
-  transition: transform 200ms var(--mesh-ease), border-color 200ms var(--mesh-ease), background 200ms var(--mesh-ease), color 200ms var(--mesh-ease);
+  transition: all 250ms var(--mesh-ease);
+  cursor: pointer;
 }
 
 .mesh-nav-link {
@@ -133,116 +155,151 @@
 .mesh-nav-link:hover,
 .mesh-nav-link.is-active {
   color: var(--mesh-text);
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .mesh-primary-button {
   border-color: #ffffff;
   background: #ffffff;
   color: #000000;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
+  font-weight: 600;
 }
 
-.mesh-primary-button:hover,
-.mesh-ghost-button:hover {
-  transform: translateY(-1px);
+.mesh-primary-button:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25);
+}
+
+.mesh-primary-button:active {
+  transform: translateY(-0.5px);
 }
 
 .mesh-ghost-button {
   border-color: var(--mesh-hairline-strong);
   color: var(--mesh-text);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mesh-ghost-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 .mesh-main {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1200px, calc(100% - 48px));
   margin: 0 auto;
 }
 
 .mesh-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+  gap: 56px;
   align-items: center;
-  min-height: calc(100vh - 84px);
-  padding: 72px 0 96px;
+  min-height: calc(90vh - 84px);
+  padding: 60px 0 80px;
 }
 
 .mesh-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
-  padding: 6px 10px;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 6px 14px;
   border: 1px solid var(--mesh-hairline);
   border-radius: 999px;
   color: var(--mesh-muted);
-  background: rgba(255,255,255,0.035);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .mesh-pulse {
-  width: 7px;
-  height: 7px;
+  position: relative;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #21c55d;
-  box-shadow: 0 0 18px rgba(33, 197, 93, 0.7);
+  background: #10b981;
+}
+
+.mesh-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: #10b981;
+  opacity: 0.4;
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
 }
 
 .mesh-title {
   margin: 0;
-  max-width: 800px;
+  max-width: 850px;
   color: var(--mesh-text);
-  font-size: clamp(46px, 7vw, 96px);
-  line-height: 0.92;
-  font-weight: 620;
-  letter-spacing: -0.075em;
+  font-size: clamp(48px, 6.5vw, 92px);
+  line-height: 0.94;
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  font-family: "Outfit", sans-serif;
 }
 
 .mesh-title span {
   color: transparent;
-  background: linear-gradient(90deg, #fff, #bdbdbd 42%, #fff);
+  background: linear-gradient(135deg, #ffffff 30%, #a1a1aa 70%, #ffffff 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
 
 .mesh-subtitle {
-  max-width: 660px;
-  margin: 24px 0 0;
+  max-width: 640px;
+  margin: 28px 0 0;
   color: var(--mesh-muted);
-  font-size: 17px;
-  line-height: 1.72;
+  font-size: 16.5px;
+  line-height: 1.7;
+  font-weight: 400;
 }
 
 .mesh-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 32px;
+  gap: 16px;
+  margin-top: 36px;
 }
 
+/* Premium panel glassmorphic effect */
 .mesh-terminal,
 .mesh-card,
 .mesh-panel {
   border: 1px solid var(--mesh-hairline);
   border-radius: var(--mesh-radius-lg);
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025));
+  background: linear-gradient(180deg, rgba(15, 15, 17, 0.75) 0%, rgba(10, 10, 12, 0.45) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 300ms var(--mesh-ease);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .mesh-terminal {
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .mesh-terminal-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--mesh-hairline);
   color: var(--mesh-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  font-family: "Geist Mono", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
 }
 
 .mesh-dots {
@@ -251,55 +308,75 @@
 }
 
 .mesh-dots span {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.22);
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 200ms ease;
 }
 
+.mesh-terminal:hover .mesh-dots span:nth-child(1) { background: #ff5f56; }
+.mesh-terminal:hover .mesh-dots span:nth-child(2) { background: #ffbd2e; }
+.mesh-terminal:hover .mesh-dots span:nth-child(3) { background: #27c93f; }
+
 .mesh-terminal-body {
-  padding: 18px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  padding: 22px;
+  font-family: "Geist Mono", monospace;
+  font-size: 12.5px;
   line-height: 1.8;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .mesh-log-line {
   display: grid;
-  grid-template-columns: 82px 1fr;
-  gap: 12px;
+  grid-template-columns: 88px 1fr;
+  gap: 14px;
   color: var(--mesh-muted);
+  margin-bottom: 8px;
+}
+
+.mesh-log-line:last-child {
+  margin-bottom: 0;
+}
+
+/* Interactive cursor on the last log line */
+.mesh-log-line:last-child span::after {
+  content: " █";
+  color: var(--mesh-cyan);
+  animation: blink-cursor 1s infinite steps(2, start);
 }
 
 .mesh-log-line strong {
   color: var(--mesh-text);
-  font-weight: 520;
+  font-weight: 600;
 }
 
 .mesh-log-ok {
-  color: #21c55d;
+  color: #10b981;
+  font-weight: 700;
 }
 
 .mesh-section {
-  padding: 88px 0;
+  padding: 96px 0;
   border-top: 1px solid var(--mesh-hairline);
 }
 
 .mesh-section-head {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: 32px;
+  margin-bottom: 40px;
 }
 
 .mesh-section h2 {
   margin: 0;
-  max-width: 720px;
-  font-size: clamp(30px, 4vw, 56px);
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: -0.055em;
+  max-width: 780px;
+  font-size: clamp(32px, 4.5vw, 60px);
+  line-height: 1.05;
+  font-weight: 750;
+  letter-spacing: -0.05em;
+  font-family: "Outfit", sans-serif;
 }
 
 .mesh-section p {
@@ -310,7 +387,7 @@
 .mesh-grid-2,
 .mesh-metric-grid {
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .mesh-grid-3 {
@@ -328,20 +405,28 @@
 .mesh-card,
 .mesh-panel {
   position: relative;
-  padding: 22px;
+  padding: 28px;
   overflow: hidden;
 }
 
+/* Subtle elegant glow that highlights when hovered */
 .mesh-card::before,
 .mesh-panel::before {
   content: "";
   position: absolute;
-  inset: auto 10% -58% 10%;
-  height: 160px;
-  background: radial-gradient(circle at center, rgba(0,112,243,0.18), transparent 62%);
+  inset: auto 5% -65% 5%;
+  height: 220px;
+  background: radial-gradient(circle at center, rgba(0, 112, 243, 0.15), rgba(255, 0, 128, 0.08) 50%, transparent 75%);
   opacity: 0;
-  transition: opacity 220ms var(--mesh-ease);
+  transition: opacity 350ms var(--mesh-ease);
   pointer-events: none;
+}
+
+.mesh-card:hover,
+.mesh-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 112, 243, 0.08);
 }
 
 .mesh-card:hover::before,
@@ -351,51 +436,67 @@
 
 .mesh-card h3,
 .mesh-panel h3 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: var(--mesh-text);
-  font-size: 18px;
-  font-weight: 580;
+  font-size: 19px;
+  font-weight: 650;
   letter-spacing: -0.02em;
+  font-family: "Outfit", sans-serif;
 }
 
 .mesh-card p,
 .mesh-panel p {
   margin: 0;
   color: var(--mesh-muted);
-  line-height: 1.65;
+  line-height: 1.68;
+  font-size: 14.5px;
 }
 
 .mesh-card small,
 .mesh-mono {
   color: var(--mesh-dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
 }
 
 .mesh-metric {
-  padding: 18px;
+  padding: 24px;
   border: 1px solid var(--mesh-hairline);
   border-radius: var(--mesh-radius-md);
-  background: rgba(255,255,255,0.035);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.005) 100%);
+  transition: all 300ms var(--mesh-ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.mesh-metric:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .mesh-metric strong {
   display: block;
   color: var(--mesh-text);
-  font-size: 30px;
-  font-weight: 600;
+  font-size: 36px;
+  font-weight: 700;
   letter-spacing: -0.04em;
+  font-family: "Outfit", sans-serif;
+  margin-bottom: 4px;
 }
 
 .mesh-metric span {
   color: var(--mesh-muted);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
 .mesh-dashboard {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: 18px;
+  gap: 20px;
   min-height: calc(100vh - 84px);
   padding: 24px 0 40px;
 }
@@ -405,104 +506,114 @@
   top: 84px;
   align-self: start;
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
   border: 1px solid var(--mesh-hairline);
   border-radius: var(--mesh-radius-lg);
-  background: rgba(10,10,10,0.76);
+  background: rgba(6, 6, 6, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .mesh-side-item {
   display: grid;
-  gap: 4px;
-  padding: 12px;
+  gap: 6px;
+  padding: 14px;
   border: 1px solid transparent;
   border-radius: var(--mesh-radius-md);
   color: var(--mesh-muted);
   text-align: left;
   background: transparent;
   cursor: pointer;
+  transition: all 200ms ease;
 }
 
 .mesh-side-item.is-active,
 .mesh-side-item:hover {
   border-color: var(--mesh-hairline);
   color: var(--mesh-text);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .mesh-side-item strong {
   font-size: 14px;
+  font-weight: 600;
 }
 
 .mesh-side-item span {
   color: var(--mesh-muted);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .mesh-dashboard-main {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 20px;
 }
 
 .mesh-dashboard-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
-  padding: 28px;
+  padding: 36px;
   border: 1px solid var(--mesh-hairline);
   border-radius: var(--mesh-radius-lg);
   background:
-    radial-gradient(circle at 88% 24%, rgba(0,112,243,0.18), transparent 30%),
-    rgba(255,255,255,0.035);
+    radial-gradient(circle at 90% 20%, rgba(0, 112, 243, 0.16), transparent 35%),
+    rgba(255, 255, 255, 0.015);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .mesh-dashboard-hero h1 {
   margin: 0;
-  font-size: clamp(32px, 4vw, 58px);
-  line-height: 0.96;
+  font-size: clamp(34px, 4.5vw, 62px);
+  line-height: 0.98;
   letter-spacing: -0.06em;
-  font-weight: 620;
+  font-weight: 850;
+  font-family: "Outfit", sans-serif;
 }
 
 .mesh-table {
   width: 100%;
   border-collapse: collapse;
   color: var(--mesh-muted);
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
 .mesh-table th,
 .mesh-table td {
-  padding: 13px 0;
+  padding: 14px 10px;
   border-bottom: 1px solid var(--mesh-hairline);
   text-align: left;
 }
 
 .mesh-table th {
   color: var(--mesh-dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  font-weight: 500;
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .mesh-table td strong {
   color: var(--mesh-text);
-  font-weight: 520;
+  font-weight: 600;
 }
 
 .mesh-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 4px 10px;
   border: 1px solid var(--mesh-hairline);
   border-radius: 999px;
   color: var(--mesh-text);
-  background: rgba(255,255,255,0.04);
-  font-size: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11.5px;
+  font-weight: 550;
+  font-family: "Geist Mono", monospace;
 }
 
 .mesh-status::before {
@@ -510,39 +621,73 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #21c55d;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
 }
 
 .mesh-status.warn::before {
   background: var(--mesh-orange);
+  box-shadow: 0 0 8px var(--mesh-orange);
 }
 
+/* Beautiful custom animated progress bar */
 .mesh-progress {
-  height: 8px;
+  height: 6px;
   overflow: hidden;
-  border: 1px solid var(--mesh-hairline);
   border-radius: 999px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.02);
 }
 
 .mesh-progress span {
   display: block;
   width: var(--value);
   height: 100%;
-  background: linear-gradient(90deg, #ffffff, rgba(255,255,255,0.52));
+  background: linear-gradient(90deg, var(--mesh-cyan) 0%, var(--mesh-magenta) 50%, var(--mesh-orange) 100%);
+  background-size: 200% auto;
+  border-radius: 999px;
+  animation: progress-shimmer 4s linear infinite;
+  box-shadow: 0 0 10px rgba(0, 112, 243, 0.5);
+  transition: width 0.4s var(--mesh-ease);
 }
 
 .mesh-footer {
-  padding: 40px 0;
+  padding: 48px 0;
   border-top: 1px solid var(--mesh-hairline);
   color: var(--mesh-dim);
   text-align: center;
-  font-size: 13px;
+  font-size: 12.5px;
+  font-family: "Geist Mono", monospace;
+  letter-spacing: 0.02em;
 }
 
 @keyframes mesh-drift {
-  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
-  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(2%, 3%, 0) scale(1.08) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(-2%, 4%, 0) scale(0.95) rotate(-1deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.33); opacity: 1; }
+  80%, 100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes blink-cursor {
+  from, to { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @media (max-width: 980px) {
@@ -568,6 +713,8 @@
   .mesh-nav {
     align-items: flex-start;
     flex-direction: column;
+    width: calc(100% - 32px);
+    border-radius: var(--mesh-radius-lg);
   }
 
   .mesh-nav-links,
@@ -592,12 +739,16 @@
   }
 
   .mesh-terminal-body {
-    font-size: 12px;
+    font-size: 11.5px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mesh-shell::before {
+    animation: none;
+  }
+
+  .mesh-progress span {
     animation: none;
   }
 

@@ -32,6 +32,7 @@ import {
   RowBetween,
   ScorePill,
 } from './FreddiePrimitives';
+import { AdventureExplorationMap } from './AdventureExplorationMap';
 import './major-exploration.css';
 
 interface Props {
@@ -44,13 +45,6 @@ const LEVEL_OPTIONS: Array<{ value: ExplorationLevel; label: string }> = [
   { value: 'basic', label: '有一点基础' },
   { value: 'intermediate', label: '做过小项目' },
 ];
-
-const CATEGORY_LABELS = {
-  foundation: '基础',
-  core: '核心',
-  direction: '方向',
-  practice: '实践',
-};
 
 const PROFILE_LABELS: Record<string, string> = {
   professional_skills: '专业技能',
@@ -462,6 +456,13 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
             </div>
           </section>
 
+          <AdventureExplorationMap
+            plan={plan}
+            workspace={workspace}
+            activeDirection={activeMatchDirection}
+            onUseKnowledge={onUseKnowledge}
+          />
+
           {plan.agent_steps.length > 0 && (
             <Panel title="专业探索多 Agent 流水线" subtitle="从专业广度、12 维画像、方向匹配到蜗牛路径，全部以结构化证据串联。" action={<Badge>{plan.agent_steps.length} Agents</Badge>} cream>
               <div className="major-agent-grid">
@@ -550,7 +551,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
             </Panel>
           )}
 
-          <div className="major-grid-3">
+          <div className="major-grid-2">
             <Panel title="12 维探索画像">
               <div className="major-score-list">
                 {plan.dimension_scores.map((item) => (
@@ -559,18 +560,6 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
                     <ProgressBar value={item.score} />
                     <Probe>{item.next_probe}</Probe>
                   </div>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="专业知识广度地图">
-              <div className="major-card-grid">
-                {plan.knowledge_map.map((node) => (
-                  <button key={node.id} onClick={() => onUseKnowledge({ knowledge_id: node.id, knowledge_name: node.title, reason: node.why, suggested_difficulty: node.difficulty })} className="major-click-card" title={node.why}>
-                    <Chip>{CATEGORY_LABELS[node.category]}</Chip>
-                    <strong>{node.title}</strong>
-                    <Probe>难度 {node.difficulty}</Probe>
-                  </button>
                 ))}
               </div>
             </Panel>

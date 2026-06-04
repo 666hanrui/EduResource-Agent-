@@ -23,6 +23,8 @@ interface State {
   connected: boolean;
 }
 
+const defaultTraceEndpoint = (id: string) => `/api/tasks/${id}/events`;
+
 type Action =
   | { kind: 'event'; event: AgentEvent }
   | { kind: 'connected'; connected: boolean }
@@ -111,8 +113,7 @@ export function useAgentTraceSSE(
   taskId: string | null,
   options: UseAgentTraceSSEOptions = {},
 ) {
-  const endpoint =
-    options.endpoint ?? ((id: string) => `/api/tasks/${id}/events`);
+  const endpoint = options.endpoint ?? defaultTraceEndpoint;
 
   const [state, dispatch] = useReducer(reducer, {
     trace: { taskId: taskId ?? '', agents: {} },

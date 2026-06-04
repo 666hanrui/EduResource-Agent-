@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>星槎 · 太空探索博物馆 | Stellar Voyager Museum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Serif+SC:wght@400;600;900&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-0: #03030a;
+    --bg-1: #07071a;
+    --bg-2: #0d0a25;
+    --ink: #e9ecff;
+    --ink-dim: #9ba3c7;
+    --ink-mute: #5a608a;
+    --accent: #7cf0ff;
+    --accent-2: #b388ff;
+    --accent-3: #ff7ad4;
+    --gold: #f7c873;
+    --grid: rgba(124, 240, 255, 0.08);
+  }
+
+  html, body {
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: 'Noto Serif SC', 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(124, 88, 255, 0.18), transparent 55%),
+      radial-gradient(ellipse at 85% 30%, rgba(124, 240, 255, 0.10), transparent 50%),
+      radial-gradient(ellipse at 50% 90%, rgba(255, 122, 212, 0.08), transparent 60%),
+      var(--bg-0);
+    z-index: -3;
+  }
+
+  #stars {
+    position: fixed; inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  /* ============ NAV ============ */
+  nav.nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 22px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(14px) saturate(140%);
+    background: linear-gradient(180deg, rgba(3,3,10,0.7), rgba(3,3,10,0.1));
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: padding .3s ease, background .3s ease;
+  }
+  nav.nav.scrolled { padding: 14px 48px; background: rgba(3,3,10,0.85); }
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 38px; height: 38px; position: relative;
+    display: grid; place-items: center;
+  }
+  .brand-mark svg { width: 100%; height: 100%; }
+  .brand-name {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700; letter-spacing: 4px;
+    font-size: 14px;
+    background: linear-gradient(90deg, #fff, #7cf0ff);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .brand-sub {
+    display:block; font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 3px; color: var(--ink-mute);
+    margin-top: 2px;
+  }
+
+  .nav-links { display: flex; gap: 36px; align-items: center; }
+  .nav-links a {
+    color: var(--ink-dim); text-decoration: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase;
+    transition: color .3s; position: relative;
+  }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-links a::after {
+    content:''; position:absolute; left:0; bottom:-6px;
+    width:0; height:1px; background: var(--accent);
+    transition: width .3s;
+  }
+  .nav-links a:hover::after { width: 100%; }
+
+  .nav-cta {
+    padding: 10px 22px;
+    border: 1px solid rgba(124, 240, 255, 0.4);
+    color: var(--accent);
+    background: rgba(124, 240, 255, 0.05);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+    transition: all .3s;
+  }
+  .nav-cta:hover {
+    background: var(--accent); color: var(--bg-0);
+    box-shadow: 0 0 30px rgba(124, 240, 255, 0.5);
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 48px;
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    opacity: .5;
+  }
+
+  /* Planet visual */
+  .planet-wrap {
+    position: absolute;
+    right: -14vw; top: 50%;
+    transform: translateY(-50%);
+    width: 70vw; height: 70vw;
+    max-width: 900px; max-height: 900px;
+    pointer-events: none;
+  }
+  .planet {
+    position: absolute; inset: 12%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 30%, #ffd9a8 0%, #f7a76c 18%, #c8541a 38%, #5a1b0e 65%, #1a0408 95%),
+      #2a0810;
+    box-shadow:
+      inset -40px -40px 120px rgba(0,0,0,0.85),
+      inset 30px 30px 80px rgba(255, 200, 150, 0.15),
+      0 0 80px rgba(255, 130, 80, 0.25),
+      0 0 200px rgba(124, 88, 255, 0.15);
+    filter: contrast(1.05);
+    animation: planetSpin 120s linear infinite;
+  }
+  .planet::before {
+    content:''; position: absolute; inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(ellipse 30% 8% at 60% 40%, rgba(0,0,0,0.25), transparent),
+      radial-gradient(ellipse 20% 6% at 30% 65%, rgba(0,0,0,0.3), transparent),
+      radial-gradient(ellipse 15% 4% at 70% 70%, rgba(0,0,0,0.2), transparent),
+      radial-gradient(ellipse 25% 7% at 45% 25%, rgba(255, 220, 180, 0.15), transparent);
+    mix-blend-mode: multiply;
+  }
+  .planet-glow {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255, 180, 120, 0.35), transparent 55%);
+    filter: blur(40px);
+    animation: planetSpin 120s linear infinite reverse;
+  }
+
+  .ring {
+    position: absolute; inset: 0;
+    border: 1px dashed rgba(124, 240, 255, 0.25);
+    border-radius: 50%;
+    animation: ringSpin 80s linear infinite;
+  }
+  .ring.r2 { inset: -8%; border-color: rgba(179, 136, 255, 0.18); animation-duration: 140s; animation-direction: reverse; border-style: solid; border-width: 1px;}
+  .ring.r3 { inset: -16%; border-color: rgba(124, 240, 255, 0.10); animation-duration: 200s; }
+
+  .ring .satellite {
+    position: absolute; top: -4px; left: 50%;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent), 0 0 30px var(--accent);
+    transform: translateX(-50%);
+  }
+  .ring.r2 .satellite { background: var(--accent-2); box-shadow: 0 0 12px var(--accent-2), 0 0 30px var(--accent-2); }
+
+  @keyframes planetSpin { to { transform: rotate(360deg); } }
+  @keyframes ringSpin { to { transform: rotate(360deg); } }
+
+  .hero-content {
+    position: relative; z-index: 2;
+    max-width: 1400px; width: 100%;
+    margin: 0 auto;
+  }
+
+  .hero-meta {
+    display: flex; align-items: center; gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px;
+    color: var(--ink-mute);
+    margin-bottom: 32px;
+    text-transform: uppercase;
+  }
+  .hero-meta .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(1.4); }
+  }
+
+  .hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: clamp(48px, 9vw, 140px);
+    line-height: 0.95;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    background: linear-gradient(180deg, #ffffff 0%, #c8d0ff 60%, #6b73a8 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .hero-title .accent {
+    display: inline-block;
+    background: linear-gradient(135deg, #7cf0ff 0%, #b388ff 50%, #ff7ad4 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    font-style: italic;
+  }
+
+  .hero-sub {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(14px, 1.4vw, 18px);
+    letter-spacing: 8px;
+    color: var(--ink-dim);
+    margin-bottom: 36px;
+    text-transform: uppercase;
+  }
+
+  .hero-desc {
+    max-width: 540px;
+    font-size: 16px;
+    line-height: 1.9;
+    color: var(--ink-dim);
+    margin-bottom: 48px;
+  }
+
+  .hero-actions {
+    display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  }
+  .btn-primary {
+    position: relative;
+    padding: 18px 38px;
+    background: linear-gradient(135deg, #7cf0ff, #b388ff);
+    color: #0a0820;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700; font-size: 13px;
+    letter-spacing: 3px; text-transform: uppercase;
+    border: none; cursor: pointer;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 12px;
+    overflow: hidden;
+    transition: transform .3s, box-shadow .3s;
+    box-shadow: 0 10px 40px rgba(124, 240, 255, 0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 60px rgba(124, 240, 255, 0.5);
+  }
+  .btn-primary::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: translateX(-100%);
+    transition: transform .6s;
+  }
+  .btn-primary:hover::after { transform: translateX(100%); }
+
+  .btn-ghost {
+    padding: 18px 36px;
+    background: transparent;
+    color: var(--ink);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 500; font-size: 13px;
+    letter-spacing: 3px; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 12px;
+    transition: all .3s;
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124, 240, 255, 0.05);
+  }
+
+  .hero-stats {
+    position: absolute;
+    bottom: 60px; left: 48px;
+    display: flex; gap: 60px;
+    z-index: 2;
+  }
+  .stat-item .num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 32px; font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(124, 240, 255, 0.5);
+  }
+  .stat-item .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 40px; right: 48px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 3px;
+    color: var(--ink-mute);
+    writing-mode: vertical-lr;
+    z-index: 2;
+  }
+  .scroll-indicator::after {
+    content:'';
+    width: 1px; height: 50px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollLine 2s infinite;
+  }
+  @keyframes scrollLine {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform: scaleY(1); transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+
+  /* ============ SECTION COMMON ============ */
+  section { position: relative; padding: 140px 48px; }
+
+  .section-head {
+    max-width: 1400px; margin: 0 auto 80px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 40px; flex-wrap: wrap;
+  }
+  .section-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-tag::before {
+    content:''; width: 30px; height: 1px; background: var(--accent);
+  }
+  .section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    background: linear-gradient(180deg, #fff, #8a93cf);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .section-title em {
+    font-style: italic;
+    background: linear-gradient(135deg, #7cf0ff, #b388ff);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .section-lede {
+    max-width: 420px;
+    color: var(--ink-dim);
+    line-height: 1.9;
+    font-size: 15px;
+  }
+
+  /* ============ EXHIBITS ============ */
+  .exhibits {
+    background: linear-gradient(180deg, transparent, rgba(13, 10, 37, 0.6), transparent);
+  }
+
+  .exhibit-grid {
+    max-width: 1400px; margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+
+  .exhibit-card {
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.06);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+      rgba(7, 7, 26, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 48px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all .5s cubic-bezier(.2,.8,.2,1);
+    min-height: 480px;
+    display: flex; flex-direction: column;
+  }
+  .exhibit-card::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%),
+      rgba(124, 240, 255, 0.15), transparent 50%);
+    opacity: 0; transition: opacity .4s;
+    pointer-events: none;
+  }
+  .exhibit-card:hover { border-color: rgba(124, 240, 255, 0.3); transform: translateY(-6px); }
+  .exhibit-card:hover::before { opacity: 1; }
+  .exhibit-card:hover .exhibit-visual { transform: scale(1.05); }
+  .exhibit-card:hover .exhibit-arrow { transform: translate(8px, -8px); color: var(--accent); }
+
+  .exhibit-no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 3px;
+    color: var(--ink-mute);
+    margin-bottom: 24px;
+  }
+  .exhibit-visual {
+    width: 100%; height: 220px;
+    margin: 0 auto 32px;
+    position: relative;
+    transition: transform .6s ease;
+    display: grid; place-items: center;
+  }
+  .exhibit-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 32px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .exhibit-en {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .exhibit-desc {
+    color: var(--ink-dim);
+    line-height: 1.8; font-size: 14px;
+    margin-bottom: 24px;
+    flex: 1;
+  }
+  .exhibit-meta {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .exhibit-tags {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .exhibit-tag {
+    padding: 4px 10px;
+    background: rgba(124, 240, 255, 0.08);
+    border: 1px solid rgba(124, 240, 255, 0.15);
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1px;
+  }
+  .exhibit-arrow {
+    font-size: 24px;
+    color: var(--ink-mute);
+    transition: all .3s;
+  }
+
+  /* Exhibit visuals (SVG-based) */
+  .vis-moon { background: radial-gradient(circle at 35% 35%, #f5f1e8 0%, #d4cfc0 30%, #8c8676 60%, #2a2722 100%); border-radius: 50%; width: 200px; height: 200px;
+    box-shadow: inset -20px -20px 60px rgba(0,0,0,0.7), 0 0 60px rgba(255, 240, 200, 0.2);
+    position: relative;
+  }
+  .vis-moon::before, .vis-moon::after {
+    content:''; position:absolute; border-radius:50%;
+    background: radial-gradient(circle, rgba(0,0,0,0.4), transparent 70%);
+  }
+  .vis-moon::before { width: 25px; height: 25px; top: 30%; left: 25%; }
+  .vis-moon::after { width: 18px; height: 18px; top: 55%; left: 55%; box-shadow: -30px 10px 0 -4px rgba(0,0,0,0.3), 20px -25px 0 -6px rgba(0,0,0,0.3); }
+
+  .vis-station { width: 220px; height: 200px; position: relative; }
+  .vis-mars { width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffaa6e 0%, #d8541d 30%, #8a2810 70%, #2a0a05 100%);
+    box-shadow: inset -20px -20px 60px rgba(0,0,0,0.7), 0 0 60px rgba(216, 84, 29, 0.4);
+    position: relative;
+  }
+  .vis-mars::before {
+    content:''; position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(ellipse 40% 6% at 50% 25%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(ellipse 30% 6% at 50% 80%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(ellipse 20% 4% at 30% 55%, rgba(0,0,0,0.3), transparent);
+  }
+
+  .vis-deep { width: 220px; height: 220px; position: relative; }
+
+  /* ============ TIMELINE ============ */
+  .timeline-section {
+    padding-top: 140px;
+    padding-bottom: 180px;
+  }
+
+  .timeline {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .timeline::before {
+    content:'';
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom,
+      transparent,
+      rgba(124, 240, 255, 0.3) 10%,
+      rgba(179, 136, 255, 0.4) 50%,
+      rgba(255, 122, 212, 0.3) 90%,
+      transparent);
+    transform: translateX(-50%);
+  }
+
+  .tl-item {
+    position: relative;
+    width: 50%;
+    padding: 30px 60px;
+    margin-bottom: 20px;
+  }
+  .tl-item:nth-child(odd) { margin-left: 0; padding-right: 80px; text-align: right; }
+  .tl-item:nth-child(even) { margin-left: 50%; padding-left: 80px; }
+
+  .tl-node {
+    position: absolute;
+    top: 48px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--bg-0);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 6px rgba(124, 240, 255, 0.08), 0 0 20px var(--accent);
+    z-index: 2;
+  }
+  .tl-item:nth-child(odd) .tl-node { right: -8px; }
+  .tl-item:nth-child(even) .tl-node { left: -8px; }
+
+  .tl-node::after {
+    content:''; position:absolute; inset:3px;
+    border-radius:50%; background: var(--accent);
+    animation: pulse 2.5s infinite;
+  }
+
+  .tl-year {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 56px; font-weight: 900;
+    background: linear-gradient(135deg, #7cf0ff, #b388ff);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    line-height: 1; margin-bottom: 8px;
+    letter-spacing: -1px;
+  }
+  .tl-mission {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px;
+    color: var(--ink-mute); text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .tl-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 24px; font-weight: 700;
+    color: var(--ink); margin-bottom: 10px;
+  }
+  .tl-desc {
+    color: var(--ink-dim);
+    font-size: 14px; line-height: 1.8;
+  }
+
+  /* ============ BOOKING ============ */
+  .booking {
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+  }
+  .booking-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 100px 60px;
+    position: relative;
+    background:
+      radial-gradient(ellipse at 80% 50%, rgba(179, 136, 255, 0.15), transparent 60%),
+      radial-gradient(ellipse at 20% 50%, rgba(124, 240, 255, 0.1), transparent 60%),
+      linear-gradient(135deg, rgba(13, 10, 37, 0.9), rgba(7, 7, 26, 0.9));
+    border: 1px solid rgba(124, 240, 255, 0.15);
+    overflow: hidden;
+  }
+  .booking-inner::before {
+    content:''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(124, 240, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124, 240, 255, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .booking-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 60px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  .booking-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 1.1; margin-bottom: 24px;
+    letter-spacing: -1px;
+  }
+  .booking-title em {
+    font-style: italic;
+    background: linear-gradient(135deg, #7cf0ff, #b388ff, #ff7ad4);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .booking-desc {
+    color: var(--ink-dim);
+    line-height: 1.9; font-size: 16px;
+    margin-bottom: 40px;
+    max-width: 480px;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+  .info-cell {
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.2);
+  }
+  .info-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--ink-mute); text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .info-value {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 500; font-size: 16px;
+    color: var(--ink);
+  }
+  .info-value .small { font-size: 11px; color: var(--ink-dim); margin-left: 6px; }
+
+  .booking-form {
+    background: rgba(3, 3, 10, 0.7);
+    border: 1px solid rgba(124, 240, 255, 0.2);
+    padding: 40px;
+    backdrop-filter: blur(20px);
+  }
+  .form-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .form-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px; letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .form-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .form-status::before {
+    content:''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+
+  .field { margin-bottom: 20px; }
+  .field label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--ink-mute); text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--ink);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    transition: all .3s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(124, 240, 255, 0.05);
+    box-shadow: 0 0 20px rgba(124, 240, 255, 0.1);
+  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #7cf0ff, #b388ff);
+    color: #0a0820;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700; font-size: 13px;
+    letter-spacing: 4px; text-transform: uppercase;
+    border: none; cursor: pointer;
+    margin-top: 12px;
+    transition: all .3s;
+    position: relative; overflow: hidden;
+  }
+  .submit-btn:hover {
+    box-shadow: 0 10px 40px rgba(124, 240, 255, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    position: relative;
+    padding: 100px 48px 40px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,0.5));
+    margin-top: 80px;
+  }
+  .footer-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 60px;
+    margin-bottom: 80px;
+  }
+  .footer-brand .footer-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px; font-weight: 900;
+    margin-bottom: 16px;
+  }
+  .footer-brand p {
+    color: var(--ink-dim); line-height: 1.9;
+    font-size: 14px; max-width: 360px;
+    margin-bottom: 24px;
+  }
+  .social { display: flex; gap: 12px; }
+  .social a {
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--ink-dim);
+    text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 1px;
+    transition: all .3s;
+  }
+  .social a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124, 240, 255, 0.05);
+  }
+
+  .footer-col h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .footer-col ul { list-style: none; }
+  .footer-col li { margin-bottom: 12px; }
+  .footer-col a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color .3s;
+  }
+  .footer-col a:hover { color: var(--accent); }
+
+  .footer-bottom {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex; justify-content: space-between;
+    flex-wrap: wrap; gap: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--ink-mute);
+  }
+  .footer-bottom .coords {
+    color: var(--ink-mute);
+  }
+
+  /* Reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 960px) {
+    nav.nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .hero { padding: 120px 24px 60px; }
+    .hero-stats { left: 24px; bottom: 30px; gap: 30px; }
+    .stat-item .num { font-size: 22px; }
+    .scroll-indicator { display: none; }
+    .planet-wrap { right: -30vw; opacity: 0.5; }
+    section { padding: 80px 24px; }
+    .exhibit-grid { grid-template-columns: 1fr; }
+    .timeline::before { left: 20px; }
+    .tl-item { width: 100%; padding: 20px 0 20px 60px !important; text-align: left !important; margin-left: 0 !important; }
+    .tl-item .tl-node { left: 12px !important; right: auto !important; }
+    .tl-year { font-size: 40px; }
+    .booking-inner { padding: 60px 24px; }
+    .booking-grid { grid-template-columns: 1fr; }
+    .booking-form { padding: 28px; }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<nav class="nav" id="nav">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="18" stroke="url(#g1)" stroke-width="1"/>
+        <ellipse cx="20" cy="20" rx="18" ry="6" stroke="url(#g1)" stroke-width="1" transform="rotate(-25 20 20)"/>
+        <circle cx="20" cy="20" r="5" fill="url(#g1)"/>
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="40" y2="40">
+            <stop offset="0" stop-color="#7cf0ff"/>
+            <stop offset="1" stop-color="#b388ff"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">星槎博物馆</div>
+      <span class="brand-sub">STELLAR · VOYAGER · 1969</span>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="#exhibits">展览</a>
+    <a href="#timeline">大事记</a>
+    <a href="#booking">预约</a>
+    <a href="#footer">联络</a>
+  </div>
+  <button class="nav-cta" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">购票 →</button>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="planet-wrap">
+    <div class="planet-glow"></div>
+    <div class="planet"></div>
+    <div class="ring r3"></div>
+    <div class="ring r2"><div class="satellite"></div></div>
+    <div class="ring"><div class="satellite"></div></div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-meta">
+      <span class="dot"></span>
+      <span>SECTOR · 7G · OPEN NOW</span>
+      <span style="opacity:.4">|</span>
+      <span>2026 · 春季特展</span>
+    </div>
+    <h1 class="hero-title">
+      仰望星空的<br>
+      <span class="accent">六十年</span>
+    </h1>
+    <div class="hero-sub">A Museum of Human Cosmic Voyage</div>
+    <p class="hero-desc">
+      从加加林的第一次绕地飞行，到旅行者号穿越日球层。星槎博物馆收藏人类离开地球的每一次心跳——
+      在这里，宇宙不是远方，而是我们正在书写的家史。
+    </p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="#booking">
+        <span>开启航行</span>
+        <span>↗</span>
+      </a>
+      <a class="btn-ghost" href="#exhibits">
+        <span>探索展览</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-item"><div class="num">12,400+</div><div class="label">馆藏文物</div></div>
+    <div class="stat-item"><div class="num">4</div><div class="label">永久展厅</div></div>
+    <div class="stat-item"><div class="num">98%</div><div class="label">沉浸体验</div></div>
+  </div>
+
+  <div class="scroll-indicator">SCROLL TO EXPLORE</div>
+</section>
+
+<!-- ============ EXHIBITS ============ -->
+<section class="exhibits" id="exhibits">
+  <div class="section-head reveal">
+    <div>
+      <div class="section-tag">PERMANENT EXHIBITIONS · 04</div>
+      <h2 class="section-title">四个展厅，<br>一部<em>群星史</em></h2>
+    </div>
+    <p class="section-lede">
+      四间相互嵌套的展厅，分别对应人类太空探索的四个时代。
+      它们彼此独立又交相辉映，共同回答一个问题：当我们抬头时，看到的究竟是什么？
+    </p>
+  </div>
+
+  <div class="exhibit-grid">
+
+    <article class="exhibit-card reveal" data-card>
+      <div class="exhibit-no">EX · 01 / 04</div>
+      <div class="exhibit-visual">
+        <div class="vis-moon"></div>
+      </div>
+      <div class="exhibit-en">LUNAR ERA</div>
+      <h3 class="exhibit-name">登月时代</h3>
+      <p class="exhibit-desc">
+        从1957年Sputnik划过苏联夜空，到阿姆斯特朗在静海留下脚印。
+        馆中陈列阿波罗11号返回舱原比例复刻、月球岩样切片，以及那段12秒倒计时的原始磁带。
+      </p>
+      <div class="exhibit-meta">
+        <div class="exhibit-tags">
+          <span class="exhibit-tag">阿波罗</span>
+          <span class="exhibit-tag">SATURN V</span>
+          <span class="exhibit-tag">1957–1972</span>
+        </div>
+        <div class="exhibit-arrow">↗</div>
+      </div>
+    </article>
+
+    <article class="exhibit-card reveal" data-card>
+      <div class="exhibit-no">EX · 02 / 04</div>
+      <div class="exhibit-visual">
+        <svg class="vis-station" viewBox="0 0 220 200">
+          <defs>
+            <linearGradient id="panelG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#1a3a8a"/>
+              <stop offset="1" stop-color="#0a1638"/>
+            </linearGradient>
+            <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e0e4f0"/>
+              <stop offset="1" stop-color="#7a8098"/>
+            </linearGradient>
+          </defs>
+          <!-- Solar panels -->
+          <g opacity="0.95">
+            <rect x="10" y="70" width="60" height="60" fill="url(#panelG)" stroke="#7cf0ff" stroke-width="0.5"/>
+            <line x1="25" y1="70" x2="25" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="40" y1="70" x2="40" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="55" y1="70" x2="55" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="10" y1="90" x2="70" y2="90" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="10" y1="110" x2="70" y2="110" stroke="#3a5aaa" stroke-width="0.5"/>
+
+            <rect x="150" y="70" width="60" height="60" fill="url(#panelG)" stroke="#7cf0ff" stroke-width="0.5"/>
+            <line x1="165" y1="70" x2="165" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="180" y1="70" x2="180" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="195" y1="70" x2="195" y2="130" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="150" y1="90" x2="210" y2="90" stroke="#3a5aaa" stroke-width="0.5"/>
+            <line x1="150" y1="110" x2="210" y2="110" stroke="#3a5aaa" stroke-width="0.5"/>
+          </g>
+          <!-- Connecting trusses -->
+          <line x1="70" y1="100" x2="80" y2="100" stroke="#9aa3c0" stroke-width="2"/>
+          <line x1="140" y1="100" x2="150" y2="100" stroke="#9aa3c0" stroke-width="2"/>
+          <!-- Main module -->
+          <rect x="80" y="85" width="60" height="30" rx="6" fill="url(#bodyG)" stroke="#fff" stroke-width="0.5"/>
+          <circle cx="95" cy="100" r="3" fill="#7cf0ff" opacity="0.8"/>
+          <circle cx="110" cy="100" r="3" fill="#7cf0ff" opacity="0.8"/>
+          <circle cx="125" cy="100" r="3" fill="#7cf0ff" opacity="0.8"/>
+          <!-- Vertical module -->
+          <rect x="100" y="40" width="20" height="50" rx="4" fill="url(#bodyG)" stroke="#fff" stroke-width="0.5"/>
+          <rect x="100" y="115" width="20" height="40" rx="4" fill="url(#bodyG)" stroke="#fff" stroke-width="0.5"/>
+          <!-- Antenna -->
+          <line x1="110" y1="40" x2="110" y2="20" stroke="#9aa3c0" stroke-width="1"/>
+          <circle cx="110" cy="18" r="3" fill="none" stroke="#7cf0ff" stroke-width="0.6"/>
+          <!-- glow -->
+          <circle cx="110" cy="100" r="60" fill="none" stroke="#7cf0ff" stroke-width="0.3" opacity="0.3"/>
+          <circle cx="110" cy="100" r="80" fill="none" stroke="#b388ff" stroke-width="0.3" opacity="0.2"/>
+        </svg>
+      </div>
+      <div class="exhibit-en">ORBITAL HABITAT</div>
+      <h3 class="exhibit-name">空间站生活</h3>
+      <p class="exhibit-desc">
+        当人类学会在失重中睡觉、种植生菜、修剪头发——一个全新的"日常"在400公里高空展开。
+        本厅以1:1还原国际空间站节点舱与天宫舱段，可亲身体验航天员的24小时。
+      </p>
+      <div class="exhibit-meta">
+        <div class="exhibit-tags">
+          <span class="exhibit-tag">ISS</span>
+          <span class="exhibit-tag">天宫</span>
+          <span class="exhibit-tag">微重力</span>
+        </div>
+        <div class="exhibit-arrow">↗</div>
+      </div>
+    </article>
+
+    <article class="exhibit-card reveal" data-card>
+      <div class="exhibit-no">EX · 03 / 04</div>
+      <div class="exhibit-visual">
+        <div class="vis-mars"></div>
+      </div>
+      <div class="exhibit-en">MARS PROGRAMME</div>
+      <h3 class="exhibit-name">火星计划</h3>
+      <p class="exhibit-desc">
+        红色星球曾是神话中的战神，如今是人类下一个落脚点。从维京号传回的第一张地表照，
+        到祝融、毅力号的车辙——本厅展出火星陨石、地外土壤分析与未来殖民地的建筑沙盘。
+      </p>
+      <div class="exhibit-meta">
+        <div class="exhibit-tags">
+          <span class="exhibit-tag">PERSEVERANCE</span>
+          <span class="exhibit-tag">祝融</span>
+          <span class="exhibit-tag">2030+</span>
+        </div>
+        <div class="exhibit-arrow">↗</div>
+      </div>
+    </article>
+
+    <article class="exhibit-card reveal" data-card>
+      <div class="exhibit-no">EX · 04 / 04</div>
+      <div class="exhibit-visual">
+        <svg class="vis-deep" viewBox="0 0 220 220">
+          <defs>
+            <radialGradient id="bhG" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0%" stop-color="#000000"/>
+              <stop offset="50%" stop-color="#1a0a3a"/>
+              <stop offset="100%" stop-color="#7cf0ff" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="ringG" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0%" stop-color="#ff7ad4" stop-opacity="0"/>
+              <stop offset="60%" stop-color="#f7c873"/>
+              <stop offset="80%" stop-color="#ff7ad4"/>
+              <stop offset="100%" stop-color="#7cf0ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <!-- Accretion disk -->
+          <ellipse cx="110" cy="110" rx="100" ry="20" fill="url(#ringG)" opacity="0.8" transform="rotate(-20 110 110)"/>
+          <ellipse cx="110" cy="110" rx="80" ry="14" fill="url(#ringG)" opacity="0.6" transform="rotate(-20 110 110)"/>
+          <!-- Black hole event horizon -->
+          <circle cx="110" cy="110" r="45" fill="url(#bhG)"/>
+          <circle cx="110" cy="110" r="32" fill="#000"/>
+          <!-- Photon ring -->
+          <circle cx="110" cy="110" r="34" fill="none" stroke="#f7c873" stroke-width="1" opacity="0.7"/>
+          <!-- Distant stars -->
+          <circle cx="30" cy="40" r="0.8" fill="#fff"/>
+          <circle cx="190" cy="60" r="0.6" fill="#fff"/>
+          <circle cx="50" cy="180" r="0.7" fill="#fff"/>
+          <circle cx="180" cy="170" r="0.5" fill="#fff"/>
+          <circle cx="20" cy="110" r="0.4" fill="#fff"/>
+          <circle cx="200" cy="120" r="0.6" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="exhibit-en">DEEP SPACE FRONTIER</div>
+      <h3 class="exhibit-name">深空探索</h3>
+      <p class="exhibit-desc">
+        旅行者号已飞行47年，进入星际介质；JWST捕捉到132亿光年外的婴儿星系；
+        事件视界望远镜让黑洞第一次"显形"。本厅是关于尺度的展览——也是关于谦卑的展览。
+      </p>
+      <div class="exhibit-meta">
+        <div class="exhibit-tags">
+          <span class="exhibit-tag">JWST</span>
+          <span class="exhibit-tag">VOYAGER</span>
+          <span class="exhibit-tag">EHT</span>
+        </div>
+        <div class="exhibit-arrow">↗</div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ TIMELINE ============ -->
+<section class="timeline-section" id="timeline">
+  <div class="section-head reveal">
+    <div>
+      <div class="section-tag">CHRONOLOGY · 1957–TODAY</div>
+      <h2 class="section-title">人类离开地球的<br><em>每一次心跳</em></h2>
+    </div>
+    <p class="section-lede">
+      短短七十年，我们从仰望火箭升空，到把机器人送上彗星、把望远镜抛向第二拉格朗日点。
+      下面是这条时间线上无法绕开的八个名字。
+    </p>
+  </div>
+
+  <div class="timeline">
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">1957</div>
+      <div class="tl-mission">MISSION · SPUTNIK 1 · USSR</div>
+      <h3 class="tl-title">人类第一颗人造卫星</h3>
+      <p class="tl-desc">10月4日，58厘米直径的金属球进入近地轨道，每96分钟一圈，向全世界广播"哔——哔——"。太空时代由此开始。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">1961</div>
+      <div class="tl-mission">MISSION · VOSTOK 1 · GAGARIN</div>
+      <h3 class="tl-title">第一个进入太空的人</h3>
+      <p class="tl-desc">尤里·加加林在108分钟里完成绕地一周，留下那句"我没看见上帝"。人类第一次以自己的眼睛俯瞰地球。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">1969</div>
+      <div class="tl-mission">MISSION · APOLLO 11 · NASA</div>
+      <h3 class="tl-title">静海，人类的脚印</h3>
+      <p class="tl-desc">7月20日，阿姆斯特朗在月面留下那一小步。来自三十八万公里外的电视信号，被全世界六亿人同步注视。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">1977</div>
+      <div class="tl-mission">MISSION · VOYAGER 1 & 2</div>
+      <h3 class="tl-title">写给宇宙的金色唱片</h3>
+      <p class="tl-desc">两艘探测器携带刻录人类问候的金属唱片出发，今日已飞越240亿公里，成为人类最遥远的造物。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">1998</div>
+      <div class="tl-mission">MISSION · ISS · INTERNATIONAL</div>
+      <h3 class="tl-title">国际空间站开始组装</h3>
+      <p class="tl-desc">十六个国家、四十次组装飞行，人类在400公里高空建起持续有人居住的"地外驿站"。已连续驻人逾25年。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">2012</div>
+      <div class="tl-mission">MISSION · CURIOSITY · NASA</div>
+      <h3 class="tl-title">好奇号登陆火星</h3>
+      <p class="tl-desc">"恐怖七分钟"的进入、下降与着陆。一辆吉普大小的核动力车，开始在盖尔陨坑寻找古海洋的遗迹。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">2021</div>
+      <div class="tl-mission">MISSION · JAMES WEBB · NASA · ESA · CSA</div>
+      <h3 class="tl-title">韦伯望远镜升空</h3>
+      <p class="tl-desc">在L2点完成精确部署，看见132亿光年外的早期星系，让人类重新校准"宇宙起点"的画面。</p>
+    </div>
+
+    <div class="tl-item reveal">
+      <div class="tl-node"></div>
+      <div class="tl-year">2024</div>
+      <div class="tl-mission">MISSION · CHANG'E 6 · CNSA</div>
+      <h3 class="tl-title">嫦娥六号月背取样返回</h3>
+      <p class="tl-desc">人类首次在月球背面采样并安全带回1935.3克月壤，开启对太阳系另一面的系统性认识。</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ BOOKING ============ -->
+<section id="booking">
+  <div class="booking-inner">
+    <div class="booking-grid">
+      <div class="reveal">
+        <div class="section-tag">RESERVATION · GATE 7G</div>
+        <h2 class="booking-title">预订一张<br>飞往<em>群星</em>的票</h2>
+        <p class="booking-desc">
+          每日开放三场航行，每场限120位旅客。佩戴VR头盔进入"轨道剧场"，
+          与航天员一同绕地一周。门票包含全部四个永久展厅与当季特展。
+        </p>
+
+        <div class="info-grid">
+          <div class="info-cell">
+            <div class="info-label">OPEN HOURS</div>
+            <div class="info-value">10:00 — 21:30 <span class="small">/ 周二闭馆</span></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">LOCATION</div>
+            <div class="info-value">星槎大厦 B1 <span class="small">/ 海淀·中关村</span></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">REGULAR TICKET</div>
+            <div class="info-value">¥ 188 <span class="small">/ 含特展</span></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">VR ORBIT THEATER</div>
+            <div class="info-value">¥ 388 <span class="small">/ 限三场</span></div>
+          </div>
+        </div>
+      </div>
+
+      <form class="booking-form reveal" onsubmit="handleBooking(event)">
+        <div class="form-head">
+          <div class="form-title">START · BOARDING</div>
+          <div class="form-status">SYSTEM ONLINE</div>
+        </div>
+
+        <div class="field">
+          <label>姓名 / FULL NAME</label>
+          <input type="text" placeholder="请输入姓名" required>
+        </div>
+        <div class="field">
+          <label>联络方式 / CONTACT</label>
+          <input type="text" placeholder="手机号 或 邮箱" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>日期 / DATE</label>
+            <input type="date" required>
+          </div>
+          <div class="field">
+            <label>人数 / VISITORS</label>
+            <select required>
+              <option>1 人</option>
+              <option>2 人</option>
+              <option>3 人</option>
+              <option>4 人</option>
+              <option>5 人以上</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>票种 / TICKET TYPE</label>
+          <select required>
+            <option>常规票 — ¥188</option>
+            <option>VR 轨道剧场套票 — ¥388</option>
+            <option>家庭套票（2大1小）— ¥468</option>
+            <option>团体票（10人起）— 议价</option>
+          </select>
+        </div>
+
+        <button type="submit" class="submit-btn">确认登舱 →</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer id="footer">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="footer-name">星槎博物馆 <span style="font-family:'Orbitron',sans-serif;font-size:14px;color:var(--ink-mute);letter-spacing:3px;">/ STELLAR VOYAGER</span></div>
+      <p>一座为仰望者而建的博物馆。我们相信：探索宇宙不是逃离地球，而是为了更深刻地理解我们立足的这颗蓝色行星。</p>
+      <div class="social">
+        <a href="#" title="Weibo">Wb</a>
+        <a href="#" title="Wechat">Wx</a>
+        <a href="#" title="Xiaohongshu">Xhs</a>
+        <a href="#" title="Bilibili">B</a>
+        <a href="#" title="Instagram">Ig</a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h4>展览</h4>
+      <ul>
+        <li><a href="#">登月时代</a></li>
+        <li><a href="#">空间站生活</a></li>
+        <li><a href="#">火星计划</a></li>
+        <li><a href="#">深空探索</a></li>
+        <li><a href="#">春季特展</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>参观</h4>
+      <ul>
+        <li><a href="#">购票预约</a></li>
+        <li><a href="#">VR 轨道剧场</a></li>
+        <li><a href="#">无障碍服务</a></li>
+        <li><a href="#">教育项目</a></li>
+        <li><a href="#">志愿者招募</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>关于</h4>
+      <ul>
+        <li><a href="#">博物馆简介</a></li>
+        <li><a href="#">学术研究</a></li>
+        <li><a href="#">合作伙伴</a></li>
+        <li><a href="#">媒体资料</a></li>
+        <li><a href="#">联络我们</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <div>© 2026 STELLAR VOYAGER MUSEUM · ALL RIGHTS RESERVED</div>
+    <div class="coords">LAT 39.9842° N / LON 116.3072° E · SECTOR 7G</div>
+  </div>
+</footer>
+
+<script>
+  /* ============ STARFIELD ============ */
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let stars = [], shooters = [];
+
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    stars = Array.from({length: Math.floor((innerWidth*innerHeight)/2400)}, () => ({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height,
+      r: Math.random()*1.2 + 0.2,
+      a: Math.random()*0.8 + 0.2,
+      tw: Math.random()*0.02 + 0.005,
+      ph: Math.random()*Math.PI*2,
+      hue: Math.random() > 0.85 ? (Math.random()>0.5 ? 200 : 280) : 220
+    }));
+  }
+  resize();
+  addEventListener('resize', resize);
+
+  function spawnShooter() {
+    if (Math.random() < 0.005 && shooters.length < 2) {
+      shooters.push({
+        x: Math.random()*canvas.width*0.6,
+        y: Math.random()*canvas.height*0.4,
+        len: Math.random()*120 + 80,
+        speed: Math.random()*8 + 6,
+        angle: Math.PI/4 + (Math.random()-0.5)*0.3,
+        life: 1
+      });
+    }
+  }
+
+  function tick(t) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for (const s of stars) {
+      const a = s.a * (0.5 + 0.5*Math.sin(t*s.tw + s.ph));
+      ctx.beginPath();
+      ctx.fillStyle = s.hue === 220
+        ? `rgba(255,255,255,${a})`
+        : s.hue === 200 ? `rgba(124,240,255,${a})` : `rgba(179,136,255,${a})`;
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    spawnShooter();
+    for (let i = shooters.length-1; i >= 0; i--) {
+      const sh = shooters[i];
+      const dx = Math.cos(sh.angle)*sh.speed;
+      const dy = Math.sin(sh.angle)*sh.speed;
+      sh.x += dx; sh.y += dy; sh.life -= 0.012;
+
+      const grad = ctx.createLinearGradient(sh.x, sh.y, sh.x - Math.cos(sh.angle)*sh.len, sh.y - Math.sin(sh.angle)*sh.len);
+      grad.addColorStop(0, `rgba(255,255,255,${sh.life})`);
+      grad.addColorStop(0.5, `rgba(124,240,255,${sh.life*0.5})`);
+      grad.addColorStop(1, `rgba(124,240,255,0)`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sh.x, sh.y);
+      ctx.lineTo(sh.x - Math.cos(sh.angle)*sh.len, sh.y - Math.sin(sh.angle)*sh.len);
+      ctx.stroke();
+
+      if (sh.life <= 0 || sh.x > canvas.width || sh.y > canvas.height) shooters.splice(i,1);
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ============ NAV scroll ============ */
+  const nav = document.getElementById('nav');
+  addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', scrollY > 30);
+  });
+
+  /* ============ Reveal on scroll ============ */
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  /* ============ Card hover spotlight ============ */
+  document.querySelectorAll('[data-card]').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left)/r.width*100) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top)/r.height*100) + '%');
+    });
+  });
+
+  /* ============ Booking ============ */
+  function handleBooking(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('.submit-btn');
+    const original = btn.textContent;
+    btn.textContent = '✓ 预约成功 · 准备登舱';
+    btn.style.background = 'linear-gradient(135deg, #7cf0ff, #b388ff, #ff7ad4)';
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.style.background = '';
+      e.target.reset();
+    }, 2400);
+  }
+</script>
+
+</body>
+</html>

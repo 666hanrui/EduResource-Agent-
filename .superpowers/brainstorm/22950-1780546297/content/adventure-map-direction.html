@@ -1,0 +1,442 @@
+<style>
+  .direction-intro {
+    max-width: 980px;
+  }
+
+  .direction-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .direction-card {
+    background: #ffffff;
+    border: 1px solid #d7dde7;
+    border-radius: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  }
+
+  .direction-card:hover,
+  .direction-card.selected {
+    border-color: #0f6fb8;
+    box-shadow: 0 16px 36px rgba(21, 61, 104, 0.16);
+    transform: translateY(-2px);
+  }
+
+  .direction-card.selected {
+    outline: 3px solid rgba(36, 143, 216, 0.18);
+  }
+
+  .map-frame {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+    background: #9dd7f6;
+  }
+
+  .map-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 12% 16%, rgba(255,255,255,0.9) 0 8%, transparent 9%),
+      radial-gradient(circle at 36% 13%, rgba(255,255,255,0.8) 0 6%, transparent 7%),
+      linear-gradient(180deg, #a9dcfb 0%, #dff2ff 48%, #fff2be 100%);
+  }
+
+  .map-land {
+    position: absolute;
+    inset: 72px -16px -28px -16px;
+    border-radius: 54% 46% 0 0;
+    background:
+      radial-gradient(circle at 18% 82%, rgba(43, 96, 53, 0.28) 0 14%, transparent 15%),
+      radial-gradient(circle at 84% 78%, rgba(48, 91, 47, 0.28) 0 16%, transparent 17%),
+      linear-gradient(145deg, #cde887 0%, #9dca6d 45%, #609a57 100%);
+    box-shadow: inset 0 28px 58px rgba(255,255,255,0.24);
+  }
+
+  .map-land::before {
+    content: "";
+    position: absolute;
+    inset: 64px 10px 0 28px;
+    border-radius: 50% 48% 0 0;
+    background:
+      radial-gradient(circle at 74% 36%, rgba(255,255,255,0.32) 0 2%, transparent 3%),
+      radial-gradient(circle at 62% 50%, rgba(255,255,255,0.34) 0 2%, transparent 3%),
+      linear-gradient(145deg, rgba(255,241,184,0.8), rgba(119, 164, 91, 0.25));
+    opacity: 0.78;
+  }
+
+  .path-line {
+    position: absolute;
+    left: 9%;
+    right: 6%;
+    top: 106px;
+    height: 158px;
+  }
+
+  .path-line svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .node-pin {
+    position: absolute;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 4px solid #49aef3;
+    box-shadow: 0 8px 14px rgba(28, 91, 132, 0.25);
+  }
+
+  .node-cardlet {
+    position: absolute;
+    min-width: 96px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgba(13, 67, 111, 0.96);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(10, 37, 63, 0.22);
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .node-cardlet strong {
+    display: block;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+
+  .node-cardlet span {
+    display: block;
+    margin-top: 3px;
+    padding: 3px 6px;
+    width: max-content;
+    max-width: 100%;
+    border-radius: 4px;
+    background: #fff7d7;
+    color: #1f4c70;
+    font-weight: 700;
+  }
+
+  .avatar {
+    position: absolute;
+    left: 36px;
+    bottom: 23px;
+    width: 50px;
+    height: 92px;
+  }
+
+  .avatar::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 0;
+    width: 24px;
+    height: 26px;
+    border-radius: 50% 50% 46% 46%;
+    background: #202734;
+    box-shadow: 0 20px 0 -6px #f2c79d;
+  }
+
+  .avatar::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 40px;
+    width: 30px;
+    height: 38px;
+    border-radius: 13px 13px 8px 8px;
+    background: linear-gradient(180deg, #22598f, #173f68);
+    box-shadow: -10px 8px 0 -3px #273344, 4px 38px 0 -6px #151b26, 18px 38px 0 -6px #151b26;
+  }
+
+  .wood-sign,
+  .learning-object {
+    position: absolute;
+    border-radius: 8px;
+    box-shadow: 0 10px 18px rgba(76, 77, 38, 0.2);
+  }
+
+  .wood-sign {
+    left: 78px;
+    bottom: 50px;
+    padding: 10px 16px;
+    background: linear-gradient(180deg, #9a6a3f, #704828);
+    color: #fff8df;
+    font-weight: 800;
+    transform: rotate(-2deg);
+  }
+
+  .learning-object {
+    right: 38px;
+    top: 48px;
+    width: 56px;
+    height: 58px;
+    background: linear-gradient(180deg, #ffd967, #d79823);
+    border-radius: 50% 50% 14px 14px;
+  }
+
+  .learning-object::after {
+    content: "";
+    position: absolute;
+    left: 15px;
+    right: 15px;
+    bottom: -13px;
+    height: 13px;
+    border-radius: 4px;
+    background: #875b28;
+  }
+
+  .direction-b .map-frame {
+    background: #eef6fb;
+  }
+
+  .direction-b .map-frame::before {
+    background:
+      linear-gradient(180deg, rgba(245,249,253,0.95), rgba(236,244,250,0.95)),
+      linear-gradient(180deg, #b7e3ff 0%, #e7f7ff 100%);
+  }
+
+  .direction-b .map-land {
+    inset: 26px 16px 18px 16px;
+    border-radius: 18px;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.88) 0 34%, transparent 34%),
+      linear-gradient(145deg, #ddeebb, #93c284);
+    box-shadow: inset 0 0 0 1px rgba(36, 72, 52, 0.1);
+  }
+
+  .direction-b .hud-panel {
+    position: absolute;
+    top: 42px;
+    left: 30px;
+    width: 120px;
+    padding: 11px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 10px 24px rgba(21, 53, 78, 0.15);
+  }
+
+  .direction-b .hud-panel i {
+    display: block;
+    height: 8px;
+    margin: 8px 0;
+    border-radius: 999px;
+    background: #d6e2ed;
+  }
+
+  .direction-b .hud-panel i:nth-child(2) {
+    width: 78%;
+    background: #48a3d8;
+  }
+
+  .direction-b .hud-panel i:nth-child(3) {
+    width: 58%;
+    background: #f4b547;
+  }
+
+  .direction-c .map-frame {
+    background: #cfe8ff;
+  }
+
+  .direction-c .map-frame::before {
+    background:
+      radial-gradient(circle at 68% 12%, rgba(255,255,255,0.86) 0 11%, transparent 12%),
+      linear-gradient(180deg, #b8dcff, #eef7fb 52%, #f3ecbc);
+  }
+
+  .direction-c .map-land {
+    inset: 58px -20px -24px -20px;
+    border-radius: 42% 48% 0 0;
+    background:
+      radial-gradient(circle at 70% 44%, rgba(255,255,255,0.28) 0 8%, transparent 9%),
+      conic-gradient(from 220deg at 58% 58%, #6da860, #c8e87e, #7bb16a, #e2d58b, #6da860);
+  }
+
+  .generation-layer {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .generation-layer span {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    color: #174567;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 7px 16px rgba(31, 69, 102, 0.12);
+  }
+
+  .current-glow {
+    box-shadow: 0 0 0 9px rgba(74, 175, 242, 0.26), 0 8px 14px rgba(28, 91, 132, 0.25);
+  }
+
+  .challenge {
+    border-color: #f3a42f;
+  }
+
+  .done {
+    border-color: #40b87a;
+  }
+
+  .card-copy {
+    padding: 16px 17px 18px;
+  }
+
+  .card-copy h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #eef5ff;
+    color: #18527a;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .card-copy p {
+    margin-top: 8px;
+    color: #5f6f82;
+    font-size: 13px;
+  }
+
+  .card-copy ul {
+    margin: 12px 0 0 18px;
+    color: #33475b;
+    font-size: 13px;
+  }
+
+  .card-copy li {
+    margin-bottom: 5px;
+  }
+
+  .recommendation {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid #cbdff0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f7fbff, #eef8f1);
+    color: #244762;
+  }
+
+  @media (max-width: 1040px) {
+    .direction-cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="direction-intro">
+  <h2>探索地图重做方向校准</h2>
+  <p class="subtitle">你说得对，当前版本像临时控件。下面三种不是最终成品，而是我建议的重做路线。重点看：哪一种更接近你要的“冒险岛学习地图”。</p>
+</div>
+
+<div class="direction-cards">
+  <div class="direction-card direction-a" data-choice="a" onclick="toggleSelect(this)">
+    <div class="map-frame">
+      <div class="map-land"></div>
+      <div class="path-line">
+        <svg viewBox="0 0 320 160" aria-hidden="true">
+          <path d="M14 138 C68 123 76 84 122 86 C170 88 160 45 213 40 C258 36 263 16 306 20" fill="none" stroke="#fff8dd" stroke-width="12" stroke-linecap="round"/>
+          <path d="M14 138 C68 123 76 84 122 86 C170 88 160 45 213 40 C258 36 263 16 306 20" fill="none" stroke="#4facf2" stroke-width="3" stroke-linecap="round" stroke-dasharray="9 10"/>
+        </svg>
+      </div>
+      <div class="avatar"></div>
+      <div class="wood-sign">1 起点</div>
+      <div class="learning-object"></div>
+      <div class="node-pin current-glow" style="left: 26%; top: 62%;"></div>
+      <div class="node-pin challenge" style="left: 50%; top: 48%;"></div>
+      <div class="node-pin done" style="left: 70%; top: 28%;"></div>
+      <div class="node-cardlet" style="left: 42%; top: 31%;"><strong>5 阅读</strong><span>广度与深度</span></div>
+      <div class="node-cardlet" style="right: 20px; top: 16px;"><strong>9 奖励</strong><span>收获成长</span></div>
+    </div>
+    <div class="card-copy">
+      <h3>A. 插画底图主导 <span class="tag">推荐</span></h3>
+      <p>先做一张完整的学习冒险地图底图，再把节点、头像、状态、点击层覆盖上去。</p>
+      <ul>
+        <li>最接近你给的参考图，第一眼有世界感。</li>
+        <li>节点可以按学生画像动态换位置、状态和文案。</li>
+        <li>实现重点是资产质量和覆盖层坐标体系。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="direction-card direction-b" data-choice="b" onclick="toggleSelect(this)">
+    <div class="map-frame">
+      <div class="map-land"></div>
+      <div class="hud-panel">
+        <strong>探索画像</strong>
+        <i></i><i></i><i></i>
+      </div>
+      <div class="path-line" style="left: 37%; right: 8%; top: 84px;">
+        <svg viewBox="0 0 220 160" aria-hidden="true">
+          <path d="M10 136 C45 108 72 124 91 84 C116 33 150 72 206 24" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+          <path d="M10 136 C45 108 72 124 91 84 C116 33 150 72 206 24" fill="none" stroke="#5baee4" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 8"/>
+        </svg>
+      </div>
+      <div class="node-pin current-glow" style="left: 50%; top: 63%;"></div>
+      <div class="node-pin challenge" style="left: 64%; top: 40%;"></div>
+      <div class="node-pin done" style="left: 82%; top: 20%;"></div>
+      <div class="node-cardlet" style="right: 22px; top: 86px;"><strong>方向站</strong><span>为何推荐</span></div>
+    </div>
+    <div class="card-copy">
+      <h3>B. 地图 + 工作台混合</h3>
+      <p>地图仍然存在，但旁边保留较强的数据面板，让学习建议解释更清楚。</p>
+      <ul>
+        <li>更产品化，容易展示画像和 Agent 依据。</li>
+        <li>游戏感弱一些，视觉冲击不如完整插画。</li>
+        <li>适合偏“诊断工具”的学生端。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="direction-card direction-c" data-choice="c" onclick="toggleSelect(this)">
+    <div class="map-frame">
+      <div class="map-land"></div>
+      <div class="path-line" style="left: 12%; right: 12%; top: 112px;">
+        <svg viewBox="0 0 280 150" aria-hidden="true">
+          <path d="M8 126 C66 132 62 70 112 82 C164 94 158 30 209 37 C241 41 250 18 274 14" fill="none" stroke="#fff9df" stroke-width="12" stroke-linecap="round"/>
+          <path d="M8 126 C66 132 62 70 112 82 C164 94 158 30 209 37 C241 41 250 18 274 14" fill="none" stroke="#4da9ec" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 10"/>
+        </svg>
+      </div>
+      <div class="node-pin current-glow" style="left: 22%; top: 66%;"></div>
+      <div class="node-pin challenge" style="left: 49%; top: 46%;"></div>
+      <div class="node-pin done" style="left: 74%; top: 25%;"></div>
+      <div class="node-cardlet" style="left: 22px; top: 28px;"><strong>实时变化</strong><span>画像驱动</span></div>
+      <div class="generation-layer">
+        <span>底图可换专业主题</span>
+        <span>节点由后端画像计算</span>
+        <span>头像随进度移动</span>
+      </div>
+    </div>
+    <div class="card-copy">
+      <h3>C. 地图引擎化</h3>
+      <p>不只做一张图，而是做一套可换主题的地图系统：不同专业、学生状态能切换岛屿和节点层。</p>
+      <ul>
+        <li>长期扩展最好，后面可做专业主题地图。</li>
+        <li>首期工作量最大，需要资产规范和坐标编辑。</li>
+        <li>适合把探索地图做成核心产品能力。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="recommendation">
+  我的建议：先用 A 做出高质量体验，但内部结构按 C 的方式留好“底图资产 + 节点坐标 + 学生状态”的分层。这样第一版就能明显变好，后面也不会被一张静态图锁死。
+</div>

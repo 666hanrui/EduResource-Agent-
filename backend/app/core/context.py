@@ -55,7 +55,7 @@ def build_context(settings: Settings | None = None) -> AppContext:
     registry.register(VisualAgent(event_bus, llm))
     registry.register(EvaluationAgent(event_bus, llm))
 
-    orchestrator = Orchestrator(registry, event_bus)
+    orchestrator = Orchestrator(registry, event_bus, llm_service=llm)
 
     return AppContext(
         settings=s,
