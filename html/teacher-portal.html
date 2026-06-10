@@ -422,6 +422,7 @@ h1,h2,h3,h4,strong{color:var(--ink);letter-spacing:-0.04em}
         <button class="tab-btn" id="tab-generator" onclick="switchTab('generator')">⚡ 生成</button>
         <button class="tab-btn" id="tab-review" onclick="switchTab('review')">✅ 审核</button>
         <button class="tab-btn" id="tab-intervention" onclick="switchTab('intervention')">🎯 干预</button>
+        <a class="tab-btn" href="viz-studio.html" target="_blank" style="text-decoration:none;display:flex;align-items:center;gap:5px">📺 可视化演示 ↗</a>
         <span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--muted);align-self:center" id="tab-status">选择学生后开始</span>
       </div>
       <div class="right-body" id="tab-content"></div>
@@ -432,7 +433,7 @@ h1,h2,h3,h4,strong{color:var(--ink);letter-spacing:-0.04em}
   <!-- Footer -->
   <footer class="footer">
     <span>EduResource Agent · Teacher Studio</span>
-    <span>Evidence First · MMXXVI</span>
+    <a href="viz-studio.html" target="_blank" style="color:var(--y);text-decoration:none;font-weight:900">📺 算法可视化演示工作室 →</a>
     <span>7 Agent · SSE Event Stream</span>
   </footer>
 
@@ -834,7 +835,7 @@ function addLog(consoleId, tag, cls, msg) {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function goHome() { window.location.href='homepage.html'; }
+function goHome() { window.location.href='/#/'; }
 
 /* ═══ Spin keyframe ═══ */
 document.head.insertAdjacentHTML('beforeend','<style>@keyframes spin{to{transform:rotate(360deg)}}</style>');

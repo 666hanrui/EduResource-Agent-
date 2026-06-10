@@ -13,7 +13,7 @@
  *   - 无 taskId 时播放内置演示动画
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AgentRow } from '../../types/agentTrace';
 import { useAgentTraceSSE, replayMockEvents } from '../AgentTracePanel/useAgentTraceSSE';
 import type { AgentEvent } from '../../types/agentTrace';
@@ -74,22 +74,84 @@ interface LogEntry { id: number; agent: string; text: string; type: string; }
 /* ─── Mock demo events ─── */
 const DEMO_EVENTS: AgentEvent[] = [
   { type: 'agent.start', task_id: 'demo', agent: 'ProfileAgent',    ts: 0,   payload: {} },
+  { type: 'agent.delta', task_id: 'demo', agent: 'ProfileAgent',    ts: 0.6, payload: { stage: 'profile_finalized' } },
   { type: 'agent.done',  task_id: 'demo', agent: 'ProfileAgent',    ts: 1.2, payload: { elapsed_ms: 1200, token_used: 210 } },
   { type: 'agent.start', task_id: 'demo', agent: 'PlannerAgent',    ts: 1.3, payload: {} },
-  { type: 'agent.delta', task_id: 'demo', agent: 'PlannerAgent',    ts: 2.0, payload: { stage: 'plan_finalized  tasks:4' } },
+  { type: 'agent.delta', task_id: 'demo', agent: 'PlannerAgent',    ts: 2.0, payload: { stage: 'plan_finalized' } },
   { type: 'agent.done',  task_id: 'demo', agent: 'PlannerAgent',    ts: 3.1, payload: { elapsed_ms: 1800, token_used: 480 } },
   { type: 'agent.start', task_id: 'demo', agent: 'DocumentAgent',   ts: 3.2, payload: {} },
   { type: 'agent.start', task_id: 'demo', agent: 'ExerciseAgent',   ts: 3.2, payload: {} },
   { type: 'agent.start', task_id: 'demo', agent: 'VisualAgent',     ts: 3.2, payload: {} },
+  { type: 'agent.delta', task_id: 'demo', agent: 'DocumentAgent',   ts: 4.2, payload: { stage: 'document_finalized' } },
+  { type: 'agent.delta', task_id: 'demo', agent: 'ExerciseAgent',   ts: 4.6, payload: { stage: 'exercise_finalized' } },
+  { type: 'agent.delta', task_id: 'demo', agent: 'VisualAgent',     ts: 5.0, payload: { stage: 'visual_finalized' } },
   { type: 'agent.done',  task_id: 'demo', agent: 'DocumentAgent',   ts: 5.8, payload: { elapsed_ms: 2600, token_used: 890 } },
   { type: 'agent.done',  task_id: 'demo', agent: 'ExerciseAgent',   ts: 6.2, payload: { elapsed_ms: 3000, token_used: 720 } },
   { type: 'agent.done',  task_id: 'demo', agent: 'VisualAgent',     ts: 6.6, payload: { elapsed_ms: 3400, token_used: 340 } },
   { type: 'agent.start', task_id: 'demo', agent: 'CodeAgent',       ts: 6.7, payload: {} },
+  { type: 'agent.delta', task_id: 'demo', agent: 'CodeAgent',       ts: 7.8, payload: { stage: 'code_finalized' } },
   { type: 'agent.done',  task_id: 'demo', agent: 'CodeAgent',       ts: 8.9, payload: { elapsed_ms: 2200, token_used: 960 } },
   { type: 'agent.start', task_id: 'demo', agent: 'EvaluationAgent', ts: 9.0, payload: {} },
+  { type: 'agent.delta', task_id: 'demo', agent: 'EvaluationAgent', ts: 9.5, payload: { stage: 'evaluation_finalized' } },
   { type: 'agent.done',  task_id: 'demo', agent: 'EvaluationAgent', ts: 10.1,payload: { elapsed_ms: 1100, token_used: 310 } },
   { type: 'task.summary',task_id: 'demo', agent: 'GenerateFlow',    ts: 10.2,payload: { status: 'ok', elapsed_ms: 10200 } },
 ];
+
+const AGENT_LOG_COPY: Record<string, {
+  tag: string;
+  start: string;
+  delta: string;
+  done: string;
+}> = {
+  ProfileAgent: {
+    tag: '画像',
+    start: '读取学生画像与历史错因，确认当前学习偏好。',
+    delta: '画像结构已收敛，主要薄弱点与偏好证据已锁定。',
+    done: '学习画像整理完成。',
+  },
+  PlannerAgent: {
+    tag: '规划',
+    start: '拆解知识点目标，编排讲解、练习、图解与代码任务。',
+    delta: '任务图已确认，准备进入并行生成阶段。',
+    done: '学习任务图生成完成。',
+  },
+  DocumentAgent: {
+    tag: '讲解',
+    start: '展开讲解主线，组织更低负担的理解顺序。',
+    delta: '讲解骨架已完成，正在等待整体收敛。',
+    done: '讲解资源生成完成。',
+  },
+  ExerciseAgent: {
+    tag: '练习',
+    start: '按当前难度生成练习题，并准备即时反馈锚点。',
+    delta: '练习集已完成，难度与反馈点已经绑定。',
+    done: '练习资源生成完成。',
+  },
+  VisualAgent: {
+    tag: '图解',
+    start: '整理关键步骤图，准备动画与可视化资源。',
+    delta: '图解资源已经就位，正在等待与讲解内容对齐。',
+    done: '图解资源生成完成。',
+  },
+  CodeAgent: {
+    tag: '代码',
+    start: '收敛上游结果，输出 Python / Java 双语案例。',
+    delta: '代码案例已完成，准备进入评估收尾。',
+    done: '代码案例生成完成。',
+  },
+  EvaluationAgent: {
+    tag: '评估',
+    start: '汇总过程证据，准备回写学习画像与建议。',
+    delta: '评估反馈已完成，闭环更新准备写回。',
+    done: '评估建议生成完成。',
+  },
+  System: {
+    tag: '系统',
+    start: '开始调度本轮多 Agent 生成任务。',
+    delta: '所有阶段都在稳定执行。',
+    done: '整条链路执行完成，结果已经同步到面板。',
+  },
+};
 
 /* ════════════════════════════════════════════
    Main Component
@@ -100,6 +162,9 @@ interface Props {
 
 export function AgentFlowViz({ taskId }: Props) {
   const { trace } = useAgentTraceSSE(taskId);
+  const [demoAgents, setDemoAgents] = useState<Record<string, AgentRow>>({});
+  const [demoSummary, setDemoSummary] = useState<{ status: string; elapsedMs: number; error?: string } | null>(null);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
   // Log accumulator
   const logRef = useRef<LogEntry[]>([]);
@@ -108,40 +173,45 @@ export function AgentFlowViz({ taskId }: Props) {
 
   // Build rows from trace
   const rows = useMemo<Record<string, AgentRow>>(() => {
+    const source = taskId ? trace.agents : demoAgents;
     const result: Record<string, AgentRow> = {};
     for (const meta of AGENTS) {
-      result[meta.name] = trace.agents[meta.name] ?? {
+      result[meta.name] = source[meta.name] ?? {
         name: meta.name, state: 'waiting', elapsedMs: 0, tokenUsed: 0,
       };
     }
     return result;
-  }, [trace.agents]);
+  }, [demoAgents, taskId, trace.agents]);
 
   // Demo mode: replay events when no taskId
   const demoCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (taskId) {
       demoCleanupRef.current?.();
+      setDemoAgents({});
+      setDemoSummary(null);
       return;
     }
     // clear and restart demo loop
     logRef.current = [];
+    setLogEntries([]);
+    setDemoAgents({});
+    setDemoSummary(null);
     const cancel = replayMockEvents(
       DEMO_EVENTS,
       (evt) => {
+        setDemoAgents((prev) => applyDemoEvent(prev, evt));
+        if (evt.type === 'task.summary') {
+          setDemoSummary({
+            status: String(evt.payload.status ?? 'ok'),
+            elapsedMs: Number(evt.payload.elapsed_ms ?? 0),
+          });
+          appendLog('System', formatSummaryMessage(evt.payload), evt.type);
+        }
         // We don't actually dispatch here since useAgentTraceSSE won't pick it up
-        // in demo mode; we just add log entries
+        // in demo mode; we mirror state locally and add log entries.
         if (evt.type === 'agent.start' || evt.type === 'agent.done' || evt.type === 'agent.delta') {
-          const text = evt.type === 'agent.done'
-            ? `✓ 完成  ${(Number((evt.payload as Record<string, unknown>).elapsed_ms ?? 0) / 1000).toFixed(1)}s  tokens:${(evt.payload as Record<string, unknown>).token_used ?? 0}`
-            : evt.type === 'agent.delta'
-              ? String((evt.payload as Record<string, unknown>).stage ?? '生成中…')
-              : `${evt.agent} 启动`;
-          logRef.current = [...logRef.current, { id: logIdRef.current++, agent: evt.agent, text, type: evt.type }];
-          if (logRef.current.length > 40) logRef.current = logRef.current.slice(-40);
-          // Force re-render via dummy state update isn't possible here cleanly;
-          // we'll use a manual DOM update instead
-          appendLogDOM(evt.agent, text, evt.type);
+          appendLog(evt.agent, formatEventMessage(evt), evt.type);
         }
       },
       700
@@ -151,41 +221,37 @@ export function AgentFlowViz({ taskId }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
-  // Append log entry directly to DOM (avoids re-rendering entire SVG)
-  function appendLogDOM(agent: string, text: string, type: string) {
-    const container = logElRef.current;
-    if (!container) return;
-    const div = document.createElement('div');
-    div.style.cssText = `display:flex;gap:8px;align-items:flex-start;animation:fviz-in 0.2s ease;font-size:11px;line-height:1.75;font-family:'JetBrains Mono',monospace;`;
-    const tag = document.createElement('span');
-    const agentMeta = AGENT_MAP[agent];
-    tag.style.cssText = `flex-shrink:0;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:900;margin-top:2px;border:1.5px solid ${C.ink};background:${type === 'agent.done' ? C.green : type === 'agent.start' ? C.yellow : C.cream};color:${type === 'agent.done' ? 'white' : C.ink};`;
-    tag.textContent = agentMeta?.label ?? agent;
-    const msg = document.createElement('span');
-    msg.style.cssText = `color:${C.ink};opacity:0.82;`;
-    msg.textContent = text;
-    div.appendChild(tag);
-    div.appendChild(msg);
-    container.appendChild(div);
-    // keep last 30
-    while (container.children.length > 30) container.removeChild(container.firstChild!);
-    container.scrollTop = container.scrollHeight;
+  function appendLog(agent: string, text: string, type: string) {
+    const next = [...logRef.current, { id: logIdRef.current++, agent, text, type }].slice(-40);
+    logRef.current = next;
+    setLogEntries(next);
   }
 
-  // Also sync SSE-driven events to the log DOM
+  useEffect(() => {
+    const container = logElRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
+  }, [logEntries]);
+
+  // Also sync SSE-driven events to the log renderer
   const prevAgentsRef = useRef<Record<string, AgentRow>>({});
   useEffect(() => {
+    if (!taskId) {
+      prevAgentsRef.current = { ...rows };
+      return;
+    }
     const prev = prevAgentsRef.current;
     for (const [name, row] of Object.entries(rows)) {
       const was = prev[name];
       if (!was) continue;
       if (was.state !== row.state) {
         let text = '';
-        if (row.state === 'running') text = `${name} 启动`;
-        else if (row.state === 'done') text = `✓ 完成  ${(row.elapsedMs / 1000).toFixed(1)}s  tokens:${row.tokenUsed}`;
-        else if (row.state === 'error') text = `✗ ${row.error ?? '错误'}`;
-        else if (row.state === 'streaming') text = row.latestDelta ?? '生成中…';
-        if (text) appendLogDOM(name, text, row.state === 'done' ? 'agent.done' : row.state === 'running' ? 'agent.start' : 'agent.delta');
+        if (row.state === 'running') text = formatStateMessage(name, 'agent.start', row);
+        else if (row.state === 'done') text = formatStateMessage(name, 'agent.done', row);
+        else if (row.state === 'error') text = formatStateMessage(name, 'agent.error', row);
+        else if (row.state === 'streaming') text = formatStateMessage(name, 'agent.delta', row);
+        if (text) appendLog(name, text, row.state === 'done' ? 'agent.done' : row.state === 'running' ? 'agent.start' : row.state === 'error' ? 'agent.error' : 'agent.delta');
+      } else if (row.state === 'streaming' && row.latestDelta && row.latestDelta !== was.latestDelta) {
+        appendLog(name, formatStateMessage(name, 'agent.delta', row), 'agent.delta');
       }
     }
     prevAgentsRef.current = { ...rows };
@@ -195,6 +261,16 @@ export function AgentFlowViz({ taskId }: Props) {
   const totalDone = Object.values(rows).filter(r => r.state === 'done').length;
   const totalAgents = AGENTS.length;
   const pct = Math.round((totalDone / totalAgents) * 100);
+  const summary = taskId ? trace.summary : demoSummary;
+  const summarySignature = summary ? `${summary.status}:${summary.elapsedMs}:${summary.error ?? ''}` : '';
+  const prevSummaryRef = useRef('');
+  useEffect(() => {
+    if (!summary || !taskId) return;
+    if (prevSummaryRef.current === summarySignature) return;
+    prevSummaryRef.current = summarySignature;
+    appendLog('System', formatSummaryMessage(summary), 'task.summary');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary, summarySignature, taskId]);
 
   return (
     <div style={wrapStyle}>
@@ -333,14 +409,14 @@ export function AgentFlowViz({ taskId }: Props) {
           <span style={tlStyle('#febc2e')} />
           <span style={tlStyle('#28c840')} />
           <span style={{ fontSize: 10, color: '#888', fontWeight: 700, marginLeft: 6, letterSpacing: 0.5 }}>
-            agent.log
+            agent.log · 运行日志
           </span>
-          {trace.summary && (
+          {summary && (
             <span style={{
               marginLeft: 'auto', fontSize: 10, fontWeight: 900,
-              color: trace.summary.status === 'ok' ? C.green : C.coral,
+              color: summary.status === 'ok' ? C.green : C.coral,
             }}>
-              {trace.summary.status === 'ok' ? `✓ 完成 · ${(trace.summary.elapsedMs / 1000).toFixed(1)}s` : '✗ 出错'}
+              {summary.status === 'ok' ? `✓ 完成 · ${(summary.elapsedMs / 1000).toFixed(1)}s` : '✗ 出错'}
             </span>
           )}
         </div>
@@ -348,10 +424,15 @@ export function AgentFlowViz({ taskId }: Props) {
           ref={logElRef}
           style={consoleBodyStyle}
         >
-          {/* Log lines appended via DOM */}
-          {!taskId && (
+          {logEntries.map((entry) => (
+            <div key={entry.id} style={logLineStyle}>
+              <span style={logTagStyle(entry.agent, entry.type)}>{getLogTag(entry.agent)}</span>
+              <span style={logTextStyle}>{entry.text}</span>
+            </div>
+          ))}
+          {logEntries.length === 0 && (
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: C.muted, opacity: 0.6 }}>
-              演示模式 — 日志将在此处实时滚动…
+              {taskId ? '等待 Agent 事件流…' : '演示模式 — 日志将在此处实时滚动…'}
             </div>
           )}
         </div>
@@ -359,6 +440,106 @@ export function AgentFlowViz({ taskId }: Props) {
     </div>
   );
 }
+
+function applyDemoEvent(
+  prev: Record<string, AgentRow>,
+  event: AgentEvent,
+): Record<string, AgentRow> {
+  if (event.type === 'task.summary') return prev;
+  const row = prev[event.agent] ?? { name: event.agent, state: 'waiting', elapsedMs: 0, tokenUsed: 0 };
+  const next: AgentRow = { ...row };
+
+  if (event.type === 'agent.start') {
+    next.state = 'running';
+  } else if (event.type === 'agent.delta') {
+    next.state = 'streaming';
+    const stage = event.payload.stage;
+    next.latestDelta = typeof stage === 'string' ? stage : '生成中…';
+  } else if (event.type === 'agent.done') {
+    next.state = 'done';
+    const elapsed = event.payload.elapsed_ms;
+    const token = event.payload.token_used;
+    if (typeof elapsed === 'number') next.elapsedMs = elapsed;
+    if (typeof token === 'number') next.tokenUsed = token;
+  } else if (event.type === 'agent.error') {
+    next.state = 'error';
+    const error = event.payload.error;
+    if (typeof error === 'string') next.error = error;
+  }
+
+  return { ...prev, [event.agent]: next };
+}
+
+function getLogTag(agent: string): string {
+  return AGENT_LOG_COPY[agent]?.tag ?? agent;
+}
+
+function formatEventMessage(event: AgentEvent): string {
+  if (event.type === 'agent.start') {
+    return AGENT_LOG_COPY[event.agent]?.start ?? `${event.agent} 已启动。`;
+  }
+  if (event.type === 'agent.delta') {
+    return formatStageMessage(event.agent, event.payload.stage);
+  }
+  if (event.type === 'agent.done') {
+    return formatDoneMessage(event.agent, Number(event.payload.elapsed_ms ?? 0), Number(event.payload.token_used ?? 0));
+  }
+  if (event.type === 'agent.error') {
+    return `执行异常：${String(event.payload.error ?? '未知错误')}`;
+  }
+  return '';
+}
+
+function formatStateMessage(
+  agent: string,
+  type: 'agent.start' | 'agent.delta' | 'agent.done' | 'agent.error',
+  row: AgentRow,
+): string {
+  if (type === 'agent.start') {
+    return AGENT_LOG_COPY[agent]?.start ?? `${agent} 已启动。`;
+  }
+  if (type === 'agent.delta') {
+    return formatStageMessage(agent, row.latestDelta);
+  }
+  if (type === 'agent.done') {
+    return formatDoneMessage(agent, row.elapsedMs, row.tokenUsed);
+  }
+  return `执行异常：${row.error ?? '未知错误'}`;
+}
+
+function formatStageMessage(agent: string, stage: unknown): string {
+  const normalized = typeof stage === 'string' ? stage : '';
+  const knownStage = STAGE_MESSAGE_MAP[normalized];
+  if (knownStage) return knownStage;
+  if (!normalized) return AGENT_LOG_COPY[agent]?.delta ?? '阶段更新已到达。';
+  return `阶段更新：${normalized.replaceAll('_', ' ')}。`;
+}
+
+function formatDoneMessage(agent: string, elapsedMs: number, tokenUsed: number): string {
+  const base = AGENT_LOG_COPY[agent]?.done ?? `${agent} 执行完成。`;
+  const seconds = elapsedMs > 0 ? `${(elapsedMs / 1000).toFixed(1)}s` : '0.0s';
+  const tokens = tokenUsed > 0 ? ` · tokens ${tokenUsed}` : '';
+  return `${base} 用时 ${seconds}${tokens}。`;
+}
+
+function formatSummaryMessage(summary: { status?: unknown; elapsed_ms?: unknown; elapsedMs?: unknown; error?: unknown }): string {
+  const status = String(summary.status ?? 'unknown');
+  const elapsedMs = Number(summary.elapsed_ms ?? summary.elapsedMs ?? 0);
+  if (status !== 'ok') {
+    return `本轮任务结束于异常状态：${String(summary.error ?? '未知错误')}。`;
+  }
+  return `整条链路执行完成，资源包与评估建议已经就绪。总耗时 ${(elapsedMs / 1000).toFixed(1)}s。`;
+}
+
+const STAGE_MESSAGE_MAP: Record<string, string> = {
+  profile_finalized: AGENT_LOG_COPY.ProfileAgent.delta,
+  plan_finalized: AGENT_LOG_COPY.PlannerAgent.delta,
+  document_finalized: AGENT_LOG_COPY.DocumentAgent.delta,
+  exercise_finalized: AGENT_LOG_COPY.ExerciseAgent.delta,
+  visual_finalized: AGENT_LOG_COPY.VisualAgent.delta,
+  code_finalized: AGENT_LOG_COPY.CodeAgent.delta,
+  evaluation_finalized: AGENT_LOG_COPY.EvaluationAgent.delta,
+};
 
 /* ─── Styles ─── */
 const wrapStyle: React.CSSProperties = {
@@ -434,6 +615,36 @@ const consoleBodyStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 2,
 };
+
+const logLineStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  alignItems: 'flex-start',
+  animation: 'fviz-in 0.2s ease',
+  fontSize: 11,
+  lineHeight: 1.75,
+  fontFamily: "'JetBrains Mono', monospace",
+};
+
+const logTextStyle: React.CSSProperties = {
+  color: C.paper,
+  opacity: 0.82,
+};
+
+function logTagStyle(agent: string, type: string): React.CSSProperties {
+  return {
+    flexShrink: 0,
+    padding: '1px 6px',
+    borderRadius: 5,
+    fontSize: 10,
+    fontWeight: 900,
+    marginTop: 2,
+    border: `1.5px solid ${C.ink}`,
+    background: type === 'agent.done' ? C.green : type === 'agent.start' ? C.yellow : C.cream,
+    color: type === 'agent.done' ? 'white' : C.ink,
+    minWidth: AGENT_MAP[agent] ? undefined : 72,
+  };
+}
 
 function tlStyle(color: string): React.CSSProperties {
   return {

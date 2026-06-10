@@ -20,10 +20,12 @@ class Settings:
         "https://spark-api-open.xf-yun.com/v1",
     )
     spark_model: str = os.getenv("SPARK_MODEL", "generalv3.5")
+    openmaic_base_url: str = os.getenv("OPENMAIC_BASE_URL", "http://localhost:3100")
 
     cors_origins: tuple[str, ...] = (
         "http://localhost:8000",
         "http://localhost:5173",
+        "http://localhost:3100",
     )
 
 

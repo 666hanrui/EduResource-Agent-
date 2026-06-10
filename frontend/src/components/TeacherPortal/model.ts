@@ -3,8 +3,28 @@ import type { Rationale } from '../../types/resources';
 export type TabKey = 'overview' | 'generator' | 'review' | 'intervention';
 export type RunState = 'idle' | 'submitting' | 'running' | 'done' | 'error';
 
+export type TeacherContext = {
+  teacher_id: string;
+  display_name: string;
+  subject: string;
+  teaching_style: string[];
+  resource_preferences: string[];
+};
+
+export type ClassProfile = {
+  class_id: string;
+  teacher_id?: string;
+  name: string;
+  students: number;
+  risk: number;
+  progress: number;
+  status: string;
+  mastery_trend?: number[];
+};
+
 export type Student = {
   id: string;
+  class_id?: string;
   focus: string;
   mastery: number;
   risk: 'high' | 'medium' | 'low';
@@ -14,15 +34,63 @@ export type Student = {
   knowledgeName: string;
 };
 
+export type TeacherStudentSnapshot = {
+  id: string;
+  class_id: string;
+  focus: string;
+  mastery: number;
+  risk: 'high' | 'medium' | 'low';
+  evidence: string;
+  action: string;
+  knowledge_id: string;
+  knowledge_name: string;
+};
+
 export type ReviewItem = {
   id: string;
+  package_id?: string;
   title: string;
   type: string;
-  student: string;
+  student: string | null;
   status: string;
   agent: string;
   reason: string;
   rationale: Rationale;
+};
+
+export type TeacherTeachingPackage = {
+  id: string;
+  teacher_id: string;
+  class_id: string;
+  target_student_id: string | null;
+  title: string;
+  target_knowledge_id: string;
+  target_knowledge_name: string;
+  teaching_goal: string;
+  status: string;
+  results: unknown | null;
+};
+
+export type TeacherGenerationJob = {
+  job_id: string;
+  teacher_id: string;
+  class_id: string;
+  target_student_id: string | null;
+  teaching_package_id: string;
+  generate_task_id: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  message: string;
+  results: unknown | null;
+  review_items: ReviewItem[];
+};
+
+export type TeacherDashboard = {
+  teacher_context: TeacherContext;
+  classes: ClassProfile[];
+  active_class: ClassProfile;
+  attention_queue: TeacherStudentSnapshot[];
+  recent_packages: TeacherTeachingPackage[];
+  review_items: ReviewItem[];
 };
 
 export const TAB_ITEMS: { key: TabKey; title: string; caption: string }[] = [
@@ -32,15 +100,16 @@ export const TAB_ITEMS: { key: TabKey; title: string; caption: string }[] = [
   { key: 'intervention', title: 'Intervene', caption: '闭环干预动作' },
 ];
 
-export const CLASSES = [
-  { name: '软件工程 2301', students: 42, risk: 6, progress: 78, status: '正常推进' },
-  { name: '数据结构强化班', students: 36, risk: 11, progress: 64, status: '需要干预' },
-  { name: 'AI 应用项目组', students: 18, risk: 3, progress: 83, status: '正常推进' },
+export const CLASSES: ClassProfile[] = [
+  { class_id: 'class-se-2301', teacher_id: 'tch_001', name: '软件工程 2301', students: 42, risk: 6, progress: 78, status: '正常推进' },
+  { class_id: 'class-ds-boost', teacher_id: 'tch_001', name: '数据结构强化班', students: 36, risk: 11, progress: 64, status: '需要干预' },
+  { class_id: 'class-ai-project', teacher_id: 'tch_001', name: 'AI 应用项目组', students: 18, risk: 3, progress: 83, status: '正常推进' },
 ];
 
 export const STUDENTS: Student[] = [
   {
     id: 'stu_001',
+    class_id: 'class-se-2301',
     focus: '链表 / 指针修改顺序',
     mastery: 72,
     risk: 'medium',
@@ -51,6 +120,7 @@ export const STUDENTS: Student[] = [
   },
   {
     id: 'stu_018',
+    class_id: 'class-ds-boost',
     focus: '二叉树遍历 / 递归栈',
     mastery: 51,
     risk: 'high',
@@ -61,6 +131,7 @@ export const STUDENTS: Student[] = [
   },
   {
     id: 'stu_026',
+    class_id: 'class-ds-boost',
     focus: '动态规划入门 / 状态转移',
     mastery: 67,
     risk: 'medium',
@@ -71,6 +142,7 @@ export const STUDENTS: Student[] = [
   },
   {
     id: 'stu_033',
+    class_id: 'class-ai-project',
     focus: '图算法 BFS / 队列过程',
     mastery: 86,
     risk: 'low',

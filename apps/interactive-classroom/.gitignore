@@ -1,0 +1,84 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+CLAUDE.local.md
+.claude
+.superpowers
+
+# dependencies
+/node_modules
+/openclaw/node_modules
+/openclaw/package-lock.json
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+!.env.example
+
+# server provider config (contains API keys)
+server-providers.yml
+server-providers-*.yml
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea
+.vscode
+
+# worktrees
+.worktrees
+
+# generated data
+/data
+/logs
+
+# docs
+/docs
+# Eval results
+eval/whiteboard-layout/results/
+eval/outline-language/results/
+eval/orchestration/results/
+eval/orchestration/results-answering/
+
+# e2e screenshot artifacts
+e2e/screenshots/
+
+# local e2e screenshots for #619 review
+e2e/__screenshots-619/

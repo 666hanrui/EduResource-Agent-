@@ -243,7 +243,7 @@ def build_major_exploration_plan(req: ExplorationRequest) -> ExplorationPlan:
         step_id="coach-report",
         agent_name="CoachReportAgent",
         title="教练与成长报告准备",
-        action=lambda: _build_recommended_knowledge(knowledge_map, directions),
+        action=lambda: _build_recommended_knowledge(knowledge_map, directions, learning_path, scores),
         summary=lambda items: "把任务、资源、画像版本和复盘记录纳入后续教练建议与成长报告。",
         evidence_refs=lambda items: [item.knowledge_name for item in items[:3]] or ["探索教练", "成长报告", "资源证据"],
         output_count=lambda items: len(items),
@@ -1367,19 +1367,181 @@ def _build_learning_path(
 def _build_recommended_knowledge(
     knowledge_map: list[KnowledgeNode],
     directions: list[CareerDirection],
+    learning_path: list[LearningPathItem],
+    scores: list[DimensionScore],
 ) -> list[RecommendedKnowledge]:
-    selected_ids = set()
-    for direction in directions[:2]:
-        selected_ids.update(direction.related_knowledge_ids)
-    selected = [node for node in knowledge_map if node.id in selected_ids]
-    if len(selected) < 3:
-        selected.extend([node for node in knowledge_map if node.category == "core"][: 3 - len(selected)])
-    return [
-        RecommendedKnowledge(
-            knowledge_id=node.id,
-            knowledge_name=node.title,
-            reason=node.why,
-            suggested_difficulty=min(5, max(1, node.difficulty)),
+    node_by_id = {node.id: node for node in knowledge_map}
+    top_direction = directions[0] if directions else None
+    second_direction = directions[1] if len(directions) > 1 else None
+    low_scores = sorted(scores, key=lambda item: item.score)[:2]
+    low_score_titles = "、".join(item.title for item in low_scores)
+
+    short_term = next((item for item in learning_path if item.phase == "short_term"), None)
+    mid_term = next((item for item in learning_path if item.phase == "mid_term"), None)
+    long_term = next((item for item in learning_path if item.phase == "long_term"), None)
+
+    foundation_node = _pick_first_node(
+        node_by_id=node_by_id,
+        preferred_ids=list(short_term.focus_knowledge_ids) if short_term else [],
+        fallback_categories=["foundation"],
+    )
+    practice_node = _pick_first_node(
+        node_by_id=node_by_id,
+        preferred_ids=(
+            [item for item in (top_direction.related_knowledge_ids if top_direction else []) if item.startswith("core-")]
+            + (list(mid_term.focus_knowledge_ids) if mid_term else [])
+        ),
+        fallback_categories=["core", "practice"],
+    )
+    advancement_node = _pick_first_node(
+        node_by_id=node_by_id,
+        preferred_ids=(
+            [item for item in (top_direction.related_knowledge_ids if top_direction else []) if item.startswith("direction-")]
+            + (list(long_term.focus_knowledge_ids) if long_term else [])
+        ),
+        fallback_categories=["direction", "practice"],
+    )
+    evidence_node = _pick_first_node(
+        node_by_id=node_by_id,
+        preferred_ids=list(second_direction.related_knowledge_ids) if second_direction else [],
+        fallback_categories=["practice", "core"],
+    )
+
+    selected: list[dict[str, str | int | KnowledgeNode]] = []
+    if foundation_node is not None:
+        foundation_name = foundation_node.title
+        selected.append(
+            {
+                "node": foundation_node,
+                "stage_key": "foundation",
+                "stage_title": "阶段 1 · 基础定标",
+                "reason": (
+                    f"阶段 1 · 基础定标入口：{foundation_node.why}"
+                    f"{f' 当前优先补证据维度：{low_score_titles}。' if low_score_titles else ''}"
+                    " 先用它做一次低成本验证，确认最先卡住的底层概念。"
+                ),
+                "difficulty": 2,
+                "validation_prompt": (
+                    f"用自己的话解释「{foundation_name}」解决的核心问题，并举一个最简单的例子。"
+                ),
+                "success_criteria": "能说清核心概念、适用场景，以及一个最简单的应用例子。",
+                "recommended_action": f"先进入培养方案页，把「{foundation_name}」作为第一阶段验证题启动。",
+            }
         )
-        for node in selected[:5]
-    ]
+    if practice_node is not None:
+        practice_name = practice_node.title
+        selected.append(
+            {
+                "node": practice_node,
+                "stage_key": "practice",
+                "stage_title": "阶段 2 · 课堂练习",
+                "reason": (
+                    "阶段 2 · 课堂练习入口："
+                    f"{top_direction.title if top_direction else '当前目标方向'} 要落地，"
+                    f"需要先把「{practice_name}」推进成互动课堂并完成阶段验证。"
+                ),
+                "difficulty": max(3, practice_node.difficulty),
+                "validation_prompt": f"围绕「{practice_name}」完成一轮互动课堂测验，并定位本轮最容易错的点。",
+                "success_criteria": "完成课堂测验并回写正确率，能指出本轮最容易错的概念或步骤。",
+                "recommended_action": f"直接跳到培养方案的课堂练习阶段，再发起「{practice_name}」互动课堂。",
+            }
+        )
+    if advancement_node is not None:
+        advancement_name = advancement_node.title
+        selected.append(
+            {
+                "node": advancement_node,
+                "stage_key": "advancement",
+                "stage_title": "阶段 3 · 进阶迁移",
+                "reason": (
+                    "阶段 3 · 进阶迁移入口："
+                    f"当基础和课堂验证稳定后，把「{advancement_name}」迁移到"
+                    f"{top_direction.title if top_direction else '目标方向'}的作品、小项目或职业情境里。"
+                ),
+                "difficulty": max(4, advancement_node.difficulty),
+                "validation_prompt": f"把「{advancement_name}」迁移到一个更高阶场景，说明你会怎样应用它。",
+                "success_criteria": "能把知识点迁移到新场景，并说明为什么这样做以及预期结果。",
+                "recommended_action": f"完成前两阶段后，再把「{advancement_name}」推进到作品或高阶任务验证。",
+            }
+        )
+    if evidence_node is not None:
+        evidence_name = evidence_node.title
+        selected.append(
+            {
+                "node": evidence_node,
+                "stage_key": "evidence",
+                "stage_title": "证据补强 · 方向复核",
+                "reason": (
+                    "证据补强入口："
+                    f"如果要继续验证 {second_direction.title if second_direction else '第二候选方向'}，"
+                    f"可以把「{evidence_name}」转成补充资源或小任务，继续观察投入感和完成度。"
+                ),
+                "difficulty": max(2, evidence_node.difficulty),
+                "validation_prompt": f"围绕「{evidence_name}」补一条资源证据或小任务，验证自己是否愿意继续投入。",
+                "success_criteria": "至少完成 1 条补充资源或小任务，并给出是否继续推进该方向的判断。",
+                "recommended_action": f"把「{evidence_name}」作为补充验证入口，用来复核第二候选方向。",
+            }
+        )
+
+    seen: set[str] = set()
+    result: list[RecommendedKnowledge] = []
+    for item in selected:
+        node = item["node"]
+        if not isinstance(node, KnowledgeNode):
+            continue
+        if node.id in seen:
+            continue
+        seen.add(node.id)
+        result.append(
+            RecommendedKnowledge(
+                knowledge_id=node.id,
+                knowledge_name=node.title,
+                reason=str(item["reason"]),
+                suggested_difficulty=min(5, max(1, int(item["difficulty"]))),
+                stage_key=str(item["stage_key"]),
+                stage_title=str(item["stage_title"]),
+                validation_prompt=str(item["validation_prompt"]),
+                success_criteria=str(item["success_criteria"]),
+                recommended_action=str(item["recommended_action"]),
+            )
+        )
+
+    if len(result) < 4:
+        for node in knowledge_map:
+            if node.id in seen:
+                continue
+            if node.category not in {"core", "practice", "direction"}:
+                continue
+            seen.add(node.id)
+            result.append(
+                RecommendedKnowledge(
+                    knowledge_id=node.id,
+                    knowledge_name=node.title,
+                    reason=f"补充探索入口：{node.why} 可作为后续课堂或资源生成的候选知识点。",
+                    suggested_difficulty=min(5, max(1, node.difficulty)),
+                    stage_key="evidence",
+                    stage_title="证据补强 · 备用入口",
+                    validation_prompt=f"围绕「{node.title}」补一条探索证据，判断它是否值得进入下一轮培养方案。",
+                    success_criteria="至少形成 1 条资源、任务或复盘证据，支持是否继续推进的判断。",
+                    recommended_action=f"把「{node.title}」先作为补充入口保留，必要时再转成阶段任务。",
+                )
+            )
+            if len(result) >= 5:
+                break
+    return result[:5]
+
+
+def _pick_first_node(
+    *,
+    node_by_id: dict[str, KnowledgeNode],
+    preferred_ids: list[str],
+    fallback_categories: list[str],
+) -> KnowledgeNode | None:
+    for knowledge_id in preferred_ids:
+        node = node_by_id.get(knowledge_id)
+        if node is not None:
+            return node
+    for node in node_by_id.values():
+        if node.category in fallback_categories:
+            return node
+    return None

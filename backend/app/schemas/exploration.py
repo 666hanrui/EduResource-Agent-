@@ -17,6 +17,7 @@ ExplorationPhase = Literal["short_term", "mid_term", "long_term"]
 ResourceStatus = Literal["recommended", "opened", "completed"]
 CoachTone = Literal["encourage", "diagnose", "challenge"]
 ReportExportFormat = Literal["markdown", "html"]
+RecommendationStageKey = Literal["foundation", "practice", "advancement", "evidence"]
 
 PROFILE_DIMENSION_KEYS = [
     "professional_skills",
@@ -137,6 +138,11 @@ class RecommendedKnowledge(BaseModel):
     knowledge_name: str
     reason: str
     suggested_difficulty: int = Field(default=2, ge=1, le=5)
+    stage_key: RecommendationStageKey = "foundation"
+    stage_title: str = ""
+    validation_prompt: str = ""
+    success_criteria: str = ""
+    recommended_action: str = ""
 
 
 class ExplorationAgentStep(BaseModel):

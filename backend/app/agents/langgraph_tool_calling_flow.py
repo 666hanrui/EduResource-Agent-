@@ -34,7 +34,7 @@ from .generate_flow import (
     GenerateRequest,
     _apply_selection_context,
     _make_mock_answers,
-    _pick_params,
+    _pick_params_for_agent,
     _selection_context_turns,
 )
 from .planner_agent import PlannerAgent, PlannerAgentInput, TargetKnowledge
@@ -320,7 +320,8 @@ class ToolCallingFlow:
         agent: DocumentAgent = self._agent("DocumentAgent")
         kb = outputs.plan.knowledge_breakdown
         params = _apply_selection_context(
-            _pick_params(outputs.plan, req.knowledge_name), req.selection_context
+            _pick_params_for_agent(outputs.plan, "DocumentAgent", req.knowledge_name),
+            req.selection_context,
         )
         profile_summary = _make_profile_summary(outputs)
         outputs.document = await agent.run(
@@ -340,7 +341,8 @@ class ToolCallingFlow:
         agent: ExerciseAgent = self._agent("ExerciseAgent")
         kb = outputs.plan.knowledge_breakdown
         params = _apply_selection_context(
-            _pick_params(outputs.plan, req.knowledge_name), req.selection_context
+            _pick_params_for_agent(outputs.plan, "ExerciseAgent", req.knowledge_name),
+            req.selection_context,
         )
         profile_summary = _make_profile_summary(outputs)
         outputs.exercise = await agent.run(
@@ -361,7 +363,8 @@ class ToolCallingFlow:
         agent: VisualAgent = self._agent("VisualAgent")
         kb = outputs.plan.knowledge_breakdown
         params = _apply_selection_context(
-            _pick_params(outputs.plan, req.knowledge_name), req.selection_context
+            _pick_params_for_agent(outputs.plan, "VisualAgent", req.knowledge_name),
+            req.selection_context,
         )
         profile_summary = _make_profile_summary(outputs)
         outputs.visual = await agent.run(
@@ -383,7 +386,8 @@ class ToolCallingFlow:
         agent: CodeAgent = self._agent("CodeAgent")
         kb = outputs.plan.knowledge_breakdown
         params = _apply_selection_context(
-            _pick_params(outputs.plan, req.knowledge_name), req.selection_context
+            _pick_params_for_agent(outputs.plan, "CodeAgent", req.knowledge_name),
+            req.selection_context,
         )
         profile_summary = _make_profile_summary(outputs)
         code_langs = [lang for lang in req.languages if lang in ("python", "java")] or [

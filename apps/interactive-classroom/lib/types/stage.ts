@@ -1,0 +1,174 @@
+// Stage and Scene data types
+import type { Slide } from '@/lib/types/slides';
+import type { Action } from '@/lib/types/action';
+import type { PBLProjectConfig } from '@/lib/pbl/types';
+import type { WidgetType, WidgetConfig, TeacherAction } from '@/lib/types/widgets';
+import type { EduResourceContext } from '@/lib/eduresource/context';
+
+export type SceneType = 'slide' | 'quiz' | 'interactive' | 'pbl';
+
+export type StageMode = 'autonomous' | 'playback' | 'edit';
+
+export type Whiteboard = Omit<Slide, 'theme' | 'turningMode' | 'sectionTag' | 'type'>;
+
+export interface VideoManifestEntry {
+  type: 'video';
+  prompt: string;
+  aspectRatio?: string;
+}
+
+export type VideoManifest = Record<string, VideoManifestEntry>;
+
+/**
+ * Stage - Represents the entire classroom/course
+ */
+export interface Stage {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: number;
+  updatedAt: number;
+  // Stage metadata
+  languageDirective?: string;
+  style?: string;
+  // Whiteboard data
+  whiteboard?: Whiteboard[];
+  // Generated video requests keyed by the mediaRef used by PPTVideoElement.
+  // Runtime media state lives in the media task store / persisted media files.
+  videoManifest?: VideoManifest;
+  // Agent IDs selected when this classroom was created
+  agentIds?: string[];
+  /**
+   * Server-generated agent configurations.
+   * Embedded in persisted classroom JSON so clients can hydrate
+   * the agent registry without relying on IndexedDB pre-population.
+   * Only present for API-generated classrooms.
+   */
+  generatedAgentConfigs?: Array<{
+    id: string;
+    name: string;
+    role: string;
+    persona: string;
+    avatar: string;
+    color: string;
+    priority: number;
+  }>;
+  /**
+   * True when this classroom was generated with Interactive Mode enabled
+   * (the INTERACTIVE_OUTLINES prompt branch).
+   * Absent on legacy classrooms, imports, and regular-mode generations.
+   */
+  interactiveMode?: boolean;
+  /**
+   * EduResource integration context for classrooms generated from the host
+   * business system. Runtime quiz attempts use this to write back results.
+   */
+  eduResourceContext?: EduResourceContext;
+}
+
+/**
+ * Scene - Represents a single page/scene in the course
+ */
+export interface Scene {
+  id: string;
+  stageId: string; // ID of the parent stage (for data integrity checks)
+  type: SceneType;
+  title: string;
+  order: number; // Display order
+
+  // Type-specific content
+  content: SceneContent;
+
+  // Actions to execute during playback
+  actions?: Action[];
+
+  // Whiteboards to explain deeply
+  whiteboards?: Slide[];
+
+  // Multi-agent discussion configuration
+  multiAgent?: {
+    enabled: boolean; // Enable multi-agent for this scene
+    agentIds: string[]; // Which agents to include (from registry)
+    directorPrompt?: string; // Optional custom director instructions
+  };
+
+  // Metadata
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+/**
+ * Scene content based on type
+ */
+export type SceneContent = SlideContent | QuizContent | InteractiveContent | PBLContent;
+
+/**
+ * Slide content - PPTist Canvas data.
+ *
+ * `schemaVersion` tags the on-disk shape of this content so future schema
+ * changes can ship behind a migration step (see `migrateSlideContent`).
+ * Optional for backward compatibility — legacy / pre-versioning data
+ * lacks the field and `migrateSlideContent` normalizes it.
+ */
+export interface SlideContent {
+  type: 'slide';
+  schemaVersion?: number;
+  // PPTist slide data structure
+  canvas: Slide;
+}
+
+/**
+ * Quiz content - React component props/data
+ */
+export interface QuizContent {
+  type: 'quiz';
+  questions: QuizQuestion[];
+}
+
+export interface QuizOption {
+  label: string; // Display text
+  value: string; // Selection key: "A", "B", "C", "D"
+}
+
+export interface QuizQuestion {
+  id: string;
+  type: 'single' | 'multiple' | 'short_answer';
+  question: string;
+  options?: QuizOption[];
+  answer?: string[]; // Correct answer values: ["A"], ["A","C"], or undefined for text
+  analysis?: string; // Explanation shown after grading
+  commentPrompt?: string; // Grading guidance for text questions
+  hasAnswer?: boolean; // Whether auto-grading is possible
+  points?: number; // Points per question (default 1)
+}
+
+/**
+ * Interactive content - Interactive web page (iframe)
+ */
+export interface InteractiveContent {
+  type: 'interactive';
+  url: string; // URL of the interactive page
+  // Optional: embedded HTML content
+  html?: string;
+  // Ultra Mode widget fields
+  widgetType?: WidgetType;
+  widgetConfig?: WidgetConfig;
+  teacherActions?: TeacherAction[];
+}
+
+/**
+ * PBL content - Project-based learning
+ */
+export interface PBLContent {
+  type: 'pbl';
+  projectConfig: PBLProjectConfig;
+}
+
+// Re-export generation types for convenience
+export type {
+  UserRequirements,
+  SceneOutline,
+  GenerationSession,
+  GenerationProgress,
+  UploadedDocument,
+} from './generation';

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AgentSystemsShowcase } from '../AgentSystemsShowcase';
 import './cinematic-resource.css';
 
 interface AgentNode {
@@ -55,12 +56,12 @@ const CAPABILITY_ROWS = [
   },
   {
     num: '03',
-    title: <>Visible seven-agent <em>DAG</em></>,
+    title: <>Two visible <em>agent systems</em></>,
     meta: 'Agent Runtime',
-    year: 'Profile → Evaluation',
-    count: '7 agents',
+    year: 'Explore + Generate',
+    count: '2 x 7 agents',
     thumb: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80',
-    href: '#pipeline',
+    href: '#evidence',
   },
   {
     num: '04',
@@ -94,31 +95,34 @@ const INITIAL_NODES: AgentNode[] = [
 
 const PIPELINE_LOGS: Record<string, string[]> = {
   profile: [
-    'ProfileAgent: 读取学生 12 维画像和薄弱证据。',
-    'Evidence: 递归调用顺序混淆，图解偏好更强。',
+    '[Profile] 读取学生画像与历史错因，确认当前薄弱点集中在链表指针移动。',
+    '[Profile] 锁定偏好：图示驱动更有效，讲解需要更细的步骤拆分。',
   ],
   planner: [
-    'PlannerAgent: 生成资源 DAG，拆分讲解、题目、代码与可视化。',
-    'Policy: 降低初始难度，保留老师审核溯源。',
+    '[Planner] 拆解为 4 个资源任务：讲解、练习、图解、代码案例。',
+    '[Planner] 先压低初始难度，再逐步抬升挑战，保留教师审核链路。',
   ],
-  doc: ['DocumentAgent: 产出低认知负担讲解结构。'],
-  exercise: ['ExerciseAgent: 生成 5 道自适应练习。'],
-  visual: ['VisualAgent: 绑定思维导图和步骤动画。'],
-  code: ['CodeAgent: 输出 Python / Java 双语代码。'],
-  eval: ['EvaluationAgent: 汇总 rationale fingerprint 并回写学习画像。'],
+  doc: ['[Document] 讲解主线已展开：先讲节点关系，再讲插入与删除。'],
+  exercise: ['[Exercise] 生成 5 道自适应练习，并附带即时反馈锚点。'],
+  visual: ['[Visual] 补齐链表流向图与步骤动画，等待与讲解内容对齐。'],
+  code: ['[Code] 收敛 Python / Java 双语案例，绑定上游讲解与图解上下文。'],
+  eval: ['[Evaluation] 汇总学习证据，准备把结果回写到学生画像。'],
 };
 
 export function ProjectLanding() {
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [activeStep, setActiveStep] = useState('idle');
-  const [logs, setLogs] = useState<string[]>(['System: EduResource cinematic studio ready.']);
+  const [logs, setLogs] = useState<string[]>(['[System] EduResource 工作台已就绪，等待新的学习资源请求。']);
 
   useCinematicReveal();
 
   const triggerSimulation = () => {
     setActiveStep('profile');
     setNodes(INITIAL_NODES.map((node) => node.id === 'profile' ? { ...node, status: 'active' } : node));
-    setLogs(['--- Triggering 7-Agent DAG ---', ...PIPELINE_LOGS.profile]);
+    setLogs([
+      '[Main] 收到新的学习请求，开始调度 7 个 Agent。',
+      ...PIPELINE_LOGS.profile,
+    ]);
 
     [
       { id: 'planner', delay: 1000 },
@@ -135,14 +139,14 @@ export function ProjectLanding() {
           if (node.status === 'active') return { ...node, status: 'success' };
           return node;
         }));
-        setLogs((prev) => [...prev, `[${step.id}]`, ...PIPELINE_LOGS[step.id]]);
+        setLogs((prev) => [...prev, ...PIPELINE_LOGS[step.id]]);
       }, step.delay);
     });
 
     window.setTimeout(() => {
       setActiveStep('done');
       setNodes((prev) => prev.map((node) => ({ ...node, status: 'success' })));
-      setLogs((prev) => [...prev, '✓ Resource bundle generated. Teacher review queue updated.']);
+      setLogs((prev) => [...prev, '[Bundle] 资源包收敛完成，教师审核与学生展示均已准备就绪 ✓']);
     }, 6600);
   };
 
@@ -184,7 +188,7 @@ export function ProjectLanding() {
               </div>
               <div className="cinematic-meta-cell">
                 <span className="cinematic-meta-label">Pipeline</span>
-                <span className="cinematic-meta-value">7 Agent DAG</span>
+                <span className="cinematic-meta-value">2 x 7 Agent</span>
               </div>
               <div className="cinematic-meta-cell">
                 <span className="cinematic-meta-label">Teacher side</span>
@@ -209,14 +213,14 @@ export function ProjectLanding() {
 
             <div className="cinematic-spread">
               <aside className="cinematic-spread__copy cinematic-reveal">
-                <p className="cinematic-pull">不是让新生先上传一份并不存在的“合格简历”，而是从专业广度开始铺开，再收敛到兴趣方向和资源生成。</p>
+                <p className="cinematic-pull">先看专业方向，再调度资源生成，不让学生一上来就被“简历入口”挡住。</p>
                 <div className="cinematic-body">
-                  <p>主页复用作品集的叙事方式：先用一张强视觉 hero 建立产品气质，再用图版、索引、札记把系统能力摊开。</p>
-                  <p>老师端保留真实操作：选择学生、触发生成、查看运行、审核 rationale，并把干预反馈回写闭环。</p>
+                  <p>学生端负责探索，老师端负责生成与审核，两边都能看见 Agent 在怎么工作。</p>
+                  <p>多 Agent 不再藏在结果后面，而是直接作为产品结构展示。</p>
                 </div>
                 <div className="cinematic-meta-grid">
                   <div>Profile<strong>12 dimensions</strong></div>
-                  <div>Runtime<strong>7 agents</strong></div>
+                  <div>Runtime<strong>2 x 7 agents</strong></div>
                   <div>Review<strong>Rationale panel</strong></div>
                   <div>Loop<strong>Evaluation update</strong></div>
                 </div>
@@ -280,7 +284,7 @@ export function ProjectLanding() {
               </div>
               <div className="landing-pipeline__log">
                 <div className="landing-pipeline__bar">
-                  <span>agent-stream.log</span>
+                  <span>运行日志 · agent-stream.log</span>
                   <button className="cinematic-button" disabled={activeStep !== 'idle' && activeStep !== 'done'} onClick={triggerSimulation}>
                     {activeStep === 'idle' ? 'Simulate' : activeStep === 'done' ? 'Rerun' : 'Running'}
                   </button>
@@ -295,42 +299,13 @@ export function ProjectLanding() {
           <div className="cinematic-section__inner">
             <div className="cinematic-section__head cinematic-reveal">
               <div>
-                <span className="cinematic-eyebrow"><span className="num">04</span><span className="bar" />Practice</span>
-                <h2 className="cinematic-section__title">The same style carries the <em>teacher end.</em></h2>
+                <span className="cinematic-eyebrow"><span className="num">04</span><span className="bar" />Dual systems</span>
+                <h2 className="cinematic-section__title">Two multi-agent systems, both <em>visible.</em></h2>
               </div>
-              <div className="cinematic-section__aside">Overview<br />Generator<br />Review queue</div>
+              <div className="cinematic-section__aside">Student explore<br />Teacher generate<br />Same surface</div>
             </div>
-            <div className="cinematic-practice-grid cinematic-reveal-stagger">
-              <article className="cinematic-practice-card">
-                <small>i</small>
-                <h3><em>Teacher</em><br />Studio</h3>
-                <p>班级风险、学生证据、生成参数和审核队列被组织成同一套纸张/索引视觉，而不是另起后台风格。</p>
-                <dl>
-                  <div><dt>Modules</dt><dd>4</dd></div>
-                  <div><dt>Action</dt><dd>Generate</dd></div>
-                  <div><dt>Review</dt><dd>Rationale</dd></div>
-                </dl>
-              </article>
-              <article className="cinematic-practice-card">
-                <small>ii</small>
-                <h3>Student<br /><em>Exploration</em></h3>
-                <p>学生端继续保留已有功能，从专业、年级和兴趣切入，先找到方向，再进入资源生成。</p>
-                <dl>
-                  <div><dt>Entry</dt><dd>Major</dd></div>
-                  <div><dt>Profile</dt><dd>12D</dd></div>
-                  <div><dt>Path</dt><dd>Snail</dd></div>
-                </dl>
-              </article>
-              <article className="cinematic-practice-card">
-                <small>iii</small>
-                <h3>Coach<br /><em>Workbench</em></h3>
-                <p>Claude Code 式工作台继续作为系统控制台，给出会话、slash 指令、附件证据和运行轨迹。</p>
-                <dl>
-                  <div><dt>Mode</dt><dd>Agentic</dd></div>
-                  <div><dt>Trace</dt><dd>Steps</dd></div>
-                  <div><dt>Tool</dt><dd>Upload</dd></div>
-                </dl>
-              </article>
+            <div className="cinematic-reveal">
+              <AgentSystemsShowcase activeSuiteId="generation" />
             </div>
           </div>
         </section>

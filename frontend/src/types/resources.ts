@@ -99,6 +99,36 @@ export interface EvaluationResult {
   };
 }
 
+export interface SupplementalVideoResource {
+  title: string;
+  platform: 'bilibili';
+  url: string;
+  embed_url?: string;
+  bvid?: string;
+  page?: number;
+  up_name: string;
+  duration: string;
+  tags: string[];
+  fit_reason: string;
+}
+
+export interface SupplementalReadingResource {
+  title: string;
+  type: string;
+  url: string;
+  tags: string[];
+  fit_reason: string;
+}
+
+export interface SupplementalResourcesResult {
+  target_knowledge_id: string;
+  target_knowledge_name: string;
+  student_id?: string | null;
+  videos: SupplementalVideoResource[];
+  readings: SupplementalReadingResource[];
+  rationale: Rationale;
+}
+
 export interface GenerateResults {
   profile: unknown | null;
   plan: unknown | null;
@@ -107,5 +137,6 @@ export interface GenerateResults {
   visual: VisualResult | null;
   code: CodeResult | null;
   evaluation: EvaluationResult | null;
+  supplemental?: SupplementalResourcesResult | null;
   errors: Record<string, string>;
 }

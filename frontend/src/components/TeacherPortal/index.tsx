@@ -1,12 +1,20 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RationalePanel } from '../RationalePanel';
+import { AgentSystemsShowcase } from '../AgentSystemsShowcase';
 import { CinematicFooter, CinematicMasthead, useCinematicReveal } from '../ProjectLanding';
 import type { GenerateResults, Rationale } from '../../types/resources';
 import '../../vercel-mesh.css';
 import '../ProjectLanding/cinematic-resource.css';
 import './teacher-mesh.css';
-import { AGENTS, DEMO_RATIONALE, STUDENTS, TAB_ITEMS } from './model';
-import type { ReviewItem, RunState, Student, TabKey } from './model';
+import { AGENTS, CLASSES, STUDENTS, TAB_ITEMS } from './model';
+import type { ReviewItem, RunState, Student, TabKey, TeacherDashboard, TeacherGenerationJob, TeacherStudentSnapshot } from './model';
+import {
+  buildTeacherArtifactLibrary,
+  buildTeacherReviewItems,
+  mergeReviewItems,
+  pickLatestTeacherResults,
+  TEACHER_DELIVERABLE_TYPES,
+} from './artifacts';
 import {
   GeneratorPanel,
   InterventionPanel,
@@ -15,30 +23,95 @@ import {
   TeacherLog,
 } from './panels';
 
+const DEFAULT_TEACHER_ID = 'tch_001';
+const DEFAULT_CLASS_ID = 'class-ds-boost';
+
 export function TeacherPortal() {
   const [active, setActive] = useState<TabKey>('overview');
+  const [teacherId] = useState(DEFAULT_TEACHER_ID);
+  const [classId, setClassId] = useState(DEFAULT_CLASS_ID);
   const [studentId, setStudentId] = useState('stu_018');
   const [knowledgeId, setKnowledgeId] = useState('binary-tree-traversal');
   const [knowledgeName, setKnowledgeName] = useState('二叉树遍历');
   const [goal, setGoal] = useState('为高风险学生生成一套低难度、可视化优先、可审核溯源的补救资源包');
+  const [dashboard, setDashboard] = useState<TeacherDashboard | null>(null);
+  const [dashboardStudents, setDashboardStudents] = useState<Student[]>([]);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [runState, setRunState] = useState<RunState>('idle');
   const [results, setResults] = useState<GenerateResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rationale, setRationale] = useState<Rationale | null>(null);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const pollRef = useRef<number | null>(null);
   useCinematicReveal();
 
-  const activeStudent = STUDENTS.find((item) => item.id === studentId) ?? STUDENTS[1];
+  useEffect(() => {
+    let cancelled = false;
+    const query = classId ? `?class_id=${encodeURIComponent(classId)}` : '';
+    fetch(`/api/teachers/${teacherId}/dashboard${query}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response.json() as Promise<TeacherDashboard>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setDashboard(data);
+        const nextStudents = normalizeStudents(data.attention_queue);
+        setDashboardStudents(nextStudents);
+        setReviewItems(normalizeReviewItems(data.review_items));
+        if (data.active_class.class_id !== classId) {
+          setClassId(data.active_class.class_id);
+        }
+        if (nextStudents.length && !nextStudents.some((student) => student.id === studentId)) {
+          applyStudent(nextStudents[0]);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, teacherId]);
+
+  const classOptions = dashboard?.classes ?? CLASSES;
+  const studentRows = dashboard ? dashboardStudents : STUDENTS;
+  const activeClass = dashboard?.active_class ?? classOptions.find((item) => item.class_id === classId) ?? classOptions[0];
+  const activeStudent = studentRows.find((item) => item.id === studentId) ?? studentRows[0] ?? STUDENTS[1];
 
   const metrics = useMemo(() => [
-    { value: '96', label: 'active students' },
-    { value: '20', label: 'weakness signals' },
-    { value: results ? '1' : '312', label: results ? 'current bundle' : 'generated resources' },
+    { value: String(activeClass?.students ?? 96), label: 'active students' },
+    { value: String(activeClass?.risk ?? 20), label: 'weakness signals' },
+    { value: results ? '1' : String(dashboard?.recent_packages.length ?? 0), label: results ? 'current bundle' : 'teacher packages' },
     { value: '91%', label: 'traceable outputs' },
-  ], [results]);
+  ], [activeClass, dashboard, results]);
 
-  const reviews = useMemo<ReviewItem[]>(() => buildReviewItems({ results, studentId, knowledgeName }), [knowledgeName, results, studentId]);
+  const persistedResults = useMemo(
+    () => pickLatestTeacherResults(dashboard?.recent_packages, studentId, knowledgeId),
+    [dashboard?.recent_packages, knowledgeId, studentId],
+  );
+  const activeResults = results ?? persistedResults;
+  const artifactLibrary = useMemo(
+    () => buildTeacherArtifactLibrary({
+      results: activeResults,
+      knowledgeId,
+      knowledgeName,
+      studentId,
+      goal,
+      focus: activeStudent?.focus,
+      risk: activeStudent?.risk,
+    }),
+    [activeResults, activeStudent?.focus, activeStudent?.risk, goal, knowledgeId, knowledgeName, studentId],
+  );
+  const deliverables = useMemo(
+    () => TEACHER_DELIVERABLE_TYPES.flatMap((type) => artifactLibrary[type] ? [artifactLibrary[type]!] : []),
+    [artifactLibrary],
+  );
+  const reviews = useMemo<ReviewItem[]>(
+    () => mergeReviewItems(normalizeReviewItems(reviewItems), buildTeacherReviewItems(artifactLibrary)),
+    [artifactLibrary, reviewItems],
+  );
 
   const stopPolling = () => {
     if (pollRef.current !== null) {
@@ -47,14 +120,17 @@ export function TeacherPortal() {
     }
   };
 
-  const startPolling = (id: string) => {
+  const startPolling = (id: string, nextClassId: string) => {
     stopPolling();
     pollRef.current = window.setInterval(async () => {
       try {
-        const response = await fetch(`/api/tasks/${id}/results`);
-        if (response.status === 404) return;
+        const response = await fetch(`/api/teachers/${teacherId}/classes/${nextClassId}/teaching-packages/${id}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        setResults((await response.json()) as GenerateResults);
+        const data = (await response.json()) as TeacherGenerationJob;
+        if (data.status === 'queued' || data.status === 'running') return;
+        if (data.status === 'failed') throw new Error(data.message);
+        setResults(asGenerateResults(data.results));
+        setReviewItems(normalizeReviewItems(data.review_items));
         setRunState('done');
         stopPolling();
         setActive('review');
@@ -67,43 +143,49 @@ export function TeacherPortal() {
   };
 
   const generate = async () => {
+    const targetClassId = activeStudent.class_id ?? classId;
     setError(null);
     setResults(null);
+    setReviewItems([]);
     setRunState('submitting');
     try {
-      const response = await fetch('/api/generate', {
+      const response = await fetch(`/api/teachers/${teacherId}/classes/${targetClassId}/teaching-packages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          student_id: studentId,
-          knowledge_id: knowledgeId,
-          knowledge_name: knowledgeName,
-          conversation: [{ role: 'student', text: goal }],
-          selection_context: {
-            source: 'teacher_console',
-            reason: goal,
-            suggested_difficulty: activeStudent.risk === 'high' ? 2 : 3,
-          },
+          target_student_id: studentId,
+          target_knowledge_id: knowledgeId,
+          target_knowledge_name: knowledgeName,
+          teaching_goal: goal,
+          difficulty: activeStudent.risk === 'high' ? 2 : 3,
           exercise_count: activeStudent.risk === 'high' ? 6 : 5,
           languages: ['python', 'java'],
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      const data = (await response.json()) as { task_id: string };
-      setTaskId(data.task_id);
+      const data = (await response.json()) as TeacherGenerationJob;
+      setJobId(data.job_id);
+      setTaskId(data.generate_task_id);
       setRunState('running');
-      startPolling(data.task_id);
+      startPolling(data.job_id, targetClassId);
     } catch (err) {
       setRunState('error');
       setError(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const chooseStudent = (student: Student) => {
+  const applyStudent = (student: Student) => {
     setStudentId(student.id);
     setKnowledgeId(student.knowledgeId);
     setKnowledgeName(student.knowledgeName);
     setGoal(`针对 ${student.id} 的「${student.focus}」薄弱点，生成一套可解释、低负担、可审核的个性化学习资源。`);
+  };
+
+  const chooseStudent = (student: Student) => {
+    applyStudent(student);
+    if (student.class_id && student.class_id !== classId) {
+      setClassId(student.class_id);
+    }
     setActive('generator');
   };
 
@@ -124,11 +206,9 @@ export function TeacherPortal() {
               <span>Teacher Resource Studio</span>
             </div>
             <h1 className="cinematic-hero__title teacher-cinematic-title">
-              <span className="word">Generate</span>{' '}
-              <span className="word">resources</span>{' '}
-              <span className="word">with</span>{' '}
-              <span className="word"><em>teacher</em></span>{' '}
-              <span className="word"><em>evidence.</em></span>
+              <span className="word">Teacher</span>{' '}
+              <span className="word">Resource</span>{' '}
+              <span className="word"><em>Studio.</em></span>
             </h1>
             <div className="cinematic-byline">
               <em>{activeStudent.id}</em>
@@ -162,17 +242,16 @@ export function TeacherPortal() {
             <div className="cinematic-section__head cinematic-reveal">
               <div>
                 <span className="cinematic-eyebrow"><span className="num">01</span><span className="bar" />Teacher console</span>
-                <h2 className="cinematic-section__title">Generate, review, and intervene from one <em>studio surface.</em></h2>
+                <h2 className="cinematic-section__title">Read evidence. Make resources. Close the <em>learning loop.</em></h2>
               </div>
               <div className="cinematic-section__aside">Active student<br />{activeStudent.risk} risk<br />{runState}</div>
             </div>
 
             <div className="teacher-cinematic-spread cinematic-reveal">
               <div className="teacher-cinematic-statement">
-                <p className="cinematic-pull">老师端不是后台表格，而是资源生产工作室：先看风险和证据，再生成、审核、下发。</p>
+                <p className="cinematic-pull">先读证据，再生成资源。老师端应该像一张清爽的编辑台，而不是一块吵闹的后台屏幕。</p>
                 <div className="cinematic-body">
                   <p>当前学生：{activeStudent.id}；短板：{activeStudent.evidence}。</p>
-                  <p>点击下方模块可以切换总览、生成、审核和干预闭环。生成调用真实 `/api/generate`，并由主 Agent 拆解后派发。</p>
                 </div>
               </div>
               <div className="teacher-cinematic-terminal">
@@ -183,8 +262,18 @@ export function TeacherPortal() {
                   <TeacherLog scope="main" text="PlannerAgent owns the learning DAG blueprint" />
                   <TeacherLog scope="dispatch" text="Orchestrator routes one task_id through all agents" />
                   <TeacherLog scope="trace" text={taskId ? `active task ${taskId}` : 'waiting for teacher command'} />
+                  <TeacherLog scope="store" text={jobId ? `teacher job ${jobId}` : `class scope ${activeClass?.class_id ?? classId}`} />
                 </div>
               </div>
+            </div>
+
+            <div className="cinematic-reveal">
+              <AgentSystemsShowcase
+                eyebrow="Two multi-agent systems"
+                title="老师端也把两套 Agent 直接摊开。"
+                subtitle="上游是专业探索，下游是资源生成；当前高亮资源生成链路。"
+                activeSuiteId="generation"
+              />
             </div>
 
             <MainAgentTopology runState={runState} taskId={taskId} />
@@ -198,10 +287,22 @@ export function TeacherPortal() {
             </nav>
 
             <div className="teacher-cinematic-panels cinematic-reveal">
-              {active === 'overview' && <OverviewPanel metrics={metrics} onChooseStudent={chooseStudent} />}
+              {active === 'overview' && (
+                <OverviewPanel
+                  metrics={metrics}
+                  onChooseStudent={chooseStudent}
+                  classes={classOptions}
+                  students={studentRows}
+                  activeClassId={classId}
+                  onClassId={setClassId}
+                  deliverables={deliverables}
+                  activeStudent={activeStudent}
+                  goal={goal}
+                />
+              )}
               {active === 'generator' && <GeneratorPanel studentId={studentId} knowledgeId={knowledgeId} knowledgeName={knowledgeName} goal={goal} runState={runState} taskId={taskId} error={error} onStudentId={setStudentId} onKnowledgeId={setKnowledgeId} onKnowledgeName={setKnowledgeName} onGoal={setGoal} onGenerate={generate} />}
-              {active === 'review' && <ReviewPanel reviews={reviews} onOpen={setRationale} />}
-              {active === 'intervention' && <InterventionPanel activeStudent={activeStudent} onChooseStudent={chooseStudent} />}
+              {active === 'review' && <ReviewPanel reviews={reviews} artifactLibrary={artifactLibrary} onOpen={setRationale} />}
+              {active === 'intervention' && <InterventionPanel activeStudent={activeStudent} onChooseStudent={chooseStudent} students={studentRows} />}
             </div>
           </div>
         </section>
@@ -214,20 +315,31 @@ export function TeacherPortal() {
   );
 }
 
-function buildReviewItems({ results, studentId, knowledgeName }: { results: GenerateResults | null; studentId: string; knowledgeName: string }): ReviewItem[] {
-  if (!results) {
-    return [
-      { id: 'demo-doc', title: '链表插入操作详解', type: 'Document', student: 'stu_001', status: 'pending', agent: 'DocumentAgent', reason: '针对“指针修改顺序”短板，自动降低难度并绑定步骤动画。', rationale: DEMO_RATIONALE },
-      { id: 'demo-ex', title: '二叉树递归栈低阶练习', type: 'Exercise', student: 'stu_018', status: 'ready', agent: 'ExerciseAgent', reason: '把递归进入与回溯拆开训练，降低一次性认知负担。', rationale: { ...DEMO_RATIONALE, agent_name: 'ExerciseAgent', prompt_version: 'exercise_agent_v1', addressed_weakness: ['递归调用顺序混乱', '无法区分先序与中序的访问时机'] } },
-    ];
-  }
+function asGenerateResults(value: unknown): GenerateResults | null {
+  if (value && typeof value === 'object') return value as GenerateResults;
+  return null;
+}
 
-  const list: ReviewItem[] = [];
-  if (results.document) list.push({ id: 'doc', title: results.document.document.title, type: 'Document', student: studentId, status: 'pending', agent: results.document.rationale.agent_name, reason: results.document.rationale.addressed_weakness[0] ?? '根据当前画像自动生成讲解材料。', rationale: results.document.rationale });
-  if (results.exercise) list.push({ id: 'exercise', title: `${knowledgeName} · ${results.exercise.questions.length} 道自适应题`, type: 'Exercise', student: studentId, status: 'pending', agent: results.exercise.rationale.agent_name, reason: results.exercise.rationale.addressed_weakness[0] ?? '根据短板生成题目组合。', rationale: results.exercise.rationale });
-  if (results.visual) list.push({ id: 'visual', title: `${knowledgeName} · 思维导图与动画`, type: 'Visual', student: studentId, status: 'pending', agent: results.visual.rationale.agent_name, reason: results.visual.rationale.matched_profile[0] ?? '根据图解偏好生成可视化资源。', rationale: results.visual.rationale });
-  if (results.code) list.push({ id: 'code', title: `${knowledgeName} · 双语代码案例`, type: 'Code', student: studentId, status: 'pending', agent: results.code.rationale.agent_name, reason: results.code.rationale.matched_profile[0] ?? '根据编程语言偏好生成代码案例。', rationale: results.code.rationale });
-  return list;
+function normalizeReviewItems(items: ReviewItem[] | undefined): ReviewItem[] {
+  return (items ?? []).map((item) => ({
+    ...item,
+    student: item.student ?? null,
+    rationale: item.rationale as Rationale,
+  }));
+}
+
+function normalizeStudents(items: TeacherStudentSnapshot[] | undefined): Student[] {
+  return (items ?? []).map((item) => ({
+    id: item.id,
+    class_id: item.class_id,
+    focus: item.focus,
+    mastery: item.mastery,
+    risk: item.risk,
+    evidence: item.evidence,
+    action: item.action,
+    knowledgeId: item.knowledge_id,
+    knowledgeName: item.knowledge_name,
+  }));
 }
 
 function MainAgentTopology({ runState, taskId }: { runState: RunState; taskId: string | null }) {

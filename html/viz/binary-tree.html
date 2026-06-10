@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>二叉树遍历可视化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--y:#FFE01B;--ink:#241C15;--ink2:#1a1614;--accent:#4a9eff;--green:#2d8a5e;--red:#ff4d74;--orange:#f5a623;--font:"Inter Tight",sans-serif;--mono:"JetBrains Mono",monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--ink2);color:#fff;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;flex-wrap:wrap}
+.title{font-size:14px;font-weight:800;letter-spacing:-.03em}
+.algo-tabs{display:flex;gap:6px}
+.algo-tab{padding:5px 13px;border:1.5px solid rgba(255,255,255,.15);border-radius:999px;background:transparent;color:rgba(255,255,255,.5);font:700 11px var(--font);cursor:pointer;transition:all .15s}
+.algo-tab:hover{border-color:rgba(255,255,255,.35);color:#fff}
+.algo-tab.active{border-color:var(--y);background:var(--y);color:var(--ink)}
+.controls{display:flex;gap:8px;margin-left:auto;align-items:center}
+.btn{padding:6px 14px;border:1.5px solid rgba(255,255,255,.18);border-radius:999px;background:transparent;color:#fff;font:700 11px var(--font);cursor:pointer;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,.1)}
+.btn.primary{border-color:var(--y);background:var(--y);color:var(--ink)}
+input[type=range]{width:70px;accent-color:var(--y)}
+.speed-label{font:600 10px var(--mono);color:rgba(255,255,255,.35)}
+input.val-input{width:52px;padding:5px 10px;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.05);color:#fff;font:700 13px var(--mono);text-align:center;outline:none}
+input.val-input:focus{border-color:var(--y)}
+.ctrl-label{font:600 10px var(--mono);color:rgba(255,255,255,.35)}
+.status-bar{display:flex;align-items:center;gap:14px;padding:7px 16px;background:rgba(0,0,0,.25);border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;font:600 11px var(--mono)}
+.stat{color:rgba(255,255,255,.35)}.stat span{color:var(--y)}
+.stage{flex:1;display:flex;gap:0;overflow:hidden}
+canvas{flex:1;height:100%}
+.side-panel{width:200px;border-left:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.side-head{padding:10px 12px;font:700 10px var(--mono);color:rgba(255,255,255,.3);border-bottom:1px solid rgba(255,255,255,.06);text-transform:uppercase;letter-spacing:.06em}
+.order-list{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:3px}
+.order-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font:600 12px var(--mono);color:rgba(255,255,255,.5);transition:all .2s}
+.order-item.active{background:rgba(255,224,27,.12);color:var(--y)}
+.order-item.visited{color:rgba(255,255,255,.3)}
+.order-item .num{width:18px;height:18px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.insert-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;align-items:center}
+</style>
+<style>
+:root{--paper:#f2efe8;--paper-soft:#e8e4d9;--ink:#161513;--ink-soft:#3a3631;--ink-mute:#8a857d;--rule:rgba(22,21,19,.18);--display:"Instrument Serif","Times New Roman",serif;--font:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--y:#161513;--ink2:#f2efe8;--accent:#8a857d;--green:#4f6f52;--red:#9f1239;--orange:#6f614b}
+body{background:var(--paper);color:var(--ink);font-weight:300;-webkit-font-smoothing:antialiased}
+.topbar{min-height:62px;padding:0 18px;background:var(--paper);border-bottom:1px solid var(--rule);gap:10px}
+.title{font-family:var(--display);font-size:25px;font-weight:400;letter-spacing:0;color:var(--ink);white-space:nowrap}
+.algo-tabs,.controls{gap:0}
+.algo-tab,.btn{min-height:34px;padding:0 12px;border:1px solid var(--rule);border-radius:0;background:transparent;color:var(--ink-mute);font:500 10px var(--font);letter-spacing:.16em;text-transform:uppercase;box-shadow:none}
+.algo-tab+.algo-tab,.btn+.btn{border-left:0}
+.algo-tab:hover,.btn:hover,.algo-tab.active,.btn.primary,.btn.primary:hover{border-color:var(--ink);background:var(--ink);color:var(--paper);transform:none}
+.controls{margin-left:auto}
+.speed-label,.ctrl-label,.stat,.side-head{font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute)}
+input[type=range]{accent-color:var(--ink)}
+input.val-input{border:1px solid var(--rule);border-radius:0;background:var(--paper);color:var(--ink);font-family:var(--mono)}
+input.val-input:focus{border-color:var(--ink)}
+.status-bar{min-height:36px;padding:0 18px;background:var(--paper-soft);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.stat span{color:var(--ink)}
+.stage{background:var(--paper)}
+canvas{background:#f8f4eb}
+.side-panel{border-left:1px solid var(--rule);background:var(--paper-soft);color:var(--ink)}
+.side-head,.insert-row{border-color:var(--rule)}
+.order-item{border-radius:0;color:var(--ink-mute);font-family:var(--mono)}
+.order-item.active{background:var(--ink);color:var(--paper)}
+.order-item.visited{color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="title">二叉树遍历可视化</span>
+  <div class="algo-tabs">
+    <button class="algo-tab active" onclick="setTraversal('inorder')">中序遍历</button>
+    <button class="algo-tab" onclick="setTraversal('preorder')">先序遍历</button>
+    <button class="algo-tab" onclick="setTraversal('postorder')">后序遍历</button>
+    <button class="algo-tab" onclick="setTraversal('bfs')">层序 BFS</button>
+    <button class="algo-tab" onclick="setTraversal('bst-insert')">BST 插入</button>
+  </div>
+  <div class="controls">
+    <span class="speed-label">速度</span>
+    <input type="range" id="speed" min="1" max="10" value="5"/>
+    <button class="btn" onclick="resetTree()">重置树</button>
+    <button class="btn primary" onclick="togglePlay()" id="play-btn">▶ 播放</button>
+  </div>
+</div>
+<div class="status-bar">
+  <span class="stat">节点数 <span id="s-n">0</span></span>
+  <span class="stat">当前 <span id="s-cur">-</span></span>
+  <span class="stat">步骤 <span id="s-step">0</span> / <span id="s-total">0</span></span>
+  <span class="stat">遍历 <span id="s-mode">中序</span></span>
+</div>
+<div class="stage">
+  <canvas id="c"></canvas>
+  <div class="side-panel">
+    <div class="side-head">访问序列</div>
+    <div class="order-list" id="order-list"></div>
+    <div class="insert-row">
+      <span class="ctrl-label">插入值</span>
+      <input class="val-input" id="insert-val" type="number" value="35" min="1" max="99"/>
+      <button class="btn" style="padding:5px 11px" onclick="insertNode()">+ 插入</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── BST Data ───
+class BSTNode { constructor(v){this.val=v;this.left=this.right=null} }
+let root = null;
+
+function bstInsert(node, v) {
+  if (!node) return new BSTNode(v);
+  if (v < node.val) node.left = bstInsert(node.left, v);
+  else if (v > node.val) node.right = bstInsert(node.right, v);
+  return node;
+}
+
+function buildDefaultTree() {
+  root = null;
+  [50, 30, 70, 20, 40, 60, 80, 10, 25, 35, 45].forEach(v => { root = bstInsert(root, v); });
+}
+
+// ─── Layout ───
+const pos = new Map(); // node → {x,y}
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+const R = 20; // node radius in CSS px
+
+function layoutTree() {
+  pos.clear();
+  let seq = [];
+  function inorderIdx(node) {
+    if (!node) return;
+    inorderIdx(node.left);
+    seq.push(node);
+    inorderIdx(node.right);
+  }
+  inorderIdx(root);
+  const totalNodes = seq.length;
+  if (!totalNodes) return;
+  const dpr = devicePixelRatio;
+  const w = C.offsetWidth, h = C.offsetHeight;
+  // Assign x by inorder index, y by depth
+  const maxDepth = getDepth(root);
+  const levelH = Math.min((h-60) / (maxDepth+1), 80);
+  seq.forEach((node, i) => {
+    const depth = getNodeDepth(root, node.val);
+    pos.set(node, {
+      x: ((i+0.5) / totalNodes) * w,
+      y: 40 + depth * levelH
+    });
+  });
+}
+
+function getDepth(node) {
+  if (!node) return -1;
+  return 1 + Math.max(getDepth(node.left), getDepth(node.right));
+}
+function getNodeDepth(root, val, d=0) {
+  if (!root) return 0;
+  if (root.val === val) return d;
+  if (val < root.val) return getNodeDepth(root.left, val, d+1);
+  return getNodeDepth(root.right, val, d+1);
+}
+function nodeCount(node) {
+  if (!node) return 0;
+  return 1 + nodeCount(node.left) + nodeCount(node.right);
+}
+
+// ─── Steps ───
+let steps = [], stepIdx = 0;
+let playing = false, timer = null;
+let traversalMode = 'inorder';
+
+const MODE_NAMES = {
+  inorder:'中序 (L→Root→R)',
+  preorder:'先序 (Root→L→R)',
+  postorder:'后序 (L→R→Root)',
+  bfs:'层序 BFS',
+  'bst-insert':'BST 插入'
+};
+
+function buildSteps() {
+  steps = [];
+  const visited = [];
+  if (traversalMode === 'inorder') {
+    function inorder(n) {
+      if (!n) return;
+      inorder(n.left);
+      visited.push(n);
+      steps.push({active:n, visited:[...visited]});
+      inorder(n.right);
+    }
+    inorder(root);
+  } else if (traversalMode === 'preorder') {
+    function preorder(n) {
+      if (!n) return;
+      visited.push(n);
+      steps.push({active:n, visited:[...visited]});
+      preorder(n.left);
+      preorder(n.right);
+    }
+    preorder(root);
+  } else if (traversalMode === 'postorder') {
+    function postorder(n) {
+      if (!n) return;
+      postorder(n.left);
+      postorder(n.right);
+      visited.push(n);
+      steps.push({active:n, visited:[...visited]});
+    }
+    postorder(root);
+  } else if (traversalMode === 'bfs') {
+    const q = root ? [root] : [];
+    while (q.length) {
+      const n = q.shift();
+      visited.push(n);
+      steps.push({active:n, visited:[...visited]});
+      if (n.left) q.push(n.left);
+      if (n.right) q.push(n.right);
+    }
+  } else if (traversalMode === 'bst-insert') {
+    const insertVal = parseInt(document.getElementById('insert-val').value)||35;
+    let cur = root;
+    while (cur) {
+      steps.push({active:cur, visited:[...visited], compare:insertVal});
+      if (insertVal < cur.val) cur = cur.left;
+      else if (insertVal > cur.val) cur = cur.right;
+      else break;
+    }
+  }
+  document.getElementById('s-total').textContent = steps.length;
+  document.getElementById('s-n').textContent = nodeCount(root);
+  renderOrderList();
+}
+
+function renderOrderList() {
+  const el = document.getElementById('order-list');
+  if (traversalMode === 'bst-insert') { el.innerHTML = '<div style="padding:10px;color:#8a857d;font:11px var(--mono)">播放观察搜索路径</div>'; return; }
+  const allNodes = [];
+  function collect(n) { if(!n)return; if(traversalMode==='preorder')allNodes.push(n); collect(n.left); if(traversalMode==='inorder')allNodes.push(n); collect(n.right); if(traversalMode==='postorder')allNodes.push(n); }
+  if (traversalMode==='bfs'){const q=root?[root]:[];while(q.length){const n=q.shift();allNodes.push(n);if(n.left)q.push(n.left);if(n.right)q.push(n.right);}}
+  else collect(root);
+  el.innerHTML = allNodes.map((n,i)=>`
+    <div class="order-item" id="oi-${n.val}" data-idx="${i}">
+      <div class="num">${i+1}</div>
+      <span>${n.val}</span>
+    </div>`).join('');
+}
+
+function updateOrderList(step) {
+  document.querySelectorAll('.order-item').forEach(el => {
+    el.classList.remove('active','visited');
+    const idx = parseInt(el.dataset.idx);
+    const curStepVisited = step.visited || [];
+    const visitedVals = curStepVisited.map(n=>n.val);
+    if (el.querySelector('span').textContent == step.active?.val) el.classList.add('active');
+    else if (visitedVals.includes(parseInt(el.querySelector('span').textContent))) el.classList.add('visited');
+  });
+}
+
+// ─── Draw ───
+function resizeCanvas() {
+  C.width = C.offsetWidth * devicePixelRatio;
+  C.height = C.offsetHeight * devicePixelRatio;
+  layoutTree();
+  draw();
+}
+
+let activeNode = null;
+let visitedNodes = new Set();
+
+function draw() {
+  const dpr = devicePixelRatio;
+  const w = C.width, h = C.height;
+  ctx.clearRect(0, 0, w, h);
+
+  if (!root) {
+    ctx.fillStyle='rgba(22,21,19,.35)';
+    ctx.font=`${12*dpr}px var(--mono)`;
+    ctx.textAlign='center';
+    ctx.fillText('空树', w/2, h/2);
+    return;
+  }
+
+  // Draw edges first
+  function drawEdges(node) {
+    if (!node) return;
+    const p = pos.get(node);
+    if (!p) return;
+    if (node.left) {
+      const lp = pos.get(node.left);
+      if (lp) {
+        ctx.strokeStyle = 'rgba(22,21,19,0.18)';
+        ctx.lineWidth = 1.5*dpr;
+        ctx.beginPath();
+        ctx.moveTo(p.x*dpr, p.y*dpr);
+        ctx.lineTo(lp.x*dpr, lp.y*dpr);
+        ctx.stroke();
+      }
+      drawEdges(node.left);
+    }
+    if (node.right) {
+      const rp = pos.get(node.right);
+      if (rp) {
+        ctx.strokeStyle = 'rgba(22,21,19,0.18)';
+        ctx.lineWidth = 1.5*dpr;
+        ctx.beginPath();
+        ctx.moveTo(p.x*dpr, p.y*dpr);
+        ctx.lineTo(rp.x*dpr, rp.y*dpr);
+        ctx.stroke();
+      }
+      drawEdges(node.right);
+    }
+  }
+  drawEdges(root);
+
+  // Draw nodes
+  function drawNodes(node) {
+    if (!node) return;
+    const p = pos.get(node);
+    if (!p) return;
+    const x = p.x*dpr, y = p.y*dpr, r = R*dpr;
+
+    let color = '#8a857d';
+    if (node === activeNode) color = '#161513';
+    else if (visitedNodes.has(node)) color = '#4f6f52';
+
+    ctx.shadowColor = color;
+    ctx.shadowBlur = node===activeNode ? 16*dpr : visitedNodes.has(node) ? 8*dpr : 0;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = 'rgba(22,21,19,0.25)';
+    ctx.lineWidth = 1.5*dpr;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f8f4eb';
+    ctx.font = `bold ${10*dpr}px "Space Grotesk",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(node.val), x, y);
+
+    drawNodes(node.left);
+    drawNodes(node.right);
+  }
+  drawNodes(root);
+}
+
+function setTraversal(mode) {
+  traversalMode = mode;
+  document.querySelectorAll('.algo-tab').forEach(b => {
+    const map = {inorder:'中序遍历',preorder:'先序遍历',postorder:'后序遍历',bfs:'层序 BFS','bst-insert':'BST 插入'};
+    b.classList.toggle('active', b.textContent.trim()===map[mode]);
+  });
+  document.getElementById('s-mode').textContent = mode;
+  stopPlay();
+  stepIdx = 0;
+  activeNode = null;
+  visitedNodes = new Set();
+  buildSteps();
+  draw();
+}
+
+function resetTree() {
+  stopPlay();
+  buildDefaultTree();
+  layoutTree();
+  stepIdx = 0;
+  activeNode = null;
+  visitedNodes = new Set();
+  buildSteps();
+  draw();
+}
+
+function insertNode() {
+  const v = parseInt(document.getElementById('insert-val').value)||0;
+  if (v < 1 || v > 99) return;
+  root = bstInsert(root, v);
+  layoutTree();
+  buildSteps();
+  draw();
+}
+
+function getDelay() {
+  return Math.max(80, 900 - parseInt(document.getElementById('speed').value)*80);
+}
+
+function stepForward() {
+  if (stepIdx >= steps.length) return false;
+  const s = steps[stepIdx];
+  activeNode = s.active;
+  visitedNodes = new Set(s.visited);
+  document.getElementById('s-cur').textContent = s.active?.val ?? '-';
+  document.getElementById('s-step').textContent = stepIdx+1;
+  updateOrderList(s);
+  draw();
+  stepIdx++;
+  return true;
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); return; }
+  if (stepIdx >= steps.length) {
+    stepIdx=0; activeNode=null; visitedNodes=new Set();
+  }
+  playing = true;
+  document.getElementById('play-btn').textContent = '⏸ 暂停';
+  function tick() {
+    if (!playing) return;
+    if (!stepForward()) { stopPlay(); return; }
+    timer = setTimeout(tick, getDelay());
+  }
+  tick();
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(timer);
+  document.getElementById('play-btn').textContent = '▶ 播放';
+}
+
+window.addEventListener('resize', resizeCanvas);
+buildDefaultTree();
+setTimeout(() => { resizeCanvas(); buildSteps(); }, 50);
+</script>
+</body>
+</html>

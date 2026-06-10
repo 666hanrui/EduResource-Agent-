@@ -11,13 +11,27 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-OwnerRole = Literal["student"]
-PackageType = Literal["student_learning"]
+OwnerRole = Literal["student", "teacher", "class"]
+PackageType = Literal["student_learning", "teacher_teaching"]
 PackageStatus = Literal["draft", "ready", "in_progress", "evaluated", "archived"]
-ResourceItemType = Literal["document", "visual", "animation", "code", "exercise", "external_video", "reading", "rationale"]
+InteractiveClassroomStatus = Literal["queued", "running", "succeeded", "failed"]
+ResourceItemType = Literal[
+    "document",
+    "visual",
+    "animation",
+    "code",
+    "exercise",
+    "external_video",
+    "reading",
+    "rationale",
+    "interactive",
+    "pbl",
+]
 SourceType = Literal["agent", "bilibili", "external", "manual"]
 PathStepStatus = Literal["pending", "in_progress", "done", "adjusted"]
 ReportType = Literal["student_growth"]
+StageValidationType = Literal["short_answer", "single_choice", "artifact", "reflection"]
+TrainingStageStatus = Literal["recommended", "in_progress", "completed", "needs_review"]
 
 
 class StudentProfileExtractRequest(BaseModel):
@@ -198,6 +212,28 @@ class ResourcePackageCreateRequest(BaseModel):
     difficulty: int = Field(default=2, ge=1, le=5)
 
 
+class InteractiveClassroomCreateRequest(BaseModel):
+    student_id: str | None = None
+    target_knowledge_id: str
+    target_knowledge_name: str
+    learning_goal: str = ""
+    selection_context: dict[str, Any] = Field(default_factory=dict)
+    difficulty: int = Field(default=3, ge=1, le=5)
+
+
+class InteractiveClassroomJob(BaseModel):
+    job_id: str
+    student_id: str
+    resource_package_id: str
+    openmaic_job_id: str
+    status: InteractiveClassroomStatus = "queued"
+    classroom_url: str | None = None
+    package_url: str
+    message: str = ""
+    created_at: datetime
+    updated_at: datetime
+
+
 class ExerciseItem(BaseModel):
     id: str
     exercise_set_id: str
@@ -270,9 +306,44 @@ class Report(BaseModel):
     created_at: datetime
 
 
+class StageValidationQuestion(BaseModel):
+    question_id: str
+    prompt: str
+    answer_format: StageValidationType = "short_answer"
+    success_criteria: str
+    target_knowledge_id: str
+    target_knowledge_name: str
+    suggested_difficulty: int = Field(default=2, ge=1, le=5)
+
+
+class TrainingStage(BaseModel):
+    stage_id: str
+    key: Literal["foundation", "practice", "advancement"]
+    title: str
+    horizon: str
+    goal: str
+    summary: str
+    status: TrainingStageStatus = "recommended"
+    focus_knowledge_ids: list[str] = Field(default_factory=list)
+    linked_step_ids: list[str] = Field(default_factory=list)
+    evidence_targets: list[str] = Field(default_factory=list)
+    validation_question: StageValidationQuestion
+    next_action: str = ""
+
+
+class PersonalizedTrainingPlan(BaseModel):
+    plan_id: str
+    student_id: str
+    title: str
+    summary: str
+    stages: list[TrainingStage] = Field(default_factory=list)
+    updated_at: datetime
+
+
 class StudentDashboard(BaseModel):
     profile: StudentProfile | None = None
     learning_path: LearningPath | None = None
+    training_plan: PersonalizedTrainingPlan | None = None
     recent_packages: list[ResourcePackage] = Field(default_factory=list)
     recent_evaluations: list[EvaluationRecord] = Field(default_factory=list)
     next_suggestions: list[str] = Field(default_factory=list)

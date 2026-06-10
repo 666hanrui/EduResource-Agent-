@@ -1,0 +1,196 @@
+.agent-systems-showcase {
+  --agent-paper: var(--paper, var(--freddie-paper, #fffdf6));
+  --agent-paper-soft: var(--paper-soft, var(--freddie-cream, #fbefe3));
+  --agent-ink: var(--ink, var(--freddie-ink, #241c15));
+  --agent-muted: var(--ink-mute, var(--freddie-muted, #8a857d));
+  --agent-rule: var(--rule, rgba(36, 28, 21, 0.14));
+  --agent-shadow: rgba(22, 21, 19, 0.08);
+  display: grid;
+  gap: 18px;
+}
+
+.agent-systems-showcase.is-framed {
+  padding: 18px;
+  border: 2px solid var(--agent-ink);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 224, 27, 0.24), transparent 38%),
+    var(--agent-paper);
+  box-shadow: 6px 6px 0 var(--agent-ink);
+}
+
+.agent-systems-showcase__head {
+  display: grid;
+  gap: 6px;
+}
+
+.agent-systems-showcase__eyebrow {
+  color: var(--agent-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.agent-systems-showcase__title {
+  margin: 0;
+  color: var(--agent-ink);
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1;
+}
+
+.agent-systems-showcase__subtitle {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--agent-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.agent-systems-showcase__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.agent-suite-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--agent-rule);
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--agent-ink);
+  box-shadow: 0 14px 28px var(--agent-shadow);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.agent-suite-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(22, 21, 19, 0.24);
+  box-shadow: 0 18px 36px rgba(22, 21, 19, 0.12);
+}
+
+.agent-suite-card.is-active {
+  border-color: var(--agent-ink);
+  background:
+    linear-gradient(135deg, rgba(255, 224, 27, 0.24), transparent 50%),
+    var(--agent-paper-soft);
+}
+
+.agent-suite-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.agent-suite-card__surface {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--agent-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.agent-suite-card h3 {
+  margin: 0;
+  color: var(--agent-ink);
+  font-size: clamp(24px, 2.5vw, 34px);
+  line-height: 1.04;
+}
+
+.agent-suite-card__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--agent-rule);
+  border-radius: 999px;
+  background: var(--agent-paper);
+  color: var(--agent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.agent-suite-card__summary {
+  margin: 0;
+  color: var(--agent-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.agent-suite-card__flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.agent-suite-pill {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--agent-rule);
+  background: var(--agent-paper);
+}
+
+.agent-suite-pill__index {
+  flex: none;
+  color: var(--agent-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.agent-suite-pill__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.agent-suite-pill__body strong {
+  color: var(--agent-ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.agent-suite-pill__body span {
+  color: var(--agent-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.agent-suite-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 2px;
+  color: var(--agent-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.agent-suite-card__footer a {
+  color: var(--agent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .agent-systems-showcase__grid,
+  .agent-suite-card__flow {
+    grid-template-columns: 1fr;
+  }
+}

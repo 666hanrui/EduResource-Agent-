@@ -79,6 +79,18 @@ def test_selection_context_becomes_profile_conversation_turn() -> None:
     assert "建议难度 2" in turns[0].text
 
 
+def test_teacher_console_selection_context_does_not_enter_student_conversation() -> None:
+    turns = _selection_context_turns(
+        GenerateSelectionContext(
+            source="teacher_console",
+            reason="老师想为班级生成一套补救课",
+            suggested_difficulty=2,
+        )
+    )
+
+    assert turns == []
+
+
 def test_selection_context_guides_downstream_resource_params() -> None:
     params = ResourceTaskParams(
         difficulty=4,

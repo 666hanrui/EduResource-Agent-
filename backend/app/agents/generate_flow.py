@@ -308,6 +308,8 @@ def _selection_context_turns(
 ) -> list[ConversationTurn]:
     if context is None:
         return []
+    if context.source == "teacher_console":
+        return []
 
     parts = [f"本次资源生成来自 {context.source}"]
     if context.reason.strip():

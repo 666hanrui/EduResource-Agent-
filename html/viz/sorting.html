@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>排序算法可视化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--y:#FFE01B;--ink:#241C15;--cream:#FBEFE3;--paper:#FFFDF6;--muted:#88837C;--coral:#FF4D74;--green:#1c6b3a;--r:12px;--font:"Inter Tight",sans-serif;--mono:"JetBrains Mono",monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--ink);color:#fff;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.title{font-size:14px;font-weight:800;letter-spacing:-.03em}
+.algo-tabs{display:flex;gap:6px;margin-left:4px}
+.algo-tab{padding:5px 13px;border:1.5px solid rgba(255,255,255,.15);border-radius:999px;background:transparent;color:rgba(255,255,255,.5);font:700 11px var(--font);cursor:pointer;transition:all .15s}
+.algo-tab:hover{border-color:rgba(255,255,255,.35);color:#fff}
+.algo-tab.active{border-color:var(--y);background:var(--y);color:var(--ink)}
+.controls{display:flex;gap:8px;margin-left:auto;align-items:center}
+.btn{padding:6px 14px;border:1.5px solid rgba(255,255,255,.2);border-radius:999px;background:transparent;color:#fff;font:700 11px var(--font);cursor:pointer;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,.1)}
+.btn.primary{border-color:var(--y);background:var(--y);color:var(--ink)}
+.btn.primary:hover{background:#e6ca00}
+.speed-label{font:600 10px var(--mono);color:rgba(255,255,255,.4)}
+input[type=range]{width:80px;accent-color:var(--y)}
+.status-bar{display:flex;align-items:center;gap:14px;padding:8px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;font:600 11px var(--mono)}
+.stat{color:rgba(255,255,255,.4)}
+.stat span{color:var(--y)}
+.stage{flex:1;display:flex;flex-direction:column;padding:16px;gap:12px;overflow:hidden}
+canvas{border-radius:var(--r);border:1px solid rgba(255,255,255,.07);background:#0d0d0d;width:100%;flex:1}
+.legend{display:flex;gap:16px;justify-content:center;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:6px;font:600 10px var(--mono);color:rgba(255,255,255,.45)}
+.leg-dot{width:10px;height:10px;border-radius:2px}
+</style>
+<style>
+:root{--paper:#f2efe8;--paper-soft:#e8e4d9;--ink:#161513;--ink-soft:#3a3631;--ink-mute:#8a857d;--rule:rgba(22,21,19,.18);--display:"Instrument Serif","Times New Roman",serif;--font:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--y:#161513;--cream:#e8e4d9;--coral:#9f1239;--green:#4f6f52;--r:0}
+body{background:var(--paper);color:var(--ink);font-weight:300;-webkit-font-smoothing:antialiased}
+.topbar{min-height:62px;padding:0 18px;background:var(--paper);border-bottom:1px solid var(--rule);gap:10px;flex-wrap:wrap}
+.title{font-family:var(--display);font-size:25px;font-weight:400;letter-spacing:0;color:var(--ink);white-space:nowrap}
+.algo-tabs,.controls{gap:0}
+.algo-tab,.btn{min-height:34px;padding:0 12px;border:1px solid var(--rule);border-radius:0;background:transparent;color:var(--ink-mute);font:500 10px var(--font);letter-spacing:.16em;text-transform:uppercase;box-shadow:none}
+.algo-tab+.algo-tab,.btn+.btn{border-left:0}
+.algo-tab:hover,.btn:hover,.algo-tab.active,.btn.primary,.btn.primary:hover{border-color:var(--ink);background:var(--ink);color:var(--paper);transform:none}
+.controls{margin-left:auto}
+.speed-label,.stat,.leg-item{font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute)}
+input[type=range]{accent-color:var(--ink)}
+.status-bar{min-height:36px;padding:0 18px;background:var(--paper-soft);border-bottom:1px solid var(--rule);color:var(--ink-mute);flex-wrap:wrap}
+.stat span{color:var(--ink)}
+.stage{padding:18px;background:var(--paper);gap:14px}
+canvas{border:1px solid var(--rule);border-radius:0;background:#f8f4eb}
+.legend{border-top:1px solid var(--rule);padding-top:12px}
+.leg-dot{border-radius:0}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="title">排序算法可视化</span>
+  <div class="algo-tabs">
+    <button class="algo-tab active" onclick="changeAlgo('bubble')">冒泡排序</button>
+    <button class="algo-tab" onclick="changeAlgo('selection')">选择排序</button>
+    <button class="algo-tab" onclick="changeAlgo('insertion')">插入排序</button>
+    <button class="algo-tab" onclick="changeAlgo('quick')">快速排序</button>
+    <button class="algo-tab" onclick="changeAlgo('merge')">归并排序</button>
+  </div>
+  <div class="controls">
+    <span class="speed-label">速度</span>
+    <input type="range" id="speed" min="1" max="10" value="5"/>
+    <button class="btn" onclick="resetArr()">重置</button>
+    <button class="btn" onclick="stepOnce()" id="step-btn">单步 ▷</button>
+    <button class="btn primary" onclick="togglePlay()" id="play-btn">▶ 播放</button>
+  </div>
+</div>
+<div class="status-bar">
+  <span class="stat">算法 <span id="s-algo">冒泡排序</span></span>
+  <span class="stat">比较 <span id="s-cmp">0</span></span>
+  <span class="stat">交换 <span id="s-swap">0</span></span>
+  <span class="stat">状态 <span id="s-state">就绪</span></span>
+  <span class="stat">复杂度 <span id="s-complex">O(n²)</span></span>
+</div>
+<div class="stage">
+  <canvas id="c"></canvas>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#8a857d"></div>未排序</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#9f1239"></div>比较中</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#161513"></div>基准/选中</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#4f6f52"></div>已排序</div>
+  </div>
+</div>
+<script>
+const N = 40;
+let arr = [], colors = [], steps = [], stepIdx = 0;
+let playing = false, timer = null;
+let cmpCount = 0, swapCount = 0;
+
+const ALGO_NAMES = { bubble:'冒泡排序', selection:'选择排序', insertion:'插入排序', quick:'快速排序', merge:'归并排序' };
+const ALGO_COMPLEX = { bubble:'O(n²)', selection:'O(n²)', insertion:'O(n²)', quick:'O(n log n)', merge:'O(n log n)' };
+const requestedAlgo = new URLSearchParams(window.location.search).get('algo');
+let currentAlgo = ALGO_NAMES[requestedAlgo] ? requestedAlgo : 'bubble';
+
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+
+function resizeCanvas() {
+  C.width = C.offsetWidth * devicePixelRatio;
+  C.height = C.offsetHeight * devicePixelRatio;
+  draw();
+}
+
+function randomArr() {
+  arr = Array.from({length:N}, (_,i) => i+1).sort(() => Math.random()-.5);
+  colors = new Array(N).fill('unsorted');
+}
+
+function buildSteps() {
+  steps = [];
+  cmpCount = 0; swapCount = 0;
+  const a = [...arr];
+  const cols = new Array(N).fill('unsorted');
+
+  function snap(extra={}) {
+    steps.push({ arr:[...a], colors:[...cols], ...extra });
+  }
+
+  if (currentAlgo === 'bubble') {
+    for (let i=0;i<N-1;i++) {
+      for (let j=0;j<N-i-1;j++) {
+        cols[j]='compare'; cols[j+1]='compare';
+        snap({cmp:++cmpCount});
+        if (a[j]>a[j+1]) { [a[j],a[j+1]]=[a[j+1],a[j]]; snap({swap:++swapCount}); }
+        cols[j]='unsorted'; cols[j+1]='unsorted';
+      }
+      cols[N-1-i]='sorted';
+    }
+    cols[0]='sorted';
+    snap({done:true});
+
+  } else if (currentAlgo === 'selection') {
+    for (let i=0;i<N-1;i++) {
+      let minIdx=i; cols[i]='pivot';
+      for (let j=i+1;j<N;j++) {
+        cols[j]='compare'; snap({cmp:++cmpCount});
+        if (a[j]<a[minIdx]) { if(minIdx!==i)cols[minIdx]='unsorted'; minIdx=j; cols[j]='pivot'; }
+        else cols[j]='unsorted';
+      }
+      if (minIdx!==i) { [a[i],a[minIdx]]=[a[minIdx],a[i]]; snap({swap:++swapCount}); }
+      cols[i]='sorted'; cols[minIdx]='unsorted';
+    }
+    cols[N-1]='sorted'; snap({done:true});
+
+  } else if (currentAlgo === 'insertion') {
+    cols[0]='sorted';
+    for (let i=1;i<N;i++) {
+      let key=a[i], j=i-1; cols[i]='pivot'; snap({cmp:++cmpCount});
+      while (j>=0 && a[j]>key) {
+        cols[j]='compare'; snap({cmp:++cmpCount});
+        a[j+1]=a[j]; cols[j+1]='compare'; snap({swap:++swapCount});
+        cols[j+1]='sorted'; cols[j]='sorted'; j--;
+      }
+      a[j+1]=key; cols[j+1]='sorted'; cols[i]='sorted'; snap();
+    }
+    snap({done:true});
+
+  } else if (currentAlgo === 'quick') {
+    function qsort(lo, hi) {
+      if (lo>=hi) { if(lo===hi)cols[lo]='sorted'; return; }
+      let pivot=a[hi]; cols[hi]='pivot'; let i=lo-1;
+      for (let j=lo;j<hi;j++) {
+        cols[j]='compare'; snap({cmp:++cmpCount});
+        if (a[j]<=pivot) { i++; [a[i],a[j]]=[a[j],a[i]]; cols[j]='unsorted'; cols[i]='compare'; snap({swap:++swapCount}); cols[i]='unsorted'; }
+        else cols[j]='unsorted';
+      }
+      [a[i+1],a[hi]]=[a[hi],a[i+1]]; cols[hi]='sorted'; cols[i+1]='sorted'; snap({swap:++swapCount});
+      let p=i+1;
+      qsort(lo, p-1); qsort(p+1, hi);
+    }
+    qsort(0, N-1);
+    for(let k=0;k<N;k++) cols[k]='sorted';
+    snap({done:true});
+
+  } else if (currentAlgo === 'merge') {
+    function msort(lo, hi) {
+      if (lo>=hi) return;
+      let mid=Math.floor((lo+hi)/2);
+      msort(lo,mid); msort(mid+1,hi);
+      let tmp=[], i=lo, j=mid+1;
+      while(i<=mid&&j<=hi) {
+        cols[i]='compare'; cols[j]='compare'; snap({cmp:++cmpCount});
+        if (a[i]<=a[j]) { tmp.push(a[i++]); }
+        else { tmp.push(a[j++]); }
+        cols[i>mid?i-1:i]='unsorted'; cols[j>hi?j-1:j]='unsorted';
+      }
+      while(i<=mid) { tmp.push(a[i]); cols[i]='compare'; snap(); i++; }
+      while(j<=hi)  { tmp.push(a[j]); cols[j]='compare'; snap(); j++; }
+      for(let k=0;k<tmp.length;k++) { a[lo+k]=tmp[k]; cols[lo+k]='sorted'; snap({swap:++swapCount}); }
+    }
+    msort(0, N-1);
+    for(let k=0;k<N;k++) cols[k]='sorted';
+    snap({done:true});
+  }
+}
+
+function draw() {
+  const w = C.width, h = C.height;
+  ctx.clearRect(0,0,w,h);
+  if (!steps.length) {
+    drawBars(arr, colors, w, h); return;
+  }
+  const s = steps[Math.min(stepIdx, steps.length-1)];
+  drawBars(s.arr, s.colors, w, h);
+}
+
+const COLOR_MAP = {
+  unsorted:'#8a857d', compare:'#9f1239', pivot:'#161513', sorted:'#4f6f52'
+};
+
+function drawBars(a, cols, w, h) {
+  const pad = 10 * devicePixelRatio;
+  const barW = (w - pad*2) / a.length;
+  const maxH = h - pad*2 - 24*devicePixelRatio;
+  const maxVal = Math.max(...a);
+  ctx.font = `${9*devicePixelRatio}px "Space Grotesk", sans-serif`;
+  ctx.textAlign = 'center';
+  a.forEach((v,i) => {
+    const bh = (v/maxVal)*maxH;
+    const x = pad + i*barW;
+    const y = h - pad - bh;
+    const color = COLOR_MAP[cols[i]] || '#8a857d';
+    // Bar
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x+1, y, barW-2, bh, [3*devicePixelRatio,3*devicePixelRatio,0,0]);
+    ctx.fill();
+    // Glow for active
+    if (cols[i]==='compare'||cols[i]==='pivot') {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8*devicePixelRatio;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  });
+}
+
+function updateStats(s={}) {
+  if (s.cmp!==undefined) document.getElementById('s-cmp').textContent=s.cmp;
+  if (s.swap!==undefined) document.getElementById('s-swap').textContent=s.swap;
+  document.getElementById('s-state').textContent = s.done ? '✓ 完成' : stepIdx>=steps.length-1&&steps.length>0?'✓ 完成':'运行中';
+}
+
+function resetArr() {
+  stopPlay();
+  randomArr();
+  buildSteps();
+  stepIdx = 0;
+  cmpCount = 0; swapCount = 0;
+  document.getElementById('s-cmp').textContent='0';
+  document.getElementById('s-swap').textContent='0';
+  document.getElementById('s-state').textContent='就绪';
+  draw();
+}
+
+function syncAlgoTabs() {
+  document.querySelectorAll('.algo-tab').forEach((b)=>b.classList.toggle('active',b.textContent.trim()===ALGO_NAMES[currentAlgo]));
+}
+
+function changeAlgo(algo, notifyParent = true) {
+  currentAlgo = ALGO_NAMES[algo] ? algo : 'bubble';
+  syncAlgoTabs();
+  document.getElementById('s-algo').textContent=ALGO_NAMES[currentAlgo];
+  document.getElementById('s-complex').textContent=ALGO_COMPLEX[currentAlgo];
+  resetArr();
+  if (notifyParent && window.parent !== window) {
+    window.parent.postMessage({ type: 'viz-sorting-algo-change', algo: currentAlgo }, window.location.origin);
+  }
+}
+
+function stepOnce() {
+  if (stepIdx < steps.length-1) {
+    stepIdx++;
+    const s = steps[stepIdx];
+    if (s.cmp) document.getElementById('s-cmp').textContent=s.cmp;
+    if (s.swap) document.getElementById('s-swap').textContent=s.swap;
+    document.getElementById('s-state').textContent = s.done?'✓ 完成':'运行中';
+    draw();
+  }
+}
+
+function getDelay() {
+  const speed = parseInt(document.getElementById('speed').value);
+  return Math.max(10, 600 - speed*55);
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); return; }
+  if (stepIdx >= steps.length-1) { stepIdx=0; }
+  playing = true;
+  document.getElementById('play-btn').textContent='⏸ 暂停';
+  function tick() {
+    if (!playing || stepIdx >= steps.length-1) { stopPlay(); return; }
+    stepOnce();
+    timer = setTimeout(tick, getDelay());
+  }
+  tick();
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(timer);
+  document.getElementById('play-btn').textContent='▶ 播放';
+}
+
+window.addEventListener('resize', resizeCanvas);
+randomArr();
+buildSteps();
+setTimeout(resizeCanvas, 50);
+syncAlgoTabs();
+document.getElementById('s-algo').textContent=ALGO_NAMES[currentAlgo];
+document.getElementById('s-complex').textContent=ALGO_COMPLEX[currentAlgo];
+</script>
+</body>
+</html>

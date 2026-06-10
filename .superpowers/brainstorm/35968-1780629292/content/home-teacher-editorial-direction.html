@@ -1,0 +1,634 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+  #claude-content {
+    padding: 0 !important;
+    background: #f2efe8;
+    color: #161513;
+    font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  .editorial-board {
+    --paper: #f2efe8;
+    --paper-soft: #e8e4d9;
+    --ink: #161513;
+    --ink-soft: #3a3631;
+    --ink-mute: #8a857d;
+    --rule: rgba(22, 21, 19, 0.18);
+    --rule-light: rgba(242, 239, 232, 0.28);
+    --display: "Instrument Serif", "Times New Roman", serif;
+    min-height: 100vh;
+    background: var(--paper);
+  }
+
+  .eb-hero {
+    position: relative;
+    min-height: 86vh;
+    overflow: hidden;
+    background: #181612;
+    color: var(--paper);
+  }
+
+  .eb-hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.92) contrast(0.98);
+    transform: scale(1.04);
+  }
+
+  .eb-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.16), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.64)),
+      radial-gradient(circle at 20% 76%, rgba(0,0,0,0.58), transparent 42%);
+  }
+
+  .eb-nav {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 24px;
+    align-items: center;
+    padding: 22px 48px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .eb-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-right: 12px;
+    border: 1px solid currentColor;
+    font-family: var(--display);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .eb-nav span:nth-child(2) {
+    justify-self: center;
+    opacity: 0.76;
+  }
+
+  .eb-nav span:nth-child(3) {
+    justify-self: end;
+  }
+
+  .eb-hero-copy {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    align-content: end;
+    min-height: 86vh;
+    padding: 100px 48px 42px;
+  }
+
+  .eb-eyebrow {
+    display: inline-flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .eb-eyebrow i {
+    width: 64px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.64;
+  }
+
+  .eb-title {
+    max-width: 960px;
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(64px, 9vw, 142px);
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+  }
+
+  .eb-title em {
+    font-style: italic;
+  }
+
+  .eb-meta {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr auto;
+    gap: 32px;
+    align-items: end;
+    margin-top: 56px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule-light);
+  }
+
+  .eb-meta small {
+    display: block;
+    margin-bottom: 7px;
+    opacity: 0.58;
+    font-size: 9.5px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .eb-meta strong {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 400;
+  }
+
+  .eb-button {
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .eb-section {
+    padding: clamp(70px, 9vw, 128px) 48px;
+  }
+
+  .eb-inner {
+    max-width: 1320px;
+    margin: 0 auto;
+  }
+
+  .eb-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 28px;
+    align-items: end;
+    margin-bottom: clamp(42px, 6vw, 84px);
+    padding-bottom: 26px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .eb-head h2 {
+    max-width: 17ch;
+    margin: 18px 0 0;
+    font-family: var(--display);
+    font-size: clamp(42px, 6vw, 86px);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .eb-aside {
+    color: var(--ink-mute);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    line-height: 1.6;
+    text-align: right;
+    text-transform: uppercase;
+  }
+
+  .eb-spread {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: clamp(40px, 6vw, 90px);
+    align-items: start;
+  }
+
+  .eb-pull {
+    margin: 0 0 30px;
+    font-family: var(--display);
+    font-size: clamp(30px, 3.5vw, 48px);
+    font-style: italic;
+    line-height: 1.14;
+  }
+
+  .eb-body {
+    max-width: 56ch;
+    color: var(--ink-soft);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.75;
+  }
+
+  .eb-spec {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 22px;
+    margin-top: 38px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-mute);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .eb-spec strong {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .eb-plates {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+
+  .eb-plate {
+    position: relative;
+    overflow: hidden;
+    background: var(--paper-soft);
+  }
+
+  .eb-plate img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .eb-plate span {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    color: var(--paper);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    mix-blend-mode: difference;
+  }
+
+  .eb-plate-a { grid-column: span 4; aspect-ratio: 4 / 3; }
+  .eb-plate-b { grid-column: span 2; aspect-ratio: 3 / 4; }
+  .eb-plate-c { grid-column: span 2; aspect-ratio: 3 / 4; }
+  .eb-plate-d { grid-column: span 4; aspect-ratio: 4 / 3; }
+
+  .eb-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+  }
+
+  .eb-option {
+    display: grid;
+    gap: 16px;
+    min-height: 330px;
+    padding: 30px 24px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .eb-option.selected {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .eb-option small {
+    color: var(--ink-mute);
+    font-family: var(--display);
+    font-size: 22px;
+    font-style: italic;
+  }
+
+  .eb-option.selected small,
+  .eb-option.selected p,
+  .eb-option.selected li {
+    color: rgba(242, 239, 232, 0.68);
+  }
+
+  .eb-option h3 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 34px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .eb-option p,
+  .eb-option li {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    line-height: 1.58;
+  }
+
+  .eb-option ul {
+    display: grid;
+    gap: 8px;
+    margin: auto 0 0;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--rule);
+    list-style: none;
+  }
+
+  .eb-toc {
+    display: grid;
+  }
+
+  .eb-row {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr) 190px 120px 58px;
+    gap: 28px;
+    align-items: center;
+    min-height: 88px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink);
+  }
+
+  .eb-row:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .eb-row .num {
+    color: var(--ink-mute);
+    font-family: var(--display);
+    font-size: 23px;
+    font-style: italic;
+  }
+
+  .eb-row .title {
+    font-family: var(--display);
+    font-size: clamp(30px, 3.4vw, 48px);
+    line-height: 1;
+  }
+
+  .eb-row em {
+    font-style: italic;
+    opacity: 0.82;
+  }
+
+  .eb-row .meta,
+  .eb-row .count {
+    color: var(--ink-mute);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .eb-row .meta strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  .eb-teacher {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .eb-teacher .eb-head {
+    border-color: var(--rule-light);
+  }
+
+  .eb-teacher .eb-aside,
+  .eb-teacher .eb-body,
+  .eb-teacher .eb-row .num,
+  .eb-teacher .eb-row .meta,
+  .eb-teacher .eb-row .count {
+    color: rgba(242, 239, 232, 0.58);
+  }
+
+  .eb-teacher .eb-row {
+    border-color: var(--rule-light);
+    color: var(--paper);
+  }
+
+  .eb-teacher .eb-row .meta strong {
+    color: var(--paper);
+  }
+
+  .eb-workbench {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(380px, 0.72fr);
+    gap: 48px;
+  }
+
+  .eb-ledger {
+    border: 1px solid var(--rule-light);
+  }
+
+  .eb-ledger div {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    gap: 16px;
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--rule-light);
+    color: rgba(242, 239, 232, 0.74);
+    font-size: 12.5px;
+    line-height: 1.52;
+  }
+
+  .eb-ledger div:last-child {
+    border-bottom: 0;
+  }
+
+  .eb-ledger strong {
+    color: var(--paper);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 980px) {
+    .eb-nav,
+    .eb-meta,
+    .eb-head,
+    .eb-spread,
+    .eb-options,
+    .eb-workbench {
+      grid-template-columns: 1fr;
+    }
+    .eb-nav span:nth-child(2) { justify-self: start; }
+    .eb-nav span:nth-child(3) { justify-self: start; }
+    .eb-aside { text-align: left; }
+    .eb-row { grid-template-columns: 44px 1fr 42px; }
+    .eb-row .meta,
+    .eb-row .count { display: none; }
+  }
+</style>
+
+<div class="editorial-board">
+  <section class="eb-hero">
+    <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=2400&q=86" alt="">
+    <div class="eb-nav">
+      <span><b class="eb-mark">E</b>EduResource Agent</span>
+      <span>Homepage + Teacher Studio · Visual Reconstruction</span>
+      <span>after bkhlbb.html</span>
+    </div>
+    <div class="eb-hero-copy">
+      <div>
+        <div class="eb-eyebrow"><span>N° 01</span><i></i><span>Recommended direction</span></div>
+        <h1 class="eb-title">把主页和老师端做成同一套 <em>学习资源策展页。</em></h1>
+        <div class="eb-meta">
+          <div><small>Reference DNA</small><strong>大图 · 细线 · 杂志目录 · 纸张质感</strong></div>
+          <div><small>Homepage</small><strong>产品叙事，不再像后台卡片</strong></div>
+          <div><small>Teacher side</small><strong>操作保留，视觉退回工作室</strong></div>
+          <button class="eb-button">Approve Direction</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="eb-section">
+    <div class="eb-inner">
+      <div class="eb-head">
+        <div>
+          <div class="eb-eyebrow"><span>00</span><i></i><span>Approach choices</span></div>
+          <h2>我建议选第一种：真正重构视觉系统。</h2>
+        </div>
+        <div class="eb-aside">Click one<br>then reply in chat</div>
+      </div>
+
+      <div class="eb-options">
+        <article class="eb-option selected" data-choice="a" onclick="toggleSelect(this)">
+          <small>i</small>
+          <h3>共享视觉系统重构</h3>
+          <p>主页和老师端共用 bkhlbb 的版式骨架：hero、spread、toc、ledger、section head、footer。老师端只保留业务交互，不再保留 mesh 外观。</p>
+          <ul>
+            <li>效果最统一，也最接近你给的 HTML</li>
+            <li>改动稍大，但能把“毁掉”的风格彻底拉回来</li>
+          </ul>
+        </article>
+
+        <article class="eb-option" data-choice="b" onclick="toggleSelect(this)">
+          <small>ii</small>
+          <h3>局部 CSS 覆盖修复</h3>
+          <p>继续沿用现在的 React 结构，只把颜色、字体、圆角、阴影覆盖掉。速度快，但底层还是卡片/终端/面板混合感。</p>
+          <ul>
+            <li>风险小，速度最快</li>
+            <li>容易继续出现“不像参考页”的割裂</li>
+          </ul>
+        </article>
+
+        <article class="eb-option" data-choice="c" onclick="toggleSelect(this)">
+          <small>iii</small>
+          <h3>主页参考风，老师端后台风</h3>
+          <p>主页完全像参考页，老师端保留科技工作台。逻辑上清楚，但整体项目会像两个产品拼起来。</p>
+          <ul>
+            <li>老师端功能感最强</li>
+            <li>会继续破坏整体一致性</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="eb-section">
+    <div class="eb-inner">
+      <div class="eb-head">
+        <div>
+          <div class="eb-eyebrow"><span>01</span><i></i><span>Homepage reconstruction</span></div>
+          <h2>首页不是功能堆叠，而是一条可阅读的 <em>系统叙事。</em></h2>
+        </div>
+        <div class="eb-aside">Hero<br>Featured spread<br>Capability index</div>
+      </div>
+
+      <div class="eb-spread">
+        <aside>
+          <p class="eb-pull">参考页的“作品集”逻辑，换成教育产品的“能力策展”。</p>
+          <div class="eb-body">
+            <p>第一屏用强视觉和超大 serif 标题承接品牌。第二屏用左右 spread 讲清楚“学生探索 → 老师生成 → Agent 溯源”的主路径。</p>
+            <p>后续能力不再做普通卡片，而是变成可扫描的目录行，鼠标悬停时出现缩略图，保持参考页的节奏。</p>
+          </div>
+          <div class="eb-spec">
+            <div>Hero<strong>Full bleed image</strong></div>
+            <div>Layout<strong>Magazine spread</strong></div>
+            <div>Index<strong>TOC rows</strong></div>
+            <div>Motion<strong>Quiet reveal</strong></div>
+          </div>
+        </aside>
+
+        <div class="eb-plates">
+          <figure class="eb-plate eb-plate-a"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1300&q=84" alt=""><span>Student Path</span></figure>
+          <figure class="eb-plate eb-plate-b"><img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=84" alt=""><span>Teacher Review</span></figure>
+          <figure class="eb-plate eb-plate-c"><img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=84" alt=""><span>Resource Studio</span></figure>
+          <figure class="eb-plate eb-plate-d"><img src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1300&q=84" alt=""><span>Agent Trace</span></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="eb-section">
+    <div class="eb-inner">
+      <div class="eb-head">
+        <div>
+          <div class="eb-eyebrow"><span>02</span><i></i><span>Homepage index</span></div>
+          <h2>把功能入口做成参考页那种目录，而不是卡片墙。</h2>
+        </div>
+        <div class="eb-aside">Scannable<br>Product map</div>
+      </div>
+      <div class="eb-toc">
+        <div class="eb-row"><span class="num">01</span><span class="title">学生端 <em>探索地图</em></span><span class="meta">Student side<strong>兴趣画像实时变化</strong></span><span class="count">live state</span><span>→</span></div>
+        <div class="eb-row"><span class="num">02</span><span class="title">老师端 <em>资源工作室</em></span><span class="meta">Teacher side<strong>生成 / 审核 / 干预</strong></span><span class="count">4 modules</span><span>→</span></div>
+        <div class="eb-row"><span class="num">03</span><span class="title">七 Agent <em>生产线</em></span><span class="meta">Runtime<strong>DAG + task trace</strong></span><span class="count">visible</span><span>→</span></div>
+        <div class="eb-row"><span class="num">04</span><span class="title">Rationale <em>证据链</em></span><span class="meta">Review layer<strong>画像 / 短板 / prompt</strong></span><span class="count">auditable</span><span>→</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="eb-section eb-teacher">
+    <div class="eb-inner">
+      <div class="eb-head">
+        <div>
+          <div class="eb-eyebrow"><span>03</span><i></i><span>Teacher reconstruction</span></div>
+          <h2>老师端保留真实操作，但视觉变成 <em>审核编辑台。</em></h2>
+        </div>
+        <div class="eb-aside">No mesh glow<br>No rounded dashboard<br>No fake terminal dominance</div>
+      </div>
+
+      <div class="eb-workbench">
+        <aside>
+          <p class="eb-pull">老师先读证据，再生成资源，再审核为什么生成。</p>
+          <div class="eb-body">
+            <p>把现在的黑色 mesh 面板、渐变光斑、圆角标签全部收掉。风险学生、生成表单、审核队列和干预闭环都使用细线分隔、目录行和纸张表单。</p>
+            <p>运行日志可以保留，但从“炫技终端”改成“ledger 账本”，更像参考页里的出版物索引。</p>
+          </div>
+        </aside>
+
+        <div class="eb-ledger">
+          <div><strong>Student</strong><span>stu_018 · 二叉树遍历 · 递归调用顺序混乱</span></div>
+          <div><strong>Signal</strong><span>高风险 · 掌握度 42% · 图解偏好强</span></div>
+          <div><strong>Command</strong><span>生成低负担、可视化优先、可审核溯源资源包</span></div>
+          <div><strong>Agent</strong><span>PlannerAgent 拆解讲解、题目、代码、可视化、评估任务</span></div>
+          <div><strong>Review</strong><span>老师打开 rationale，确认画像依据与难度策略后下发</span></div>
+        </div>
+      </div>
+
+      <div style="height: 48px"></div>
+
+      <div class="eb-toc">
+        <div class="eb-row"><span class="num">I</span><span class="title">班级风险 <em>总览</em></span><span class="meta">Overview<strong>学生证据优先</strong></span><span class="count">read first</span><span>→</span></div>
+        <div class="eb-row"><span class="num">II</span><span class="title">资源 <em>生成</em></span><span class="meta">Generator<strong>真实 /api/generate</strong></span><span class="count">action</span><span>→</span></div>
+        <div class="eb-row"><span class="num">III</span><span class="title">Rationale <em>审核</em></span><span class="meta">Review<strong>为什么生成这份资源</strong></span><span class="count">trace</span><span>→</span></div>
+        <div class="eb-row"><span class="num">IV</span><span class="title">干预 <em>闭环</em></span><span class="meta">Loop<strong>反馈回写画像</strong></span><span class="count">update</span><span>→</span></div>
+      </div>
+    </div>
+  </section>
+</div>

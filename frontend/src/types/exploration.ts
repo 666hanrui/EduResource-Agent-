@@ -75,6 +75,11 @@ export interface RecommendedKnowledge {
   knowledge_name: string;
   reason: string;
   suggested_difficulty: number;
+  stage_key: 'foundation' | 'practice' | 'advancement' | 'evidence';
+  stage_title: string;
+  validation_prompt: string;
+  success_criteria: string;
+  recommended_action: string;
 }
 
 export interface ExplorationAgentStep {

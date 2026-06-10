@@ -7,13 +7,19 @@ import type {
   ExerciseResult,
   GenerateResults,
   Rationale,
+  SupplementalResourcesResult,
+  SupplementalVideoResource,
   VisualResult,
 } from '../../types/resources';
+import { buildLearningResourceSet } from '../../utils/learningResources';
 import { RationalePanel } from '../RationalePanel';
 
 interface Props {
   results: GenerateResults | null;
   loading: boolean;
+  knowledgeId?: string;
+  knowledgeName?: string;
+  studentId?: string;
 }
 
 type AskWhy = (rationale: Rationale, title: string) => void;
@@ -27,7 +33,7 @@ const C = {
   coral: '#FF4D74',
 };
 
-export function ResultsPanel({ results, loading }: Props) {
+export function ResultsPanel({ results, loading, knowledgeId = 'unknown', knowledgeName = '当前知识点', studentId = 'stu_001' }: Props) {
   const [activeRationale, setActiveRationale] = useState<{
     rationale: Rationale;
     title: string;
@@ -36,7 +42,7 @@ export function ResultsPanel({ results, loading }: Props) {
   if (loading && !results) {
     return (
       <EmptyState
-        title="Agent 们正在排队干活"
+        title="轻量 Agent 们正在排队干活"
         body="右侧剧场会实时亮起。等它们跑完，这里会自动贴出讲解、题目、代码和可视化。"
       />
     );
@@ -46,12 +52,20 @@ export function ResultsPanel({ results, loading }: Props) {
     return (
       <EmptyState
         title="还没开始生成"
-        body="填好知识点和学生 ID，点“开始生成”。别怕，系统会把为什么生成这个也一起交代清楚。"
+        body="需要旧版 7-Agent 卡片时，点“生成轻量资源”。互动课堂的生成状态会显示在上方卡片。"
       />
     );
   }
 
-  const producedCount = [results.document, results.exercise, results.code, results.visual, results.evaluation].filter(Boolean).length;
+  const supplemental =
+    results.supplemental ??
+    buildLearningResourceSet({
+      knowledgeId,
+      knowledgeName,
+      studentId,
+      weakness: profileWeakness(results.profile),
+    });
+  const producedCount = [results.document, results.exercise, results.code, results.visual, results.evaluation, supplemental].filter(Boolean).length;
 
   return (
     <div style={wrapStyle}>
@@ -78,6 +92,12 @@ export function ResultsPanel({ results, loading }: Props) {
           <VisualCard data={results.visual} onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })} />
         )}
         {results.evaluation && <EvaluationCard data={results.evaluation} />}
+        {supplemental && (
+          <SupplementalCard
+            data={supplemental}
+            onAskWhy={(r, t) => setActiveRationale({ rationale: r, title: t })}
+          />
+        )}
       </div>
 
       {Object.keys(results.errors).length > 0 && (
@@ -93,6 +113,108 @@ export function ResultsPanel({ results, loading }: Props) {
       )}
     </div>
   );
+}
+
+function SupplementalCard({ data, onAskWhy }: { data: SupplementalResourcesResult; onAskWhy: AskWhy }) {
+  const [expandedVideo, setExpandedVideo] = useState<SupplementalVideoResource | null>(null);
+
+  return (
+    <>
+      <CardShell
+        title={`${data.target_knowledge_name} · 补充学习资源`}
+        badge="资源"
+        kicker="视频、动画和图文入口，不替代生成内容，只补齐学习场景。"
+        onAskWhy={onAskWhy}
+        whyTitle="为什么推荐这些补充资源？"
+        rationale={data.rationale}
+      >
+        <div style={resourceBlockStyle}>
+          <strong>视频小窗</strong>
+          <div style={videoGridStyle}>
+            {data.videos.slice(0, 3).map((video) => (
+              <VideoMiniPlayer key={`${video.bvid ?? video.url}-${video.title}`} video={video} onExpand={() => setExpandedVideo(video)} />
+            ))}
+          </div>
+        </div>
+        <div style={resourceBlockStyle}>
+          <strong>其他资源</strong>
+          {data.readings.slice(0, 3).map((item) => (
+            <a key={item.title} style={resourceLinkStyle} href={item.url} target="_blank" rel="noreferrer">
+              <span>{item.title}</span>
+              <small>{item.tags.slice(0, 2).join(' / ')}</small>
+            </a>
+          ))}
+        </div>
+      </CardShell>
+      {expandedVideo && <VideoLightbox video={expandedVideo} onClose={() => setExpandedVideo(null)} />}
+    </>
+  );
+}
+
+function VideoMiniPlayer({ video, onExpand }: { video: SupplementalVideoResource; onExpand: () => void }) {
+  const embedUrl = resolveBilibiliEmbedUrl(video);
+
+  return (
+    <article style={videoCardStyle}>
+      <div style={videoFrameStyle}>
+        {embedUrl ? (
+          <iframe
+            title={video.title}
+            src={embedUrl}
+            style={iframeStyle}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <a style={videoFallbackStyle} href={video.url} target="_blank" rel="noreferrer">去 B站选择视频</a>
+        )}
+      </div>
+      <div style={videoInfoStyle}>
+        <strong>{video.title}</strong>
+        <small>{video.up_name} · {video.duration}</small>
+        <span>{video.fit_reason}</span>
+      </div>
+      <div style={videoActionRowStyle}>
+        <button type="button" style={videoActionButtonStyle} onClick={onExpand} disabled={!embedUrl}>放大</button>
+        <a style={videoActionLinkStyle} href={video.url} target="_blank" rel="noreferrer">B站原页</a>
+      </div>
+    </article>
+  );
+}
+
+function VideoLightbox({ video, onClose }: { video: SupplementalVideoResource; onClose: () => void }) {
+  const embedUrl = resolveBilibiliEmbedUrl(video);
+
+  return (
+    <div style={videoLightboxOverlayStyle} role="dialog" aria-modal="true" aria-label={`${video.title} 放大播放`}>
+      <section style={videoLightboxStyle}>
+        <header style={videoLightboxHeaderStyle}>
+          <div>
+            <strong>{video.title}</strong>
+            <small>{video.up_name} · {video.duration}</small>
+          </div>
+          <button type="button" style={closeButtonStyle} onClick={onClose}>关闭</button>
+        </header>
+        {embedUrl && (
+          <iframe
+            title={`${video.title} 放大播放`}
+            src={embedUrl}
+            style={videoLightboxFrameStyle}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        )}
+        <p style={videoLightboxReasonStyle}>{video.fit_reason}</p>
+      </section>
+    </div>
+  );
+}
+
+function resolveBilibiliEmbedUrl(video: SupplementalVideoResource): string {
+  if (video.embed_url) return video.embed_url;
+  if (!video.bvid) return '';
+  const page = video.page && video.page > 1 ? video.page : 1;
+  return `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(video.bvid)}&page=${page}&as_wide=1&high_quality=1&danmaku=0&autoplay=0`;
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
@@ -250,6 +372,12 @@ function Metric({ label, value }: { label: string; value: string }) {
   return <div style={metricStyle}><strong>{value}</strong><span>{label}</span></div>;
 }
 
+function profileWeakness(profile: unknown): string[] {
+  if (!profile || typeof profile !== 'object') return [];
+  const value = (profile as { weakness?: unknown }).weakness;
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
 const wrapStyle: CSSProperties = { display: 'grid', gap: 18, padding: 0, minWidth: 0 };
 const summaryStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center', padding: 20, border: `3px solid ${C.ink}`, borderRadius: 24, background: C.cream, boxShadow: `6px 6px 0 ${C.ink}` };
 const eyebrowStyle: CSSProperties = { display: 'inline-flex', padding: '5px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.yellow, fontSize: 12, fontWeight: 900 };
@@ -278,3 +406,20 @@ const visualGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '
 const metricRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 };
 const metricStyle: CSSProperties = { display: 'grid', gap: 2, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 16, background: C.paper, textAlign: 'center' };
 const errorBoxStyle: CSSProperties = { padding: 12, border: `3px solid ${C.ink}`, borderRadius: 18, background: '#ffd8df', boxShadow: `4px 4px 0 ${C.ink}`, fontWeight: 900 };
+const resourceBlockStyle: CSSProperties = { display: 'grid', gap: 8, marginBottom: 14 };
+const resourceLinkStyle: CSSProperties = { display: 'grid', gap: 4, padding: 12, border: `2px solid ${C.ink}`, borderRadius: 18, background: C.cream, color: C.ink, textDecoration: 'none', boxShadow: `3px 3px 0 ${C.ink}`, fontWeight: 900 };
+const videoGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 };
+const videoCardStyle: CSSProperties = { display: 'grid', gap: 10, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 18, background: C.cream, boxShadow: `3px 3px 0 ${C.ink}`, minWidth: 0 };
+const videoFrameStyle: CSSProperties = { position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', border: `2px solid ${C.ink}`, borderRadius: 14, background: '#111' };
+const iframeStyle: CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 };
+const videoFallbackStyle: CSSProperties = { display: 'grid', placeItems: 'center', width: '100%', height: '100%', color: C.paper, textDecoration: 'none', fontWeight: 900 };
+const videoInfoStyle: CSSProperties = { display: 'grid', gap: 4, lineHeight: 1.45 };
+const videoActionRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 };
+const videoActionButtonStyle: CSSProperties = { padding: '8px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.yellow, color: C.ink, cursor: 'pointer', fontWeight: 900, boxShadow: `2px 2px 0 ${C.ink}` };
+const videoActionLinkStyle: CSSProperties = { display: 'grid', placeItems: 'center', padding: '8px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.paper, color: C.ink, textDecoration: 'none', fontWeight: 900, boxShadow: `2px 2px 0 ${C.ink}` };
+const videoLightboxOverlayStyle: CSSProperties = { position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(36,28,21,0.72)' };
+const videoLightboxStyle: CSSProperties = { width: 'min(1120px, 96vw)', maxHeight: '92vh', display: 'grid', gap: 12, padding: 16, border: `3px solid ${C.ink}`, borderRadius: 24, background: C.paper, boxShadow: `8px 8px 0 ${C.ink}`, overflow: 'auto' };
+const videoLightboxHeaderStyle: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 };
+const closeButtonStyle: CSSProperties = { padding: '8px 14px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.cream, color: C.ink, boxShadow: `3px 3px 0 ${C.ink}`, cursor: 'pointer', fontWeight: 900, whiteSpace: 'nowrap' };
+const videoLightboxFrameStyle: CSSProperties = { width: '100%', height: 'min(62vh, 620px)', minHeight: 240, border: `2px solid ${C.ink}`, borderRadius: 18, background: '#111' };
+const videoLightboxReasonStyle: CSSProperties = { margin: 0, color: C.muted, lineHeight: 1.6, fontWeight: 800 };

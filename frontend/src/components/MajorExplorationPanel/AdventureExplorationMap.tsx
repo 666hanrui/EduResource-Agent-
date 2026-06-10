@@ -313,11 +313,31 @@ function toRecommendedSource(
   activeDirection?: CareerDirection | null,
 ): RecommendedKnowledge {
   const source = recommended.get(node.id);
+  const stageKey =
+    source?.stage_key
+    ?? (node.category === 'foundation'
+      ? 'foundation'
+      : node.category === 'direction'
+        ? 'advancement'
+        : 'practice');
   return {
     knowledge_id: node.id,
     knowledge_name: activeDirection?.title ?? source?.knowledge_name ?? node.title,
     reason: source?.reason ?? (activeDirection ? `${node.why} 该节点支撑「${activeDirection.title}」方向。` : node.why),
     suggested_difficulty: source?.suggested_difficulty ?? node.difficulty,
+    stage_key: stageKey,
+    stage_title:
+      source?.stage_title
+      ?? (stageKey === 'foundation'
+        ? '阶段 1 · 基础定标'
+        : stageKey === 'practice'
+          ? '阶段 2 · 课堂练习'
+          : stageKey === 'advancement'
+            ? '阶段 3 · 进阶迁移'
+            : '证据补强 · 方向复核'),
+    validation_prompt: source?.validation_prompt ?? `围绕「${node.title}」完成一轮当前阶段验证。`,
+    success_criteria: source?.success_criteria ?? '至少形成 1 条有效学习证据。',
+    recommended_action: source?.recommended_action ?? `把「${node.title}」继续推进到培养方案或课堂页。`,
   };
 }
 
