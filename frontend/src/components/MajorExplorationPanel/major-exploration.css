@@ -463,6 +463,22 @@
   line-height: 1.55;
 }
 
+.knowledge-atlas-focus__detail {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledge-atlas-focus__detail span {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--freddie-ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 .major-panel--cream {
   background: var(--freddie-cream);
 }
@@ -568,6 +584,52 @@
 .major-click-card:hover,
 .major-task-card:hover {
   background: var(--freddie-yellow);
+}
+
+.major-click-card--stage {
+  gap: 12px;
+  cursor: default;
+}
+
+.major-click-card__stage-top,
+.major-click-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.major-click-card__detail {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(36, 28, 21, 0.05);
+}
+
+.major-click-card__detail small {
+  color: var(--freddie-ink);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.major-click-card__detail p {
+  margin: 0;
+  color: var(--freddie-ink);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.major-click-card__footer {
+  align-items: flex-end;
+}
+
+.major-click-card__footer .major-probe {
+  margin: 0;
+  flex: 1;
 }
 
 .major-task-card--done {

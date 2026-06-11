@@ -51,16 +51,15 @@ export function InteractiveClassroomStudio({
     interactiveJob,
     hasEvaluation: Boolean(evaluationFeedback),
   });
-  const startLabel = submitting ? '正在创建课堂…' : generating ? '课堂生成中…' : '生成互动课堂';
+  const startLabel = submitting ? '创建中…' : generating ? '生成中…' : '生成课堂';
 
   return (
     <div className="classroom-studio">
       <section className="classroom-studio__composer">
-        <div className="classroom-studio__intro">
-          <small>Interactive Classroom</small>
-          <h2>把探索结果直接送进 OpenMAIC 课堂链路</h2>
-          <p>这一页只保留课堂生成、链路状态和资源回流三件事，不再和探索地图、数字人、其他工作台互相抢空间。</p>
-        </div>
+          <div className="classroom-studio__intro">
+            <small>Interactive Classroom</small>
+            <h2>OpenMAIC 课堂</h2>
+          </div>
         <div className="classroom-studio__fields">
           <label>
             <span>知识点 ID</span>
@@ -75,13 +74,13 @@ export function InteractiveClassroomStudio({
               {startLabel}
             </button>
             <button type="button" className="freddie-secondary-button" onClick={onLightweightGenerate} disabled={submitting || generating}>
-              生成轻量资源
+              轻量资源
             </button>
           </div>
         </div>
         <div className="classroom-studio__meta">
           <span>Student · {studentId}</span>
-          {selectionContext && <span>Reason · {selectionContext.reason}</span>}
+          {selectionContext?.stage_title && <span>Stage · {selectionContext.stage_title}</span>}
           {estimatedMastery !== undefined && <span>掌握度 · {estimatedMastery}%</span>}
         </div>
       </section>
@@ -89,10 +88,9 @@ export function InteractiveClassroomStudio({
       <section className="classroom-studio__flow">
         <div className="classroom-studio__section-title">
           <div>
-            <small>System Flow</small>
-            <h3>前端 / FastAPI / OpenMAIC / 回写闭环</h3>
+            <small>Flow</small>
+            <h3>多 Agent 流程</h3>
           </div>
-          <p>这里把真实接口和职责边界直接铺出来，避免互动课堂像一个“突然弹开的黑盒新页面”。</p>
         </div>
         <div className="classroom-flow-grid">
           {flow.map((step, index) => (
@@ -104,7 +102,7 @@ export function InteractiveClassroomStudio({
                   <span>{step.owner}</span>
                 </div>
                 <code>{step.endpoint}</code>
-                <p>{step.summary}</p>
+                <p>{compactText(step.summary, 18)}</p>
               </div>
             </article>
           ))}
@@ -116,8 +114,8 @@ export function InteractiveClassroomStudio({
           <div className="classroom-runtime-card__head">
             <div>
               <small>Runtime Status</small>
-              <h3>{knowledgeName} 互动课堂</h3>
-              <p>{interactiveJob.message || '课堂生成任务已提交。'}</p>
+              <h3>{knowledgeName}</h3>
+              <p>{compactText(interactiveJob.message || '任务已提交', 26)}</p>
             </div>
             <span className={`freddie-classroom-status freddie-classroom-status--${interactiveJob.status}`}>
               {interactiveJob.status}
@@ -131,7 +129,7 @@ export function InteractiveClassroomStudio({
           {(evaluationFeedback || pathFeedback) && (
             <div className="classroom-runtime-card__feedback">
               <strong>回写反馈</strong>
-              <span>{evaluationFeedback || pathFeedback}</span>
+              <span>{compactText(evaluationFeedback || pathFeedback || '', 20)}</span>
             </div>
           )}
           <div className="classroom-runtime-card__actions">
@@ -154,9 +152,9 @@ export function InteractiveClassroomStudio({
               disabled={!canOpenProgress}
               onClick={onOpenProgress}
             >
-              查看阶段回写
+              看回写
             </button>
-            <a href={interactiveJob.package_url} target="_blank" rel="noreferrer">查看资源包 JSON</a>
+            <a href={interactiveJob.package_url} target="_blank" rel="noreferrer">资源 JSON</a>
           </div>
         </section>
       )}
@@ -166,9 +164,8 @@ export function InteractiveClassroomStudio({
           <div className="classroom-studio__section-title">
             <div>
               <small>Support Pack</small>
-              <h3>轻量资源与课堂补充</h3>
+              <h3>轻量资源</h3>
             </div>
-            <p>旧版 7-Agent 输出不再和主页面混排，而是作为互动课堂的补充包放在这里。</p>
           </div>
           <ResultsPanel
             results={results}
@@ -183,9 +180,8 @@ export function InteractiveClassroomStudio({
           <div className="classroom-studio__section-title">
             <div>
               <small>Agent Trace</small>
-              <h3>资源生成轨迹</h3>
+              <h3>Agent 轨迹</h3>
             </div>
-            <p>保留原来的 Agent 可视化证据，但只在和课堂生成相关的页面出现。</p>
           </div>
           <div className="classroom-trace-frame">
             <AgentFlowViz taskId={taskId} />
@@ -194,4 +190,9 @@ export function InteractiveClassroomStudio({
       </div>
     </div>
   );
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }

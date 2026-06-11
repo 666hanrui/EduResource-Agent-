@@ -42,8 +42,7 @@ export function ResultsPanel({ results, loading, knowledgeId = 'unknown', knowle
   if (loading && !results) {
     return (
       <EmptyState
-        title="轻量 Agent 们正在排队干活"
-        body="右侧剧场会实时亮起。等它们跑完，这里会自动贴出讲解、题目、代码和可视化。"
+        title="生成中"
       />
     );
   }
@@ -51,8 +50,7 @@ export function ResultsPanel({ results, loading, knowledgeId = 'unknown', knowle
   if (!results) {
     return (
       <EmptyState
-        title="还没开始生成"
-        body="需要旧版 7-Agent 卡片时，点“生成轻量资源”。互动课堂的生成状态会显示在上方卡片。"
+        title="暂无资源"
       />
     );
   }
@@ -71,11 +69,10 @@ export function ResultsPanel({ results, loading, knowledgeId = 'unknown', knowle
     <div style={wrapStyle}>
       <section style={summaryStyle}>
         <div>
-          <span style={eyebrowStyle}>Resource Pack</span>
-          <h2 style={{ margin: '8px 0 0', fontSize: 28 }}>这一轮产出了 {producedCount} 组学习材料</h2>
-          <p style={summaryTextStyle}>每张卡片都保留“为什么生成这个”的入口，展示画像匹配、短板、难度调整和生成指纹。</p>
+          <span style={eyebrowStyle}>Pack</span>
+          <h2 style={{ margin: '8px 0 0', fontSize: 28 }}>{producedCount} 组资源</h2>
         </div>
-        <div style={stampStyle}>可追溯</div>
+        <div style={stampStyle}>Trace</div>
       </section>
 
       <div style={gridStyle}>
@@ -101,7 +98,7 @@ export function ResultsPanel({ results, loading, knowledgeId = 'unknown', knowle
       </div>
 
       {Object.keys(results.errors).length > 0 && (
-        <div style={errorBoxStyle}>有 Agent 摔了一跤，但系统已兜底：{Object.keys(results.errors).join(' / ')}</div>
+        <div style={errorBoxStyle}>异常：{Object.keys(results.errors).join(' / ')}</div>
       )}
 
       {activeRationale && (
@@ -121,15 +118,15 @@ function SupplementalCard({ data, onAskWhy }: { data: SupplementalResourcesResul
   return (
     <>
       <CardShell
-        title={`${data.target_knowledge_name} · 补充学习资源`}
-        badge="资源"
-        kicker="视频、动画和图文入口，不替代生成内容，只补齐学习场景。"
+        title={`${data.target_knowledge_name} · 补充`}
+        badge="补充"
+        kicker=""
         onAskWhy={onAskWhy}
-        whyTitle="为什么推荐这些补充资源？"
+        whyTitle="补充依据"
         rationale={data.rationale}
       >
         <div style={resourceBlockStyle}>
-          <strong>视频小窗</strong>
+          <strong>视频</strong>
           <div style={videoGridStyle}>
             {data.videos.slice(0, 3).map((video) => (
               <VideoMiniPlayer key={`${video.bvid ?? video.url}-${video.title}`} video={video} onExpand={() => setExpandedVideo(video)} />
@@ -137,7 +134,7 @@ function SupplementalCard({ data, onAskWhy }: { data: SupplementalResourcesResul
           </div>
         </div>
         <div style={resourceBlockStyle}>
-          <strong>其他资源</strong>
+          <strong>延伸</strong>
           {data.readings.slice(0, 3).map((item) => (
             <a key={item.title} style={resourceLinkStyle} href={item.url} target="_blank" rel="noreferrer">
               <span>{item.title}</span>
@@ -172,7 +169,7 @@ function VideoMiniPlayer({ video, onExpand }: { video: SupplementalVideoResource
       <div style={videoInfoStyle}>
         <strong>{video.title}</strong>
         <small>{video.up_name} · {video.duration}</small>
-        <span>{video.fit_reason}</span>
+        <span>{compactText(video.fit_reason, 24)}</span>
       </div>
       <div style={videoActionRowStyle}>
         <button type="button" style={videoActionButtonStyle} onClick={onExpand} disabled={!embedUrl}>放大</button>
@@ -204,7 +201,7 @@ function VideoLightbox({ video, onClose }: { video: SupplementalVideoResource; o
             allowFullScreen
           />
         )}
-        <p style={videoLightboxReasonStyle}>{video.fit_reason}</p>
+        <p style={videoLightboxReasonStyle}>{compactText(video.fit_reason, 72)}</p>
       </section>
     </div>
   );
@@ -217,12 +214,12 @@ function resolveBilibiliEmbedUrl(video: SupplementalVideoResource): string {
   return `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(video.bvid)}&page=${page}&as_wide=1&high_quality=1&danmaku=0&autoplay=0`;
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
+function EmptyState({ title, body }: { title: string; body?: string }) {
   return (
     <div style={emptyStyle}>
       <div style={emptyMascotStyle} />
       <h2 style={{ margin: '14px 0 8px', fontSize: 34 }}>{title}</h2>
-      <p style={{ margin: 0, maxWidth: 520, color: C.muted, lineHeight: 1.6 }}>{body}</p>
+      {body ? <p style={{ margin: 0, maxWidth: 520, color: C.muted, lineHeight: 1.6 }}>{body}</p> : null}
     </div>
   );
 }
@@ -250,9 +247,9 @@ function CardShell({
         <div>
           <span style={badgePillStyle}>{badge}</span>
           <h3 style={{ margin: '8px 0 4px', fontSize: 22 }}>{title}</h3>
-          <div style={kickerStyle}>{kicker}</div>
+          {kicker ? <div style={kickerStyle}>{kicker}</div> : null}
         </div>
-        <button style={whyButtonStyle} onClick={() => onAskWhy(rationale, whyTitle)}>为什么？</button>
+        <button style={whyButtonStyle} onClick={() => onAskWhy(rationale, whyTitle)}>Trace</button>
       </header>
       <div style={cardBodyStyle}>{children}</div>
     </section>
@@ -264,9 +261,9 @@ function DocumentCard({ data, onAskWhy }: { data: DocumentResult; onAskWhy: AskW
     <CardShell
       title={data.document.title}
       badge="讲解"
-      kicker="先讲清楚，再上题。"
+      kicker=""
       onAskWhy={onAskWhy}
-      whyTitle="为什么生成这份讲解？"
+      whyTitle="讲解依据"
       rationale={data.rationale}
     >
       {data.document.sections.slice(0, 3).map((sec, i) => (
@@ -275,7 +272,7 @@ function DocumentCard({ data, onAskWhy }: { data: DocumentResult; onAskWhy: AskW
           <pre style={preStyle}>{sec.body_md}</pre>
         </div>
       ))}
-      {data.document.key_diagrams.length > 0 && <div style={metaStyle}>附带 {data.document.key_diagrams.length} 个结构图线索</div>}
+      {data.document.key_diagrams.length > 0 && <div style={metaStyle}>结构图 {data.document.key_diagrams.length}</div>}
     </CardShell>
   );
 }
@@ -285,9 +282,9 @@ function ExerciseCard({ data, onAskWhy }: { data: ExerciseResult; onAskWhy: AskW
     <CardShell
       title={`自适应题目 × ${data.questions.length}`}
       badge="题目"
-      kicker="不是刷题堆量，是按短板补洞。"
+      kicker=""
       onAskWhy={onAskWhy}
-      whyTitle="为什么是这套题？"
+      whyTitle="题目依据"
       rationale={data.rationale}
     >
       {data.questions.slice(0, 3).map((q, i) => (
@@ -312,9 +309,9 @@ function CodeCard({ data, onAskWhy }: { data: CodeResult; onAskWhy: AskWhy }) {
     <CardShell
       title="代码案例"
       badge="代码"
-      kicker="把概念落到 Python / Java，而不是停在 PPT。"
+      kicker=""
       onAskWhy={onAskWhy}
-      whyTitle="为什么这样写代码？"
+      whyTitle="代码依据"
       rationale={data.rationale}
     >
       <div style={tabRowStyle}>{data.code_samples.map((s, i) => (
@@ -331,9 +328,9 @@ function VisualCard({ data, onAskWhy }: { data: VisualResult; onAskWhy: AskWhy }
     <CardShell
       title="思维导图 + 动画步骤"
       badge="可视化"
-      kicker="用图和动作把抽象步骤拽回地面。"
+      kicker=""
       onAskWhy={onAskWhy}
-      whyTitle="为什么生成这个可视化？"
+      whyTitle="可视依据"
       rationale={data.rationale}
     >
       <div style={visualGridStyle}>
@@ -352,11 +349,9 @@ function EvaluationCard({ data }: { data: EvaluationResult }) {
         <div>
           <span style={{ ...badgePillStyle, background: C.coral }}>闭环</span>
           <h3 style={{ margin: '8px 0 4px', fontSize: 22 }}>答题评估</h3>
-          <div style={kickerStyle}>生成不是终点，反馈才是闭环。</div>
         </div>
       </header>
       <div style={cardBodyStyle}>
-        <p style={{ marginTop: 0, lineHeight: 1.6 }}>{data.narrative}</p>
         <div style={metricRowStyle}>
           <Metric label="正确率" value={`${(d.observed_correct_rate * 100).toFixed(0)}%`} />
           <Metric label="掌握度" value={`${(d.estimated_mastery * 100).toFixed(0)}%`} />
@@ -378,10 +373,14 @@ function profileWeakness(profile: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+}
+
 const wrapStyle: CSSProperties = { display: 'grid', gap: 18, padding: 0, minWidth: 0 };
 const summaryStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center', padding: 20, border: `3px solid ${C.ink}`, borderRadius: 24, background: C.cream, boxShadow: `6px 6px 0 ${C.ink}` };
 const eyebrowStyle: CSSProperties = { display: 'inline-flex', padding: '5px 10px', border: `2px solid ${C.ink}`, borderRadius: 999, background: C.yellow, fontSize: 12, fontWeight: 900 };
-const summaryTextStyle: CSSProperties = { margin: '8px 0 0', color: C.muted, lineHeight: 1.6 };
 const stampStyle: CSSProperties = { display: 'grid', placeItems: 'center', width: 86, height: 86, border: `3px solid ${C.ink}`, borderRadius: '50%', background: C.paper, boxShadow: `5px 5px 0 ${C.ink}`, fontWeight: 900, transform: 'rotate(8deg)' };
 const gridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 };
 const emptyStyle: CSSProperties = { minHeight: 420, display: 'grid', placeItems: 'center', alignContent: 'center', textAlign: 'center', padding: 40, border: `3px dashed ${C.ink}`, borderRadius: 28, background: C.cream };

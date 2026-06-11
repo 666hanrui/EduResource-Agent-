@@ -66,7 +66,6 @@ export function EmptyPrompt() {
       <div>
         <div className="major-empty__face" />
         <h2>先生成一张探索地图</h2>
-        <p>从专业开始，不需要简历，也不要求先确定目标岗位。系统会先铺开知识广度，再帮你收敛方向。</p>
       </div>
     </div>
   );

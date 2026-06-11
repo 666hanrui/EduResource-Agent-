@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from ..agents.base import new_task_id
@@ -96,6 +96,8 @@ from ..services.teacher_store import (
     TeacherJobNotFoundError,
     TeacherNotFoundError,
 )
+from ..services.industry_data import build_teacher_industry_summary
+from ..services.ppt_master_service import PPTMasterExportError, build_teacher_pptx
 
 logger = logging.getLogger(__name__)
 
@@ -609,6 +611,10 @@ def build_router(
         except (TeacherNotFoundError, ClassNotFoundError, StudentNotInClassError, TeacherJobNotFoundError) as exc:
             raise _teacher_store_http_error(exc) from exc
 
+    @router.get("/teachers/industry-data/summary")
+    async def teacher_industry_data_summary(program: str = "software-engineering") -> dict:
+        return await asyncio.to_thread(build_teacher_industry_summary, program)
+
     @router.post(
         "/teachers/{teacher_id}/classes/{class_id}/teaching-packages",
         response_model=TeacherGenerationJob,
@@ -697,6 +703,39 @@ def build_router(
             return _TEACHER_STORE.get_job(teacher_id, class_id, job_id)
         except (TeacherNotFoundError, ClassNotFoundError, StudentNotInClassError, TeacherJobNotFoundError) as exc:
             raise _teacher_store_http_error(exc) from exc
+
+    @router.get("/teachers/{teacher_id}/classes/{class_id}/teaching-packages/{package_id}/pptx")
+    async def export_teacher_pptx(
+        teacher_id: str,
+        class_id: str,
+        package_id: str,
+    ) -> FileResponse:
+        try:
+            package = _TEACHER_STORE.get_package(teacher_id, class_id, package_id)
+        except (TeacherNotFoundError, ClassNotFoundError, StudentNotInClassError, TeacherJobNotFoundError) as exc:
+            raise _teacher_store_http_error(exc) from exc
+
+        if package.status != "ready" or not isinstance(package.results, dict):
+            raise HTTPException(status_code=409, detail="teaching package is not ready")
+
+        try:
+            exported = await asyncio.to_thread(
+                build_teacher_pptx,
+                package_id=package.id,
+                title=package.title,
+                target_knowledge_name=package.target_knowledge_name,
+                teaching_goal=package.teaching_goal,
+                target_student_id=package.target_student_id,
+                results=package.results,
+            )
+        except PPTMasterExportError as exc:
+            raise HTTPException(status_code=502, detail=f"PPT Master export failed: {exc}") from exc
+
+        return FileResponse(
+            exported.path,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            filename=exported.filename,
+        )
 
     @router.post("/generate", response_model=GenerateResponse)
     async def generate(payload: GenerateRequest) -> GenerateResponse:

@@ -182,9 +182,9 @@ export function buildTeacherArtifactLibrary({
     {
       heading: '课时目标',
       body: [
-        `围绕 ${knowledgeName} 优先解决 ${(weakness[0] ?? focus) || '当前薄弱点'}。`,
-        `本轮老师目标：${goal}`,
-        `课堂策略：${classMode}`,
+        `知识点：${knowledgeName}`,
+        `焦点：${compactText((weakness[0] ?? focus) || '当前短板', 18)}`,
+        `策略：${classMode}`,
       ].join('\n'),
     },
     {
@@ -194,8 +194,8 @@ export function buildTeacherArtifactLibrary({
     {
       heading: '评价与延伸',
       body: [
-        results?.evaluation?.narrative ?? '先在课堂内完成一次低负担检测，再决定是否进入下一轮补救。',
-        `课后延伸：${supplemental.readings[0]?.title ?? '补充本地动画与图文资料'}`,
+        `检测：${results?.exercise?.questions.length ?? 3} 题`,
+        `延伸：${supplemental.readings[0]?.title ?? '图文补充'}`,
       ].join('\n'),
     },
   ];
@@ -204,7 +204,7 @@ export function buildTeacherArtifactLibrary({
   const syllabusSections: TeacherArtifactSection[] = [
     {
       heading: '课时定位',
-      body: `这是围绕 ${knowledgeName} 的一节补救课，聚焦 ${weakness[0] ?? '核心理解障碍'}，适合老师在 1 个课时内完成闭环。`,
+      body: `${knowledgeName} · ${compactText(weakness[0] ?? '补弱课', 18)}`,
     },
     {
       heading: '先修知识',
@@ -216,14 +216,14 @@ export function buildTeacherArtifactLibrary({
     },
     {
       heading: '课堂产出',
-      body: `学生需要完成 1 份讲义跟读、${results?.exercise?.questions.length ?? 3} 道检测题，以及 1 次步骤动画/代码走查。`,
+      body: `讲义 / ${results?.exercise?.questions.length ?? 3} 题 / 动画`,
     },
     {
       heading: '资源挂载',
       body: [
-        results?.document ? '讲义已生成，可直接拆成课堂讲稿。' : '当前先按老师目标预排讲义结构。',
-        results?.visual ? '动画与思维导图可直接投屏。' : '动画位保留给可视化演示工作室。',
-        results?.code ? '代码案例适合走查或板书复现。' : '代码位保留给双语示例。',
+        results?.document ? '讲义：已就绪' : '讲义：待生成',
+        results?.visual ? '动画：已就绪' : '动画：待生成',
+        results?.code ? '代码：已就绪' : '代码：待生成',
       ].join('\n'),
     },
   ];
@@ -261,11 +261,11 @@ export function buildTeacherArtifactLibrary({
       family: 'deliverable',
       title: `${resolveProgramDirection(knowledgeName, focus)} · 四年人培路线图`,
       label: '人培计划',
-      summary: '以“入学建档 -> 基础编程 -> 工程协作 -> AI / Agent 开发 -> 毕业出口”为主线，把八学期、月度前沿雷达、项目阶梯、作品集评估和四类出口编成一张连续的人培系统图。',
+      summary: '四年主线 / 雷达 / 出口',
       agent: 'TeacherStudioStrategist',
       student: null,
       status: 'ready',
-      reason: '老师端不该只看到单节课资源，还要能看到从新生入学到毕业出口的整条培养路线。',
+      reason: '班级长期线',
       chips: ['8 semesters + onboarding', '月度前沿雷达', '项目阶梯 + 作品集', '4 exit pathways'],
       outline: [
         '入学建档与八学期主线',
@@ -290,11 +290,11 @@ export function buildTeacherArtifactLibrary({
       family: 'deliverable',
       title: `${knowledgeName} · 课堂教案`,
       label: '教案',
-      summary: generated ? '把当前生成内容重组成一节可直接上课的流程稿。' : '先按老师目标预排课堂节奏，等待正式资源覆盖。',
+      summary: generated ? '一节课流程稿' : '待生成流程稿',
       agent: 'TeacherStudioComposer',
       student: studentId,
       status: generated ? 'ready' : 'draft',
-      reason: weakness[0] ?? '根据老师目标自动编排课堂流程。',
+      reason: weakness[0] ?? '自动排课',
       chips: ['45 min', classMode, results?.visual ? '动画插入' : '投屏预留'],
       outline: [
         '导入诊断',
@@ -312,11 +312,11 @@ export function buildTeacherArtifactLibrary({
       family: 'deliverable',
       title: `${knowledgeName} · PPT 页稿`,
       label: 'PPT 页稿',
-      summary: '按照课堂节奏把讲解、动画、练习和收束页排成投屏结构。',
+      summary: '投屏页稿',
       agent: 'TeacherStudioComposer',
       student: studentId,
       status: generated ? 'ready' : 'draft',
-      reason: results?.visual?.rationale.matched_profile[0] ?? '把低干扰的页面结构交给老师直接投屏。',
+      reason: results?.visual?.rationale.matched_profile[0] ?? '投屏结构',
       chips: ['9 slides', results?.visual ? '动画页' : '静态页', '课堂检测'],
       outline: slideSections.map((section) => section.heading),
       sections: slideSections,
@@ -328,11 +328,11 @@ export function buildTeacherArtifactLibrary({
       family: 'deliverable',
       title: `${knowledgeName} · 教学大纲`,
       label: '教学大纲',
-      summary: '把课时定位、先修知识、知识主线与课堂产出整理成纲要。',
+      summary: '课时纲要',
       agent: 'TeacherStudioComposer',
       student: studentId,
       status: generated ? 'ready' : 'draft',
-      reason: '老师审核时先看结构与节奏，而不是单个资源碎片。',
+      reason: '结构先看',
       chips: ['结构先行', '闭环课时', '课后衔接'],
       outline: syllabusSections.map((section) => section.heading),
       sections: syllabusSections,
@@ -344,11 +344,11 @@ export function buildTeacherArtifactLibrary({
       family: 'deliverable',
       title: `${knowledgeName} · 重难点讲解`,
       label: '重难点',
-      summary: '把重点、难点、易错点和讲法建议提前整理给老师。 ',
+      summary: '重点 / 难点 / 易错',
       agent: 'TeacherStudioComposer',
       student: studentId,
       status: generated ? 'ready' : 'draft',
-      reason: weakness[0] ?? '围绕学生高频错误优先组织讲法。',
+      reason: weakness[0] ?? '短板优先',
       chips: ['错因先读', '讲法建议', '课堂提醒'],
       outline: keyFocusSections.map((section) => section.heading),
       sections: keyFocusSections,
@@ -363,11 +363,11 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: results.document.document.title,
       label: '讲义',
-      summary: '原始讲义结果，适合拆成教师讲稿或发给学生复习。',
+      summary: '原始讲义',
       agent: results.document.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: results.document.rationale.addressed_weakness[0] ?? '根据当前画像生成讲解材料。',
+      reason: results.document.rationale.addressed_weakness[0] ?? '讲解材料',
       chips: [`${results.document.document.sections.length} sections`, 'Markdown', '可追溯'],
       outline: results.document.document.sections.map((section) => section.heading),
       sections: mapDocumentSections(results.document.document.sections),
@@ -382,16 +382,16 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: `${knowledgeName} · ${results.exercise.questions.length} 道自适应题`,
       label: '练习',
-      summary: '按学生薄弱点排序的课堂检测与讲后回收题。',
+      summary: '分层检测',
       agent: results.exercise.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: results.exercise.rationale.addressed_weakness[0] ?? '根据短板生成检测题。',
+      reason: results.exercise.rationale.addressed_weakness[0] ?? '检测题',
       chips: [`${results.exercise.questions.length} Q`, '分层检测', '解释可回看'],
       outline: results.exercise.questions.slice(0, 4).map((question, index) => `Q${index + 1} · ${question.stem}`),
       sections: results.exercise.questions.slice(0, 4).map((question, index) => ({
         heading: `Q${index + 1} · ${question.type}`,
-        body: `${question.stem}\n答案：${question.answer}\n讲解：${question.explanation}`,
+        body: `${question.stem}\n答案：${question.answer}\n讲解：${compactText(question.explanation, 28)}`,
       })),
       links: [],
       rationale: results.exercise.rationale,
@@ -405,21 +405,21 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: `${knowledgeName} · 思维导图与步骤动画`,
       label: '动画',
-      summary: '课堂投屏优先的思维导图与逐步演示脚本。',
+      summary: '导图 + 步骤',
       agent: results.visual.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: results.visual.rationale.matched_profile[0] ?? '根据图解偏好生成动画资源。',
+      reason: results.visual.rationale.matched_profile[0] ?? '动画资源',
       chips: [`${steps.length} steps`, results.visual.animation.scene, '可视化优先'],
       outline: steps.map((step, index) => `Step ${index + 1} · ${step.action}`),
       sections: [
         {
           heading: 'Mindmap',
-          body: shortenMultiline(results.visual.mindmap_md, 8),
+          body: shortenMultiline(results.visual.mindmap_md, 4),
         },
         ...steps.map((step, index) => ({
           heading: `Step ${index + 1} · ${step.action}`,
-          body: `${step.narration}\nTarget: ${step.target}\nSection: ${step.links_to_doc_section}`,
+          body: `${compactText(step.narration, 28)}\n${compactText(step.target, 18)}`,
         })),
       ],
       links: buildDeliverableLinks([], supplemental.readings.slice(0, 2)),
@@ -433,11 +433,11 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: `${knowledgeName} · 双语代码走查`,
       label: '代码',
-      summary: '适合老师投屏走查或让学生课后对照复现。',
+      summary: '代码走查',
       agent: results.code.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: results.code.rationale.matched_profile[0] ?? '根据代码偏好生成双语示例。',
+      reason: results.code.rationale.matched_profile[0] ?? '双语示例',
       chips: results.code.code_samples.map((sample) => sample.lang.toUpperCase()),
       outline: results.code.code_samples.map((sample) => `${sample.lang.toUpperCase()} · ${sample.filename}`),
       sections: results.code.code_samples.map((sample) => ({
@@ -455,16 +455,16 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: `${knowledgeName} · 视频补充资源`,
       label: '视频',
-      summary: '给老师审核和替换的一组外部视频入口。',
+      summary: '视频入口',
       agent: supplemental.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: supplemental.videos[0]?.fit_reason ?? '根据当前知识点补充视频资源。',
+      reason: supplemental.videos[0]?.fit_reason ?? '视频补充',
       chips: [`${supplemental.videos.length} refs`, 'B站', '课后补充'],
       outline: supplemental.videos.slice(0, 3).map((video) => video.title),
       sections: supplemental.videos.slice(0, 3).map((video, index) => ({
         heading: `Video ${index + 1}`,
-        body: `${video.title}\n${video.fit_reason}`,
+        body: `${video.title}\n${compactText(video.fit_reason, 24)}`,
       })),
       links: supplemental.videos.slice(0, 3).map(toVideoLink),
       rationale: supplemental.rationale,
@@ -477,16 +477,16 @@ export function buildTeacherArtifactLibrary({
       family: 'asset',
       title: `${knowledgeName} · 本地演示与图文入口`,
       label: '阅读',
-      summary: '把本地动画、演示工作室和图文检索放在一起方便老师调用。',
+      summary: '图文入口',
       agent: supplemental.rationale.agent_name,
       student: studentId,
       status: 'ready',
-      reason: supplemental.readings[0]?.fit_reason ?? '根据当前知识点补充图文与演示资源。',
+      reason: supplemental.readings[0]?.fit_reason ?? '图文补充',
       chips: [`${supplemental.readings.length} refs`, '本地可用', '图文补充'],
       outline: supplemental.readings.slice(0, 3).map((item) => item.title),
       sections: supplemental.readings.slice(0, 3).map((item, index) => ({
         heading: `Entry ${index + 1}`,
-        body: `${item.title}\n${item.fit_reason}`,
+        body: `${item.title}\n${compactText(item.fit_reason, 24)}`,
       })),
       links: supplemental.readings.slice(0, 3).map(toReadingLink),
       rationale: supplemental.rationale,
@@ -609,10 +609,10 @@ function buildTalentPlanSections({
     {
       heading: '培养愿景与毕业画像',
       body: [
-        blueprint.vision,
-        `当前老师目标：${goal}`,
-        `当前知识点 ${knowledgeName} 会被放进完整培养链路中，作为阶段训练节点，而不是孤立的一次补救。`,
-        `毕业画像：${blueprint.graduationProfile.join('；')}`,
+        `方向：${blueprint.direction}`,
+        `目标：${compactText(goal, 20)}`,
+        `锚点：${knowledgeName}`,
+        `毕业画像：${compactText(blueprint.graduationProfile.join('；'), 30)}`,
       ].join('\n'),
     },
     {
@@ -620,14 +620,10 @@ function buildTalentPlanSections({
       body: blueprint.semesterPlan
         .map((semester) =>
           [
-            `${semester.stage}｜${semester.label} · ${semester.theme}`,
-            `培养目标：${semester.target}`,
-            `核心课程群：${semester.courses.join('、')}`,
-            `工程训练：${semester.engineering.join('；')}`,
-            `AI / 前沿：${semester.frontier.join('；')}`,
-            `典型项目：${semester.project}`,
-            `考核方式：${semester.assessment}`,
-            `阶段产出：${semester.output}`,
+            `${semester.stage}｜${semester.label} · ${compactText(semester.theme, 16)}`,
+            `课程：${compactText(semester.courses.join('、'), 20)}`,
+            `训练：${compactText(semester.engineering.join('；'), 20)}`,
+            `产出：${compactText(semester.output, 18)}`,
           ].join('\n'),
         )
         .join('\n\n'),
@@ -635,15 +631,15 @@ function buildTalentPlanSections({
     {
       heading: '贯穿主线与运行机制',
       body: blueprint.continuousLanes
-        .map((lane) => `【${lane.title}】${lane.items.join('；')}`)
+        .map((lane) => `【${lane.title}】${compactText(lane.items.join('；'), 28)}`)
         .join('\n'),
     },
     {
       heading: '前沿雷达运行机制',
       body: [
-        `节奏：${blueprint.radar.cadence}`,
-        `信源桶：${blueprint.radar.sourceBuckets.join('；')}`,
-        `课堂转化流程：${blueprint.radar.process.join(' -> ')}`,
+        `节奏：${compactText(blueprint.radar.cadence, 20)}`,
+        `信源：${compactText(blueprint.radar.sourceBuckets.join('；'), 20)}`,
+        `流程：${compactText(blueprint.radar.process.join(' -> '), 20)}`,
       ].join('\n'),
     },
     {
@@ -651,25 +647,25 @@ function buildTalentPlanSections({
       body: blueprint.radar.topics
         .map(
           (topic) =>
-            `${topic.date}｜${topic.source}｜${topic.title}\n关键信号：${topic.signal}\n课堂动作：${topic.classroomAction}\n项目映射：${topic.projectMapping}`,
+            `${topic.date}｜${topic.source}｜${compactText(topic.title, 18)}\n信号：${compactText(topic.signal, 20)}\n动作：${compactText(topic.classroomAction, 20)}`,
         )
         .join('\n\n'),
     },
     {
       heading: '贯穿式编码实战与创新探索',
       body: [
-        `项目梯度：${blueprint.innovation.ladders.join('；')}`,
-        `创新探索：${blueprint.innovation.arenas.join('；')}`,
-        `老师角色：${blueprint.innovation.teacherRole.join('；')}`,
+        `项目梯度：${compactText(blueprint.innovation.ladders.join('；'), 24)}`,
+        `创新探索：${compactText(blueprint.innovation.arenas.join('；'), 24)}`,
+        `老师角色：${compactText(blueprint.innovation.teacherRole.join('；'), 24)}`,
       ].join('\n'),
     },
     {
       heading: '评估、作品集与毕业要求',
       body: [
-        `评估维度：${blueprint.assessment.dimensions.join('、')}`,
-        `阶段检查点：${blueprint.assessment.checkpoints.join('；')}`,
-        `作品集清单：${blueprint.assessment.portfolio.join('；')}`,
-        `当前重点风险：${weakness[0] ?? '先把短板讲透再升级难度'}`,
+        `维度：${compactText(blueprint.assessment.dimensions.join('、'), 20)}`,
+        `检查点：${compactText(blueprint.assessment.checkpoints.join('；'), 20)}`,
+        `作品集：${compactText(blueprint.assessment.portfolio.join('；'), 20)}`,
+        `风险：${compactText(weakness[0] ?? '先补短板', 18)}`,
       ].join('\n'),
     },
     {
@@ -677,7 +673,7 @@ function buildTalentPlanSections({
       body: blueprint.exits
         .map(
           (exit) =>
-            `【${exit.title}】适配：${exit.fit}\n关键动作：${exit.milestones.join('；')}\n需要拿得出的成果：${exit.deliverables.join('；')}`,
+            `【${exit.title}】${compactText(exit.fit, 16)}\n动作：${compactText(exit.milestones.join('；'), 20)}\n成果：${compactText(exit.deliverables.join('；'), 18)}`,
         )
         .join('\n\n'),
     },
@@ -1005,32 +1001,32 @@ function buildTalentPlanBlueprint({
 
 function buildKnowledgeLine(sections: DocumentSection[], knowledgeName: string): string {
   if (!sections.length) {
-    return `从问题直觉到步骤拆解，再到课堂检测，围绕 ${knowledgeName} 完成一次短闭环。`;
+    return `${knowledgeName} · 概念 / 步骤 / 检测`;
   }
   return sections.slice(0, 4).map((section, index) => `${index + 1}. ${section.heading}`).join('\n');
 }
 
 function buildKeyPoint(sections: DocumentSection[], knowledgeName: string): string {
   if (!sections.length) {
-    return `先让学生说清楚 ${knowledgeName} 的执行顺序，再进入代码层。`;
+    return `${knowledgeName} · 先顺序后代码`;
   }
   return sections.slice(0, 2).map((section) => `- ${section.heading}`).join('\n');
 }
 
 function buildCommonMistakes(questions: Question[], focus: string): string {
   if (!questions.length) {
-    return focus ? `${focus}\n学生容易在这一步出现顺序混淆或边界漏写。` : '先抓顺序感，再抓边界条件。';
+    return focus ? `${focus}\n顺序 / 边界` : '顺序 / 边界';
   }
-  return questions.slice(0, 3).map((question) => `- ${question.explanation}`).join('\n');
+  return questions.slice(0, 3).map((question) => `- ${compactText(question.explanation, 24)}`).join('\n');
 }
 
 function buildTeachingHints(rationale: Rationale, stepCount: number): string {
-  const profileHint = rationale.matched_profile[0] ?? '默认采用分步骤、低干扰讲解。';
-  const weaknessHint = rationale.addressed_weakness[0] ?? '优先把学生最容易卡住的动作拆出来。';
+  const profileHint = rationale.matched_profile[0] ?? '分步骤讲解';
+  const weaknessHint = rationale.addressed_weakness[0] ?? '短板先拆开';
   return [
-    profileHint,
-    weaknessHint,
-    stepCount > 0 ? `建议把动画控制在 ${stepCount} 个步骤内，每一步只说一个动作。` : '如果没有动画，就把板书节奏切成 3 到 5 个短步骤。',
+    compactText(profileHint, 18),
+    compactText(weaknessHint, 18),
+    stepCount > 0 ? `动画 ${stepCount} 步` : '板书 3-5 步',
   ].join('\n');
 }
 
@@ -1092,12 +1088,12 @@ function buildTalentPlanLinks(
 function mapDocumentSections(sections: DocumentSection[]): TeacherArtifactSection[] {
   return sections.map((section) => ({
     heading: section.heading,
-    body: shortenMultiline(section.body_md, 10),
+    body: shortenMultiline(section.body_md, 4),
   }));
 }
 
 function buildCodePreview(sample: CodeSample): string {
-  const head = sample.code.split('\n').slice(0, 10).join('\n');
+  const head = sample.code.split('\n').slice(0, 6).join('\n');
   return [
     `Complexity: ${sample.complexity.time} / ${sample.complexity.space}`,
     head,
@@ -1113,7 +1109,7 @@ function collectWeakness(results: GenerateResults | null, focus: string): string
 
   return uniqueStrings([focus, ...rationaleWeakness]).slice(0, 4).length
     ? uniqueStrings([focus, ...rationaleWeakness]).slice(0, 4)
-    : ['围绕当前知识点补一轮低负担解释与练习'];
+    : ['当前知识点补弱'];
 }
 
 function pickRationale(...items: Array<Rationale | null | undefined>): Rationale {
@@ -1121,8 +1117,8 @@ function pickRationale(...items: Array<Rationale | null | undefined>): Rationale
 }
 
 function inferPrerequisites(knowledgeName: string, focus: string): string {
-  if (focus) return `${focus}\n需要先把这个短板背后的基础概念讲清楚。`;
-  return `建议先复习 ${knowledgeName} 的基础定义、顺序感与边界条件。`;
+  if (focus) return `${focus}\n基础概念`;
+  return `${knowledgeName} 基础定义 / 顺序 / 边界`;
 }
 
 function shortenMultiline(text: string, maxLines: number): string {
@@ -1132,6 +1128,11 @@ function shortenMultiline(text: string, maxLines: number): string {
     .filter(Boolean)
     .slice(0, maxLines)
     .join('\n');
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }
 
 function lessonModeByRisk(risk: string): string {

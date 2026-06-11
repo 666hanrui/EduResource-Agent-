@@ -335,6 +335,22 @@ class SQLiteTeacherStore:
             )
         return self._job_from_row(row)
 
+    def get_package(self, teacher_id: str, class_id: str, package_id: str) -> TeacherTeachingPackage:
+        self.get_class(teacher_id, class_id)
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM teacher_packages
+                WHERE teacher_id = ? AND class_id = ? AND package_id = ?
+                """,
+                (teacher_id, class_id, package_id),
+            ).fetchone()
+        if row is None:
+            raise TeacherJobNotFoundError(
+                f"package {package_id!r} not found for teacher {teacher_id!r} class {class_id!r}"
+            )
+        return self._package_from_row(row)
+
     def list_recent_packages(self, teacher_id: str, class_id: str) -> list[TeacherTeachingPackage]:
         self.get_class(teacher_id, class_id)
         with self._connect() as conn:

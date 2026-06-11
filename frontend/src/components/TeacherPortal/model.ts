@@ -93,11 +93,50 @@ export type TeacherDashboard = {
   review_items: ReviewItem[];
 };
 
+export type TeacherIndustryCourseReport = {
+  course: string;
+  hours: number;
+  lessons: number;
+  requirements: string[];
+  student_outcomes: string[];
+  frontier_signals: string[];
+  job_sample_count: number;
+  source_files: string[];
+  industries: string[];
+  roles: string[];
+  top_keywords: string[];
+  salary: {
+    label: string;
+    min: number | null;
+    max: number | null;
+    average: number | null;
+  };
+};
+
+export type TeacherIndustrySummary = {
+  program: string;
+  source: {
+    exists: boolean;
+    path: string;
+    industry_count: number;
+    workbook_count: number;
+    rows_scanned: number;
+    label: string;
+  };
+  course_reports: TeacherIndustryCourseReport[];
+  external_benchmarks: Array<{
+    source: string;
+    title: string;
+    signal: string;
+    url: string;
+  }>;
+};
+
 export const TAB_ITEMS: { key: TabKey; title: string; caption: string }[] = [
-  { key: 'overview', title: 'Overview', caption: '班级风险与运行状态' },
-  { key: 'generator', title: 'Generate', caption: '老师发起资源生产' },
-  { key: 'review', title: 'Review', caption: '溯源、证据与审核' },
-  { key: 'intervention', title: 'Intervene', caption: '闭环干预动作' },
+  { key: 'overview', title: 'Overview', caption: '班级' },
+  { key: 'generator', title: 'Generate', caption: '生成' },
+  { key: 'review', title: 'Review', caption: '审核' },
+  { key: 'intervention', title: 'Intervene', caption: '干预' },
 ];
 
 export const CLASSES: ClassProfile[] = [
@@ -154,13 +193,13 @@ export const STUDENTS: Student[] = [
 ];
 
 export const AGENTS = [
-  ['ProfileAgent', '画像同步', '抽取学生基础、偏好、短板与最近证据'],
-  ['PlannerAgent', '任务编排', '拆成讲解、题目、代码、可视化任务'],
-  ['DocumentAgent', '讲义生成', '输出可追溯 Markdown 讲解材料'],
-  ['ExerciseAgent', '自适应题目', '按掌握度和短板调整难度'],
-  ['CodeAgent', '代码案例', '生成 Python / Java 双语示例'],
-  ['VisualAgent', '动画导图', '输出思维导图和步骤动画数据'],
-  ['EvaluationAgent', '闭环评估', '把练习结果回写学习画像'],
+  ['ProfileAgent', '画像同步', '画像'],
+  ['PlannerAgent', '任务编排', '编排'],
+  ['DocumentAgent', '讲义生成', '讲义'],
+  ['ExerciseAgent', '自适应题目', '题目'],
+  ['CodeAgent', '代码案例', '代码'],
+  ['VisualAgent', '动画导图', '动画'],
+  ['EvaluationAgent', '闭环评估', '回写'],
 ];
 
 export const DEMO_RATIONALE: Rationale = {

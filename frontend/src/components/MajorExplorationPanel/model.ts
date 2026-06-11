@@ -73,19 +73,19 @@ export interface KnowledgeAtlasView {
 const LANE_META: Record<KnowledgeLaneKey, { title: string; description: string }> = {
   foundation: {
     title: '基础底座',
-    description: '决定你能否顺利接住后面的核心课和方向课。',
+    description: '基础课入口',
   },
   core: {
     title: '核心抽象',
-    description: '把专业方法、分析能力和典型题型连起来。',
+    description: '核心能力',
   },
   direction: {
     title: '应用方向',
-    description: '把“我感兴趣”变成可验证的职业方向假设。',
+    description: '方向验证',
   },
   practice: {
     title: '实践与证据',
-    description: '项目、作品、资源完成记录都会沉淀成真实证据。',
+    description: '任务与证据',
   },
 };
 
@@ -114,21 +114,21 @@ export function buildExplorationMetrics(
     {
       label: '知识地图',
       value: String(plan.knowledge_map.length),
-      detail: `${plan.knowledge_map.filter((node) => node.category === 'direction').length} 个方向节点可继续向互动课堂转化`,
+      detail: `${plan.knowledge_map.filter((node) => node.category === 'direction').length} 个方向节点`,
     },
     {
       label: '当前方向',
       value: activeDirection?.title ?? plan.career_directions[0]?.title ?? '待收敛',
       detail: activeDirection
         ? `${activeDirection.fit_score} 匹配度 · ${activeDirection.exploration_domain || '探索方向'}`
-        : '先看候选方向，再决定是否创建工作区',
+        : '先选方向',
     },
     {
       label: '执行进度',
       value: `${completedTasks}/${Math.max(totalTasks, 1)}`,
       detail: workspace
-        ? `已完成 ${completedResources} 条资源证据，下一步补 ${pendingDimensions.join('、') || '探索证据'}`
-        : '创建工作区后，任务、资源和复盘会集中到这里',
+        ? `${completedResources} 条资源 · ${pendingDimensions.join('、') || '继续补证据'}`
+        : '创建工作区后开始',
     },
   ];
 }
@@ -220,7 +220,7 @@ function buildKnowledgeNodeView({
   const fallbackSource: RecommendedKnowledge = {
     knowledge_id: node.id,
     knowledge_name: node.title,
-    reason: `${node.why} 这会成为后续资源生成的知识点入口。`,
+    reason: compactText(node.why, 20),
     suggested_difficulty: node.difficulty,
     stage_key: node.category === 'foundation' ? 'foundation' : node.category === 'direction' ? 'advancement' : 'practice',
     stage_title:
@@ -229,9 +229,9 @@ function buildKnowledgeNodeView({
         : node.category === 'direction'
           ? '阶段 3 · 进阶迁移'
           : '阶段 2 · 课堂练习',
-    validation_prompt: `围绕「${node.title}」完成一轮当前阶段验证。`,
-    success_criteria: '至少形成一次有效作答、资源或任务证据。',
-    recommended_action: `把「${node.title}」送入培养方案，继续推进当前阶段。`,
+    validation_prompt: `${node.title} 阶段验证`,
+    success_criteria: '形成 1 条证据',
+    recommended_action: `${node.title} 进入下一步`,
   };
   const source = recommendedMap.get(node.id) ?? fallbackSource;
   const relatedTask = plan.exploration_tasks.find((task) => task.related_knowledge_ids.includes(node.id));
@@ -248,7 +248,7 @@ function buildKnowledgeNodeView({
   return {
     id: node.id,
     title: node.title,
-    summary: node.why,
+    summary: compactText(node.why, 20),
     difficultyLabel: `${node.difficulty} 星难度`,
     prerequisites: node.prerequisites.map((item) => resolveKnowledgeTitle(plan.knowledge_map, item)),
     state,
@@ -285,19 +285,24 @@ function resolveKnowledgeNodeState({
 
 function buildEvidenceNotes(task: ExplorationTask | undefined, state: KnowledgeNodeState): string[] {
   const statusNote = {
-    active: '当前方向正在依赖这个节点做判断',
-    recommended: '系统建议优先把它转成交互课堂或轻量资源',
-    in_progress: '你已经打开过相关资源，下一步是做完并回收证据',
-    completed: '已经形成任务或资源证据，可继续叠加更强的实践记录',
-    candidate: '可以作为下一轮深入探索的备选入口',
-    locked: '先补齐前置知识，避免直接跳到高层应用',
+    active: '当前方向节点',
+    recommended: '优先生成',
+    in_progress: '进行中',
+    completed: '已有证据',
+    candidate: '可继续拓展',
+    locked: '先补前置',
   }[state];
 
   const notes = [statusNote];
-  if (task) notes.push(`关联任务：${task.title}`);
+  if (task) notes.push(`任务：${compactText(task.title, 16)}`);
   return notes;
 }
 
 function resolveKnowledgeTitle(nodes: KnowledgeNode[], knowledgeId: string): string {
   return nodes.find((item) => item.id === knowledgeId)?.title ?? knowledgeId;
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }

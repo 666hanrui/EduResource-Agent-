@@ -14,14 +14,6 @@ interface Props {
 }
 
 export function RationalePanel({ rationale, title, onClose }: Props) {
-  const diffDelta = rationale.difficulty_used - rationale.difficulty_adjusted_from;
-  const diffLabel =
-    diffDelta === 0
-      ? '保持难度'
-      : diffDelta > 0
-        ? `上调 ${diffDelta} 级`
-        : `下调 ${Math.abs(diffDelta)} 级`;
-
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={panelStyle} onClick={(e) => e.stopPropagation()}>
@@ -29,7 +21,7 @@ export function RationalePanel({ rationale, title, onClose }: Props) {
           <div style={headerTitleStyle}>
             <span style={pulseDotStyle} />
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>
-              {title ?? '为什么生成这份资源？'}
+              {title ?? '依据'}
             </h3>
           </div>
           <button onClick={onClose} style={closeStyle} aria-label="关闭">×</button>
@@ -38,11 +30,10 @@ export function RationalePanel({ rationale, title, onClose }: Props) {
         <div style={scrollContentStyle}>
           <Section
             n={1}
-            title="画像匹配"
-            subtitle="对应学生的哪些特征维度"
+            title="画像"
           >
             {rationale.matched_profile.length === 0 ? (
-              <Empty>未声明画像匹配参数</Empty>
+              <Empty>暂无</Empty>
             ) : (
               <div style={chipContainerStyle}>
                 {rationale.matched_profile.map((m, i) => (
@@ -54,11 +45,10 @@ export function RationalePanel({ rationale, title, onClose }: Props) {
 
           <Section
             n={2}
-            title="短板对应"
-            subtitle="针对的核心薄弱点"
+            title="短板"
           >
             {rationale.addressed_weakness.length === 0 ? (
-              <Empty>无明显短板，推荐系统按通识进行生成</Empty>
+              <Empty>无明显短板</Empty>
             ) : (
               <div style={chipContainerStyle}>
                 {rationale.addressed_weakness.map((w, i) => (
@@ -70,35 +60,34 @@ export function RationalePanel({ rationale, title, onClose }: Props) {
 
           <Section
             n={3}
-            title="难度自适应"
-            subtitle={`${rationale.difficulty_adjusted_from} → ${rationale.difficulty_used}（${diffLabel}）`}
+            title="难度"
+            subtitle={`${rationale.difficulty_adjusted_from} → ${rationale.difficulty_used}`}
           >
             <DifficultyBar from={rationale.difficulty_adjusted_from} to={rationale.difficulty_used} />
           </Section>
 
           <Section
             n={4}
-            title="生产指纹"
-            subtitle="本次生成链路的 Agent 参数"
+            title="参数"
           >
             <div style={fingerprintGridStyle}>
-              <FingerprintItem label="Agent Node" value={rationale.agent_name} glowColor="rgba(0, 112, 243, 0.15)" />
-              <FingerprintItem label="Prompt Hash" value={rationale.prompt_version} glowColor="rgba(255, 0, 128, 0.12)" />
-              <FingerprintItem label="Model Runtime" value={rationale.model_name} glowColor="rgba(245, 166, 35, 0.12)" />
+              <FingerprintItem label="Agent" value={rationale.agent_name} glowColor="rgba(0, 112, 243, 0.15)" />
+              <FingerprintItem label="Prompt" value={rationale.prompt_version} glowColor="rgba(255, 0, 128, 0.12)" />
+              <FingerprintItem label="Model" value={rationale.model_name} glowColor="rgba(245, 166, 35, 0.12)" />
             </div>
 
             {rationale.cited_sources.length > 0 && (
               <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <div style={citedHeaderStyle}>引用学术/教研资料来源</div>
+                <div style={citedHeaderStyle}>引用</div>
                 <div style={{ display: 'grid', gap: 6 }}>
                   {rationale.cited_sources.map((s, i) => (
                     <div key={i} style={sourceCardStyle}>
                       <div style={sourceTitleStyle}>📖 {s.title}</div>
                       <div style={sourceMetaStyle}>
-                        {s.page && s.page !== 'unknown' ? <span style={sourceBadgeStyle}>Page {s.page}</span> : null}
+                        {s.page && s.page !== 'unknown' ? <span style={sourceBadgeStyle}>P{s.page}</span> : null}
                         {typeof s.similarity === 'number' && s.similarity > 0 ? (
                           <span style={{ ...sourceBadgeStyle, color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.05)' }}>
-                            向量匹配度 {(s.similarity * 100).toFixed(0)}%
+                            匹配 {(s.similarity * 100).toFixed(0)}%
                           </span>
                         ) : null}
                       </div>
@@ -208,7 +197,7 @@ function DifficultyBar({ from, to }: { from: number; to: number }) {
               {i}
             </div>
             <span style={{ fontSize: 9, fontFamily: '"Geist Mono", monospace', color: isTo ? '#0070f3' : isFrom ? '#f5a623' : '#3f3f46' }}>
-              {isTo ? 'Target' : isFrom ? 'From' : ''}
+              {isTo ? '现' : isFrom ? '原' : ''}
             </span>
           </div>
         );

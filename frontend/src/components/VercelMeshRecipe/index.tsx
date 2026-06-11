@@ -85,8 +85,8 @@ export function VercelMeshNav({ active }: { active: 'home' | 'teacher' }) {
       </a>
       <div className="mesh-nav-links">
         <a className={active === 'home' ? 'mesh-nav-link is-active' : 'mesh-nav-link'} href="#/">官网</a>
-        <a className="mesh-nav-link" href="#/student">学生端</a>
-        <a className={active === 'teacher' ? 'mesh-nav-link is-active' : 'mesh-nav-link'} href="#/teacher">老师端</a>
+        <a className="mesh-nav-link" href="/student/exploration" data-app-route>学生端</a>
+        <a className={active === 'teacher' ? 'mesh-nav-link is-active' : 'mesh-nav-link'} href="/teacher" data-app-route>老师端</a>
       </div>
     </nav>
   );

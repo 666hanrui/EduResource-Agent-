@@ -9,6 +9,7 @@ import type { TalentPlanBlueprint, TeacherArtifact, TeacherArtifactLibrary, Teac
 interface OverviewProps {
   metrics: { value: string; label: string }[];
   onChooseStudent: (student: Student) => void;
+  onOpenTalentSystem: (type: TeacherArtifactType) => void;
   classes: ClassProfile[];
   students: Student[];
   activeClassId: string;
@@ -37,6 +38,7 @@ interface ReviewProps {
   reviews: ReviewItem[];
   artifactLibrary: TeacherArtifactLibrary;
   onOpen: (rationale: Rationale) => void;
+  selectedType?: TeacherArtifactType;
 }
 
 interface InterventionProps {
@@ -57,10 +59,21 @@ const RUNTIME_STATE_LABELS: Record<RuntimeNodeState, string> = {
   error: 'error',
 };
 
+const TALENT_SYSTEM_TABS: Array<{ type: TeacherArtifactType; label: string; caption: string }> = [
+  { type: 'TalentPlan', label: '总览', caption: '主线' },
+  { type: 'Syllabus', label: '大纲', caption: '知识线' },
+  { type: 'LessonPlan', label: '教案', caption: '课堂线' },
+  { type: 'SlideDeck', label: 'PPT', caption: '页稿线' },
+  { type: 'KeyFocus', label: '重难点', caption: '讲法线' },
+];
+const TALENT_SYSTEM_TYPES: TeacherArtifactType[] = TALENT_SYSTEM_TABS.map((tab) => tab.type);
+const TALENT_SYSTEM_REVIEW_ID = 'talent-system';
+
 // ─────────────────────────── 1. OVERVIEW PANEL ───────────────────────────
 export function OverviewPanel({
   metrics,
   onChooseStudent,
+  onOpenTalentSystem,
   classes,
   students,
   activeClassId,
@@ -77,8 +90,10 @@ export function OverviewPanel({
     ? studentRows.filter((student) => !student.class_id || student.class_id === activeClassId)
     : studentRows;
   const talentPlan = deliverables.find((item) => item.type === 'TalentPlan');
-  const structuredTalentPlan = isStructuredTalentPlan(talentPlan) ? talentPlan : null;
-  const courseDeliverables = deliverables.filter((item) => item.type !== 'TalentPlan');
+  const talentSystemModules = TALENT_SYSTEM_TABS.flatMap((tab) => {
+    const artifact = deliverables.find((item) => item.type === tab.type);
+    return artifact ? [{ ...tab, artifact }] : [];
+  });
   const transcript = buildDeliverableTranscript(deliverables, activeStudent, goal);
 
   return (
@@ -234,9 +249,6 @@ export function OverviewPanel({
         {/* Risk Queue Selection Workspace */}
         <section className="mesh-panel">
           <PanelHead title="Attention Queue" eyebrow="/risk-queue" />
-          <p style={{ color: 'var(--mesh-muted)', fontSize: 12.5, marginBottom: 16 }}>
-            以下学生有高风险/短板预警。点击即可直接载入参数并开始生成专属学习资源。
-          </p>
           <div className="teacher-studio-risk-list" style={{ maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
             {filteredStudents.map((student) => (
               <button key={student.id} className="teacher-studio-risk-row" onClick={() => onChooseStudent(student)}>
@@ -258,13 +270,9 @@ export function OverviewPanel({
       <section className="mesh-panel teacher-deliverable-stage">
         <PanelHead title="Talent development system" eyebrow="/talent-plan/composer" />
         <div className="teacher-deliverable-stage__lead">
-          <p>
-            这里不是几份单课资源，而是从新生入学到最终毕业的完整人培体系。
-            老师先看四年路线图、前沿雷达和阶段评估，再往下拆到单课教案、PPT、教学大纲和重难点讲解。
-          </p>
           <div className="teacher-deliverable-stage__stamp">
-            <span>{activeStudent.id} · 当前学生锚点</span>
-            <strong>新生入学 → 最终毕业</strong>
+            <span>{activeStudent.id}</span>
+            <strong>人培方案体系</strong>
           </div>
         </div>
 
@@ -277,14 +285,14 @@ export function OverviewPanel({
               </div>
               <em>{talentPlan.status}</em>
             </div>
-            <p>{talentPlan.summary}</p>
+            <p>{compactText(talentPlan.summary, 22)}</p>
             <div className="teacher-talent-plan-hero__chips">
               {talentPlan.chips.map((chip) => (
                 <span key={chip}>{chip}</span>
               ))}
             </div>
             <div className="teacher-talent-plan-hero__modules">
-              {talentPlan.outline.map((item) => (
+              {talentPlan.outline.slice(0, 4).map((item) => (
                 <article key={item}>
                   <strong>{item}</strong>
                 </article>
@@ -293,42 +301,56 @@ export function OverviewPanel({
           </article>
         )}
 
-        {structuredTalentPlan && <TalentPlanBoard artifact={structuredTalentPlan} mode="overview" />}
-
         <div className="teacher-deliverable-route">
           <article className="teacher-deliverable-node teacher-deliverable-node--origin">
             <span>Program intent</span>
-            <strong>培养目标</strong>
-            <p>{talentPlan?.sections[0]?.body ?? goal}</p>
+            <strong>目标</strong>
+            <p>{compactText(summarizeSection(talentPlan?.sections[0]?.body ?? goal, 1), 20)}</p>
           </article>
 
           <div className="teacher-deliverable-route__arrow" aria-hidden="true">→</div>
 
           <article className="teacher-deliverable-node teacher-deliverable-node--planner">
             <span>Program architect</span>
-            <strong>四年路线与雷达编排</strong>
-            <p>把入学适应、年度课程、工程项目、前沿雷达、创新探索与毕业出口串成一整套培养路径。</p>
+            <strong>主线</strong>
+            <p>路线 · 雷达 · 出口</p>
           </article>
 
           <div className="teacher-deliverable-route__arrow" aria-hidden="true">→</div>
 
-          <div className="teacher-deliverable-grid">
-            {courseDeliverables.map((artifact) => (
-              <article key={artifact.type} className="teacher-deliverable-card">
-                <div className="teacher-deliverable-card__top">
-                  <span>{artifact.label}</span>
-                  <em>{artifact.status}</em>
+          <section className="teacher-talent-system-entry">
+            <button
+              type="button"
+              className="teacher-talent-system-entry__overview"
+              onClick={() => onOpenTalentSystem('TalentPlan')}
+            >
+              <div className="teacher-talent-system-entry__head">
+                <div>
+                  <span>Program system</span>
+                  <strong>人培方案体系</strong>
                 </div>
-                <strong>{artifact.title}</strong>
-                <p>{artifact.summary}</p>
-                <div className="teacher-deliverable-card__list">
-                  {artifact.outline.slice(0, 2).map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
+                <em>进入审核</em>
+              </div>
+              <p>{compactText(talentPlan?.summary ?? goal, 28)}</p>
+            </button>
+
+            <div className="teacher-talent-system-entry__modules">
+              {talentSystemModules.map(({ type, label, caption, artifact }) => (
+                <button
+                  key={type}
+                  type="button"
+                  className="teacher-talent-system-entry__module"
+                  onClick={() => onOpenTalentSystem(type)}
+                >
+                  <div>
+                    <span>{label}</span>
+                    <strong>{artifact.label}</strong>
+                  </div>
+                  <em>{caption}</em>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
 
         <div className="teacher-deliverable-stage__terminal">
@@ -411,7 +433,7 @@ export function GeneratorPanel(props: GeneratorProps) {
           <RuntimeNode
             label="Control"
             title="Orchestrator / GenerateFlow"
-            body="API 主控层：绑定同一个 task_id，按真实执行流推送事件。"
+            body="task_id / SSE"
             state={orchestrationState}
             detail={trace.summary ? `${(trace.summary.elapsedMs / 1000).toFixed(1)}s` : props.runState}
           />
@@ -421,9 +443,9 @@ export function GeneratorPanel(props: GeneratorProps) {
           <RuntimeNode
             label="Evidence Agent"
             title="ProfileAgent"
-            body="读取学生快照或班级画像；老师目标只作为生成约束。"
+            body="画像输入"
             state={profileRow.state}
-            detail={formatAgentDetail(profileRow, '等待画像输入')}
+            detail={formatAgentDetail(profileRow, '等待输入')}
           />
 
           <div className="teacher-runtime-arrow">↓ main plan</div>
@@ -431,9 +453,9 @@ export function GeneratorPanel(props: GeneratorProps) {
           <RuntimeNode
             label="Main Agent"
             title="PlannerAgent"
-            body="生成 KnowledgeBreakdown，并决定哪些资源 Agent 并行。"
+            body="任务拆解"
             state={plannerRow.state}
-            detail={formatAgentDetail(plannerRow, '等待主 Agent 拆解')}
+            detail={formatAgentDetail(plannerRow, '待拆解')}
             featured
           />
 
@@ -458,9 +480,9 @@ export function GeneratorPanel(props: GeneratorProps) {
           <RuntimeNode
             label="Feedback Agent"
             title="EvaluationAgent"
-            body="汇总答题表现，输出画像更新建议和下一轮干预依据。"
+            body="结果回写"
             state={evaluationRow.state}
-            detail={formatAgentDetail(evaluationRow, '等待资源与答题记录')}
+            detail={formatAgentDetail(evaluationRow, '待回写')}
           />
         </div>
       </section>
@@ -536,38 +558,79 @@ function formatAgentDetail(row: AgentRow, fallback: string): string {
 function workerBody(name: string): string {
   switch (name) {
     case 'DocumentAgent':
-      return '生成讲解文档，并写入可解释 rationale。';
+      return '讲解卡';
     case 'ExerciseAgent':
-      return '生成自适应题目，按短板调整训练目标。';
+      return '题目卡';
     case 'VisualAgent':
-      return '生成思维导图与步骤动画数据。';
+      return '图解卡';
     case 'CodeAgent':
-      return '在讲解完成后输出 Python / Java 双语代码案例。';
+      return '代码卡';
     default:
-      return '等待主 Agent 派发资源生成任务。';
+      return '待派发';
   }
 }
 
 // ─────────────────────────── 3. REVIEW PANEL ───────────────────────────
-export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
+export function ReviewPanel({ reviews, artifactLibrary, onOpen, selectedType }: ReviewProps) {
   const [selectedReviewId, setSelectedReviewId] = useState<string>(reviews[0]?.id || '');
+  const [selectedTalentType, setSelectedTalentType] = useState<TeacherArtifactType>('TalentPlan');
   const [exportMessage, setExportMessage] = useState<string>('');
+  const talentSystemReviews = reviews.filter((item) => TALENT_SYSTEM_TYPES.includes(item.type as TeacherArtifactType));
+  const otherReviews = reviews.filter((item) => !TALENT_SYSTEM_TYPES.includes(item.type as TeacherArtifactType));
+  const hasTalentSystem = talentSystemReviews.length > 0;
+  const availableTalentTabs = TALENT_SYSTEM_TABS.filter((tab) => artifactLibrary[tab.type]);
+  const activeTalentType = availableTalentTabs.some((tab) => tab.type === selectedTalentType)
+    ? selectedTalentType
+    : availableTalentTabs[0]?.type ?? 'TalentPlan';
 
   useEffect(() => {
     if (!reviews.length && selectedReviewId) {
       setSelectedReviewId('');
       return;
     }
-    if (reviews.length && !reviews.some((item) => item.id === selectedReviewId)) {
-      setSelectedReviewId(reviews[0]?.id ?? '');
+    const isTalentSelection = talentSystemReviews.some((item) => item.id === selectedReviewId);
+    if (hasTalentSystem && (!selectedReviewId || isTalentSelection)) {
+      if (selectedReviewId !== TALENT_SYSTEM_REVIEW_ID) {
+        setSelectedReviewId(TALENT_SYSTEM_REVIEW_ID);
+      }
+      return;
     }
-  }, [reviews, selectedReviewId]);
+    if (reviews.length && !reviews.some((item) => item.id === selectedReviewId)) {
+      setSelectedReviewId(hasTalentSystem ? TALENT_SYSTEM_REVIEW_ID : reviews[0]?.id ?? '');
+    }
+  }, [hasTalentSystem, reviews, selectedReviewId, talentSystemReviews]);
 
-  const activeReview = reviews.find((item) => item.id === selectedReviewId) || reviews[0];
+  useEffect(() => {
+    if (!selectedType) return;
+    if (TALENT_SYSTEM_TYPES.includes(selectedType)) {
+      setSelectedTalentType(selectedType);
+      if (selectedReviewId !== TALENT_SYSTEM_REVIEW_ID) {
+        setSelectedReviewId(TALENT_SYSTEM_REVIEW_ID);
+      }
+      return;
+    }
+    const matched = reviews.find((item) => item.type === selectedType);
+    if (matched && matched.id !== selectedReviewId) {
+      setSelectedReviewId(matched.id);
+    }
+  }, [reviews, selectedReviewId, selectedType]);
+
+  useEffect(() => {
+    if (!hasTalentSystem) return;
+    if (activeTalentType !== selectedTalentType) {
+      setSelectedTalentType(activeTalentType);
+    }
+  }, [activeTalentType, hasTalentSystem, selectedTalentType]);
+
+  const activeReview = selectedReviewId === TALENT_SYSTEM_REVIEW_ID
+    ? talentSystemReviews.find((item) => item.type === activeTalentType) ?? talentSystemReviews[0]
+    : reviews.find((item) => item.id === selectedReviewId) || (hasTalentSystem ? talentSystemReviews[0] : reviews[0]);
   const activeArtifact = activeReview
     ? artifactLibrary[activeReview.type as TeacherArtifactType] ?? buildFallbackArtifact(activeReview)
     : null;
   const activeTalentPlan = isStructuredTalentPlan(activeArtifact) ? activeArtifact : null;
+  const talentPlanArtifact = artifactLibrary.TalentPlan;
+  const talentSystemActive = selectedReviewId === TALENT_SYSTEM_REVIEW_ID && Boolean(activeReview);
 
   const copyMarkdown = async () => {
     if (!activeArtifact) return;
@@ -594,16 +657,37 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
   return (
     <section className="teacher-studio-section">
       <div className="teacher-studio-section-head" style={{ marginBottom: 20 }}>
-        <h2 style={{ fontFamily: '"Outfit", sans-serif' }}>Review generated resources by evidence, not vibes.</h2>
+        <h2 style={{ fontFamily: '"Outfit", sans-serif' }}>Review</h2>
         <span className="mesh-mono">/workspace/reviews</span>
       </div>
 
       <div className="teacher-review-workspace">
         {/* Left Side: Review Item Workspace Selector */}
         <div className="teacher-review-workspace__left">
-          {reviews.map((item) => (
-            <button 
-              key={item.id} 
+          {hasTalentSystem && (
+            <button
+              type="button"
+              className={selectedReviewId === TALENT_SYSTEM_REVIEW_ID ? 'teacher-review-row is-active' : 'teacher-review-row'}
+              onClick={() => {
+                setSelectedReviewId(TALENT_SYSTEM_REVIEW_ID);
+                setSelectedTalentType(activeTalentType);
+              }}
+            >
+              <div className="teacher-review-row__top">
+                <span style={workspaceRowMetaStyle}>TalentSystem · {availableTalentTabs.length} modules</span>
+                <span className="teacher-review-row__dot is-ready" />
+              </div>
+              <strong style={workspaceRowTitleStyle}>人培方案体系</strong>
+              <p style={workspaceRowReasonStyle}>{compactText(talentPlanArtifact?.summary ?? '统一管理培养主线与教学产物。', 28)}</p>
+              <small className="teacher-review-row__hint">
+                {availableTalentTabs.map((tab) => tab.label).join(' / ')}
+              </small>
+            </button>
+          )}
+
+          {otherReviews.map((item) => (
+            <button
+              key={item.id}
               className={selectedReviewId === item.id ? 'teacher-review-row is-active' : 'teacher-review-row'}
               onClick={() => setSelectedReviewId(item.id)}
             >
@@ -612,9 +696,9 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
                 <span className={item.status === 'ready' ? 'teacher-review-row__dot is-ready' : 'teacher-review-row__dot'} />
               </div>
               <strong style={workspaceRowTitleStyle}>{item.title}</strong>
-              <p style={workspaceRowReasonStyle}>{(artifactLibrary[item.type as TeacherArtifactType]?.summary) ?? item.reason}</p>
+              <p style={workspaceRowReasonStyle}>{compactText((artifactLibrary[item.type as TeacherArtifactType]?.summary) ?? item.reason, 28)}</p>
               <small className="teacher-review-row__hint">
-                {(artifactLibrary[item.type as TeacherArtifactType]?.outline[0]) ?? item.reason}
+                {compactText((artifactLibrary[item.type as TeacherArtifactType]?.outline[0]) ?? item.reason, 22)}
               </small>
             </button>
           ))}
@@ -625,9 +709,11 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
           <div className="teacher-review-sheet">
             <div className="teacher-review-sheet__header">
               <div>
-                <span style={workspaceRowMetaStyle}>{activeReview.type} · {activeReview.agent}</span>
+                <span style={workspaceRowMetaStyle}>
+                  {talentSystemActive ? `TalentSystem · ${activeReview.agent}` : `${activeReview.type} · ${activeReview.agent}`}
+                </span>
                 <h3 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700, fontFamily: '"Outfit", sans-serif' }}>
-                  {activeReview.title}
+                  {talentSystemActive ? '人培方案体系' : activeReview.title}
                 </h3>
               </div>
               <div className="teacher-review-sheet__toolbar">
@@ -642,20 +728,40 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
                   onClick={() => onOpen(activeReview.rationale)}
                   style={{ minHeight: 30, padding: '0 12px', fontSize: 12 }}
                 >
-                  Trace rationale fingerprint
+                  Trace
                 </button>
               </div>
             </div>
 
             <div className="teacher-review-sheet__body">
+              {talentSystemActive && availableTalentTabs.length > 0 && (
+                <div className="teacher-talent-system-tabs" role="tablist" aria-label="人培方案体系">
+                  {availableTalentTabs.map((tab) => (
+                    <button
+                      key={tab.type}
+                      type="button"
+                      className={activeTalentType === tab.type ? 'teacher-talent-system-tab is-active' : 'teacher-talent-system-tab'}
+                      onClick={() => setSelectedTalentType(tab.type)}
+                    >
+                      <strong>{tab.label}</strong>
+                      <span>{tab.caption}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="teacher-review-meta-grid">
                 <div>
-                  <span style={previewMetaLabelStyle}>Student ID</span>
-                  <div style={previewMetaValueStyle}>{activeReview.student ?? 'class-level'}</div>
+                  <span style={previewMetaLabelStyle}>{talentSystemActive ? 'System Scope' : 'Student ID'}</span>
+                  <div style={previewMetaValueStyle}>{talentSystemActive ? '人培方案体系' : activeReview.student ?? 'class-level'}</div>
                 </div>
                 <div>
-                  <span style={previewMetaLabelStyle}>Approval Queue</span>
-                  <div style={previewMetaValueStyle}>{activeReview.status.toUpperCase()}</div>
+                  <span style={previewMetaLabelStyle}>{talentSystemActive ? 'Current Module' : 'Approval Queue'}</span>
+                  <div style={previewMetaValueStyle}>
+                    {talentSystemActive
+                      ? availableTalentTabs.find((tab) => tab.type === activeTalentType)?.label ?? activeReview.type
+                      : activeReview.status.toUpperCase()}
+                  </div>
                 </div>
                 <div>
                   <span style={previewMetaLabelStyle}>Primary Agent</span>
@@ -674,7 +780,7 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
               <div className="teacher-review-outline">
                 <span style={previewMetaLabelStyle}>Quick Outline</span>
                 <div className="teacher-review-outline__list">
-                  {activeArtifact.outline.map((item) => (
+                  {activeArtifact.outline.slice(0, 3).map((item) => (
                     <span key={item}>{item}</span>
                   ))}
                 </div>
@@ -682,7 +788,7 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
 
               {activeArtifact.links.length > 0 && (
                 <div className="teacher-review-link-grid">
-                  {activeArtifact.links.map((link) => (
+                  {activeArtifact.links.slice(0, 2).map((link) => (
                     <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="teacher-review-link">
                       <strong>{link.title}</strong>
                       <span>{link.meta}</span>
@@ -692,36 +798,36 @@ export function ReviewPanel({ reviews, artifactLibrary, onOpen }: ReviewProps) {
               )}
 
               <div className="teacher-review-summary">
-                <h4 style={{ margin: 0, fontSize: 14 }}>Teacher Preview</h4>
-                <p>{activeArtifact.summary}</p>
+                <h4 style={{ margin: 0, fontSize: 14 }}>摘要</h4>
+                <p>{compactText(activeArtifact.summary, 20)}</p>
               </div>
 
               {activeTalentPlan ? (
                 <>
-                  <TalentPlanBoard artifact={activeTalentPlan} mode="review" />
+                  <TalentPlanBoard artifact={activeTalentPlan} mode="overview" />
                   <div className="teacher-review-plan-digest">
-                    {activeArtifact.sections.map((section) => (
+                    {activeArtifact.sections.slice(0, 3).map((section) => (
                       <article key={section.heading} className="teacher-review-section teacher-review-section--digest">
                         <span>{section.heading}</span>
-                        <div>{summarizeSection(section.body, 4)}</div>
+                        <div>{summarizeSection(section.body, 1)}</div>
                       </article>
                     ))}
                   </div>
                 </>
               ) : (
                 <div className="teacher-review-section-grid">
-                  {activeArtifact.sections.map((section) => (
+                  {activeArtifact.sections.slice(0, 3).map((section) => (
                     <article key={section.heading} className="teacher-review-section">
                       <span>{section.heading}</span>
-                      <div>{section.body}</div>
+                      <div>{summarizeSection(section.body, 1)}</div>
                     </article>
                   ))}
                 </div>
               )}
 
               <div style={previewActionsStyle}>
-                <button className="mesh-ghost-button" style={{ flex: 1 }}>Reject / Re-simulate</button>
-                <button className="mesh-primary-button" style={{ flex: 1 }}>Approve & Deploy to student</button>
+                <button className="mesh-ghost-button" style={{ flex: 1 }}>重跑</button>
+                <button className="mesh-primary-button" style={{ flex: 1 }}>通过</button>
               </div>
 
               {exportMessage && <div className="teacher-review-export-note">{exportMessage}</div>}
@@ -788,14 +894,14 @@ export function InterventionPanel({ activeStudent, onChooseStudent, students }: 
           <LoopCard 
             label="02 / teacher action" 
             title={activeStudent.action} 
-            body="老师确认后触发资源生成，审核通过后回流学生端。" 
+            body="确认后生成"
             active={closedLoopActiveStep === 1}
           />
           <div style={{ ...workflowArrowDownStyle, margin: '2px 0' }}>↓</div>
           <LoopCard 
             label="03 / profile update" 
             title="EvaluationAgent 更新画像" 
-            body="答题表现、资源反馈与老师干预记录进入下一轮推荐依据。" 
+            body="结果回写画像"
             active={closedLoopActiveStep === 2}
           />
         </div>
@@ -817,7 +923,24 @@ function TalentPlanBoard({
   mode: 'overview' | 'review';
 }) {
   const plan = artifact.presentation;
-  const radarTopics = mode === 'overview' ? plan.radar.topics.slice(0, 4) : plan.radar.topics;
+  const radarTopics = mode === 'overview' ? plan.radar.topics.slice(0, 3) : plan.radar.topics.slice(0, 4);
+  const cockpitMetrics = [
+    { value: String(plan.semesterPlan.length), label: '阶段节点' },
+    { value: String(plan.continuousLanes.length), label: '贯穿主线' },
+    { value: String(plan.radar.topics.length), label: '雷达样本' },
+    { value: String(plan.exits.length), label: '毕业出口' },
+  ];
+  const overviewPhases = buildOverviewPhaseCards(plan).slice(0, 2);
+  const overviewLanes = plan.continuousLanes.map((lane) => ({
+    ...lane,
+    summary: summarizeInline(lane.items, 2),
+  }));
+  const assessmentSnapshot = {
+    dimensions: summarizeInline(plan.assessment.dimensions, 4),
+    checkpoints: summarizeInline(plan.assessment.checkpoints, 3),
+    portfolio: summarizeInline(plan.assessment.portfolio, 3),
+    innovation: summarizeInline(plan.innovation.arenas, 3),
+  };
 
   return (
     <div className={mode === 'overview' ? 'teacher-talent-board' : 'teacher-talent-board teacher-talent-board--review'}>
@@ -826,72 +949,129 @@ function TalentPlanBoard({
           <span>Graduation profile</span>
           <strong>{plan.direction}</strong>
         </div>
-        <p>{plan.vision}</p>
+        <p>{compactText(plan.vision, 24)}</p>
         <div className="teacher-talent-board__chip-grid">
-          {plan.graduationProfile.map((item) => (
-            <span key={item}>{item}</span>
+          {plan.graduationProfile.slice(0, 3).map((item) => (
+            <span key={item}>{compactText(item, 14)}</span>
           ))}
         </div>
       </section>
 
-      <section className="teacher-talent-board__panel teacher-talent-board__panel--roadmap">
-        <div className="teacher-talent-board__panel-head">
-          <span>Semester matrix</span>
-          <strong>八学期 + 入学建档</strong>
-        </div>
-        <div className="teacher-talent-board__semester-grid">
-          {plan.semesterPlan.map((semester) => (
-            <article key={semester.id} className="teacher-semester-card">
-              <div className="teacher-semester-card__meta">
-                <span>{semester.stage}</span>
-                <em>{semester.label}</em>
-              </div>
-              <strong>{semester.theme}</strong>
-              <p>{semester.target}</p>
-              <div className="teacher-semester-card__tags">
-                {semester.courses.slice(0, mode === 'overview' ? 2 : 3).map((course) => (
-                  <span key={course}>{course}</span>
-                ))}
-              </div>
-              <div className="teacher-semester-card__facts">
-                <div>
-                  <span>工程训练</span>
-                  <p>{semester.engineering.slice(0, mode === 'overview' ? 2 : 3).join('；')}</p>
+      {mode === 'overview' ? (
+        <section className="teacher-talent-board__panel teacher-talent-board__panel--roadmap">
+          <div className="teacher-talent-board__panel-head">
+            <span>Program cockpit</span>
+            <strong>总控概览</strong>
+          </div>
+          <div className="teacher-talent-board__cockpit">
+            {cockpitMetrics.map((item) => (
+              <article key={item.label}>
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </article>
+            ))}
+          </div>
+          <div className="teacher-talent-board__phase-grid">
+            {overviewPhases.map((phase) => (
+              <article key={phase.id} className="teacher-phase-card">
+                <div className="teacher-phase-card__meta">
+                  <span>{phase.stage}</span>
+                  <em>{phase.coverage}</em>
                 </div>
-                <div>
-                  <span>AI / 前沿</span>
-                  <p>{semester.frontier.slice(0, mode === 'overview' ? 1 : 2).join('；')}</p>
+                <strong>{phase.label}</strong>
+                <p>{compactText(phase.theme, 18)}</p>
+                <div className="teacher-phase-card__facts">
+                  <div>
+                    <span>课程群</span>
+                    <p>{compactText(phase.courses, 24)}</p>
+                  </div>
+                  <div>
+                    <span>关键动作</span>
+                    <p>{compactText(phase.action, 24)}</p>
+                  </div>
+                  <div>
+                    <span>阶段交付</span>
+                    <p>{compactText(phase.output, 24)}</p>
+                  </div>
                 </div>
-                <div>
-                  <span>产出物</span>
-                  <p>{semester.output}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="teacher-talent-board__panel teacher-talent-board__panel--roadmap">
+          <div className="teacher-talent-board__panel-head">
+            <span>Semester matrix</span>
+            <strong>八学期 + 入学建档</strong>
+          </div>
+          <div className="teacher-talent-board__semester-grid">
+            {plan.semesterPlan.slice(0, 6).map((semester) => (
+              <article key={semester.id} className="teacher-semester-card">
+                <div className="teacher-semester-card__meta">
+                  <span>{semester.stage}</span>
+                  <em>{semester.label}</em>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+                <strong>{compactText(semester.theme, 18)}</strong>
+                <p>{compactText(semester.target, 24)}</p>
+                <div className="teacher-semester-card__tags">
+                  {semester.courses.slice(0, 2).map((course) => (
+                    <span key={course}>{course}</span>
+                  ))}
+                </div>
+                <div className="teacher-semester-card__facts">
+                  <div>
+                    <span>工程训练</span>
+                    <p>{compactText(semester.engineering.slice(0, 2).join('；'), 20)}</p>
+                  </div>
+                  <div>
+                    <span>AI / 前沿</span>
+                    <p>{compactText(semester.frontier.slice(0, 1).join('；'), 18)}</p>
+                  </div>
+                  <div>
+                    <span>产出物</span>
+                    <p>{compactText(semester.output, 18)}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="teacher-talent-board__panel teacher-talent-board__panel--lanes">
         <div className="teacher-talent-board__panel-head">
           <span>Continuous lanes</span>
           <strong>贯穿主线</strong>
         </div>
-        <div className="teacher-talent-board__lane-grid">
-          {plan.continuousLanes.map((lane) => (
-            <article key={lane.title} className="teacher-lane-card">
-              <div className="teacher-lane-card__meta">
-                <span>{lane.label}</span>
-                <strong>{lane.title}</strong>
-              </div>
-              <div className="teacher-lane-card__list">
-                {lane.items.map((item) => (
-                  <p key={item}>{item}</p>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
+        {mode === 'overview' ? (
+          <div className="teacher-talent-board__lane-grid teacher-talent-board__lane-grid--compact">
+            {overviewLanes.slice(0, 2).map((lane) => (
+              <article key={lane.title} className="teacher-lane-card">
+                <div className="teacher-lane-card__meta">
+                  <span>{lane.label}</span>
+                  <strong>{lane.title}</strong>
+                </div>
+                <div className="teacher-lane-card__list">
+                  <p>{lane.summary}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="teacher-talent-board__lane-grid teacher-talent-board__lane-grid--compact">
+            {overviewLanes.map((lane) => (
+              <article key={lane.title} className="teacher-lane-card">
+                <div className="teacher-lane-card__meta">
+                  <span>{lane.label}</span>
+                  <strong>{lane.title}</strong>
+                </div>
+                <div className="teacher-lane-card__list">
+                  <p>{compactText(lane.summary, 30)}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="teacher-talent-board__panel teacher-talent-board__panel--radar">
@@ -900,35 +1080,37 @@ function TalentPlanBoard({
           <strong>{plan.radar.cadence}</strong>
         </div>
         <div className="teacher-talent-board__radar-meta">
-          {plan.radar.sourceBuckets.map((bucket) => (
+          {plan.radar.sourceBuckets.slice(0, 1).map((bucket) => (
             <span key={bucket}>{bucket}</span>
           ))}
         </div>
         <div className="teacher-talent-board__radar-flow">
-          {plan.radar.process.map((step) => (
+          {plan.radar.process.slice(0, 2).map((step) => (
             <article key={step}>
-              <strong>{step}</strong>
+              <strong>{compactText(step, 14)}</strong>
             </article>
           ))}
         </div>
-        <div className="teacher-talent-board__radar-grid">
-          {radarTopics.map((topic) => (
-            <article key={`${topic.date}-${topic.title}`} className="teacher-radar-card">
+        <div className={mode === 'overview' ? 'teacher-talent-board__radar-grid teacher-talent-board__radar-grid--compact' : 'teacher-talent-board__radar-grid'}>
+          {radarTopics.slice(0, 1).map((topic) => (
+            <article key={`${topic.date}-${topic.title}`} className={mode === 'overview' ? 'teacher-radar-card teacher-radar-card--compact' : 'teacher-radar-card'}>
               <div className="teacher-radar-card__meta">
                 <span>{topic.date}</span>
                 <em>{topic.source}</em>
               </div>
               <strong>{topic.title}</strong>
-              <p>{topic.signal}</p>
-              <div className="teacher-radar-card__actions">
+              <p>{compactText(topic.signal, mode === 'overview' ? 18 : 22)}</p>
+              <div className={mode === 'overview' ? 'teacher-radar-card__actions teacher-radar-card__actions--compact' : 'teacher-radar-card__actions'}>
                 <div>
                   <span>课堂动作</span>
-                  <p>{topic.classroomAction}</p>
+                  <p>{compactText(topic.classroomAction, mode === 'overview' ? 16 : 18)}</p>
                 </div>
-                <div>
-                  <span>项目映射</span>
-                  <p>{topic.projectMapping}</p>
-                </div>
+                {mode === 'review' && (
+                  <div>
+                    <span>项目映射</span>
+                    <p>{compactText(topic.projectMapping, 18)}</p>
+                  </div>
+                )}
               </div>
             </article>
           ))}
@@ -940,34 +1122,43 @@ function TalentPlanBoard({
           <span>Assessment & portfolio</span>
           <strong>评估与作品集</strong>
         </div>
-        <div className="teacher-talent-board__assessment-grid">
-          <article>
-            <span>维度</span>
-            <p>{plan.assessment.dimensions.join('、')}</p>
-          </article>
-          <article>
-            <span>检查点</span>
-            <p>{plan.assessment.checkpoints.join('；')}</p>
-          </article>
-          <article>
-            <span>作品集清单</span>
-            <p>{plan.assessment.portfolio.join('；')}</p>
-          </article>
-        </div>
-        <div className="teacher-talent-board__innovation">
-          <article>
-            <span>项目阶梯</span>
-            <p>{plan.innovation.ladders.join('；')}</p>
-          </article>
-          <article>
-            <span>创新场域</span>
-            <p>{plan.innovation.arenas.join('；')}</p>
-          </article>
-          <article>
-            <span>教师角色</span>
-            <p>{plan.innovation.teacherRole.join('；')}</p>
-          </article>
-        </div>
+        {mode === 'overview' ? (
+          <>
+            <div className="teacher-talent-board__assessment-grid teacher-talent-board__assessment-grid--compact">
+              <article>
+                <span>维度</span>
+                <p>{assessmentSnapshot.dimensions}</p>
+              </article>
+              <article>
+                <span>检查点</span>
+                <p>{assessmentSnapshot.checkpoints}</p>
+              </article>
+              <article>
+                <span>作品集锚点</span>
+                <p>{assessmentSnapshot.portfolio}</p>
+              </article>
+            </div>
+            <div className="teacher-talent-board__note">{compactText(assessmentSnapshot.innovation, 36)}</div>
+          </>
+        ) : (
+          <>
+            <div className="teacher-talent-board__assessment-grid teacher-talent-board__assessment-grid--compact">
+              <article>
+                <span>维度</span>
+                <p>{compactText(assessmentSnapshot.dimensions, 24)}</p>
+              </article>
+              <article>
+                <span>检查点</span>
+                <p>{compactText(assessmentSnapshot.checkpoints, 24)}</p>
+              </article>
+              <article>
+                <span>作品集</span>
+                <p>{compactText(assessmentSnapshot.portfolio, 24)}</p>
+              </article>
+            </div>
+            <div className="teacher-talent-board__note">{compactText(assessmentSnapshot.innovation, 24)}</div>
+          </>
+        )}
       </section>
 
       <section className="teacher-talent-board__panel teacher-talent-board__panel--exit">
@@ -975,21 +1166,36 @@ function TalentPlanBoard({
           <span>Exit pathways</span>
           <strong>毕业出口</strong>
         </div>
-        <div className="teacher-talent-board__exit-grid">
-          {plan.exits.map((exit) => (
-            <article key={exit.title} className="teacher-exit-card">
+        <div className={mode === 'overview' ? 'teacher-talent-board__exit-grid teacher-talent-board__exit-grid--compact' : 'teacher-talent-board__exit-grid'}>
+          {plan.exits.slice(0, 1).map((exit) => (
+            <article key={exit.title} className={mode === 'overview' ? 'teacher-exit-card teacher-exit-card--compact' : 'teacher-exit-card'}>
               <div className="teacher-exit-card__meta">
                 <span>{exit.title}</span>
                 <em>{exit.fit}</em>
               </div>
-              <div className="teacher-exit-card__block">
-                <strong>关键动作</strong>
-                <p>{exit.milestones.join('；')}</p>
-              </div>
-              <div className="teacher-exit-card__block">
-                <strong>成果物</strong>
-                <p>{exit.deliverables.join('；')}</p>
-              </div>
+              {mode === 'overview' ? (
+                <>
+                  <div className="teacher-exit-card__block">
+                    <strong>当前重点</strong>
+                    <p>{exit.milestones[0]}</p>
+                  </div>
+                  <div className="teacher-exit-card__block">
+                    <strong>关键成果</strong>
+                    <p>{exit.deliverables.slice(0, 2).join('；')}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="teacher-exit-card__block">
+                    <strong>关键动作</strong>
+                    <p>{compactText(exit.milestones.slice(0, 2).join('；'), 20)}</p>
+                  </div>
+                  <div className="teacher-exit-card__block">
+                    <strong>成果物</strong>
+                    <p>{compactText(exit.deliverables.slice(0, 2).join('；'), 20)}</p>
+                  </div>
+                </>
+              )}
             </article>
           ))}
         </div>
@@ -1047,14 +1253,14 @@ function buildDeliverableTranscript(deliverables: TeacherArtifact[], activeStude
   const firstRadarTopic = structuredTalentPlan?.presentation.radar.topics[0];
 
   return [
-    { scope: 'goal', text: `${activeStudent.id} -> ${goal}` },
-    { scope: 'program', text: firstSemester ? `${firstSemester.label} / ${firstSemester.theme} 已装入四年主线。` : talentPlan?.outline[0] ?? '人培总纲已装载，先看培养定位与阶段主线。' },
-    { scope: 'radar', text: firstRadarTopic ? `${firstRadarTopic.source} ${firstRadarTopic.date} -> ${firstRadarTopic.title}` : radarSection?.body.split('\n')[0] ?? '前沿资讯雷达已接入培养体系。' },
-    { scope: 'plan', text: lessonPlan?.outline[0] ?? '课堂流程已预排，等待正式资源覆盖。' },
-    { scope: 'slides', text: slideDeck?.outline[2] ?? 'PPT 页稿会围绕问题引入、讲解和检测展开。' },
-    { scope: 'syllabus', text: syllabus?.sections[2]?.body.split('\n')[0] ?? '教学大纲已把知识主线与课堂产出整理完毕。' },
-    { scope: 'focus', text: keyFocus?.sections[1]?.body.split('\n')[0] ?? activeStudent.focus },
-    { scope: 'handoff', text: 'program plan + course deliverables queued for review workspace' },
+    { scope: 'goal', text: `${activeStudent.id} -> ${compactText(goal, 20)}` },
+    { scope: 'program', text: firstSemester ? `${firstSemester.label} / ${compactText(firstSemester.theme, 16)}` : compactText(talentPlan?.outline[0] ?? '人培主线', 18) },
+    { scope: 'radar', text: firstRadarTopic ? `${firstRadarTopic.source} ${firstRadarTopic.date}` : compactText(radarSection?.body.split('\n')[0] ?? '前沿雷达', 18) },
+    { scope: 'plan', text: compactText(lessonPlan?.outline[0] ?? '课堂流程', 18) },
+    { scope: 'slides', text: compactText(slideDeck?.outline[2] ?? 'PPT 页稿', 18) },
+    { scope: 'syllabus', text: compactText(syllabus?.sections[2]?.body.split('\n')[0] ?? '教学大纲', 18) },
+    { scope: 'focus', text: compactText(keyFocus?.sections[1]?.body.split('\n')[0] ?? activeStudent.focus, 18) },
+    { scope: 'handoff', text: 'review queue' },
   ];
 }
 
@@ -1073,9 +1279,51 @@ function summarizeSection(text: string, maxLines: number): string {
     .join('\n');
 }
 
+function summarizeInline(items: string[], count: number): string {
+  return items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, count)
+    .join('；');
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+}
+
+function buildOverviewPhaseCards(plan: TalentPlanBlueprint) {
+  const semester = plan.semesterPlan;
+  const groups = [
+    { id: 'phase-00', stage: 'PHASE 00', label: '新生入学', theme: '专业认知与学习建档', coverage: ['新生入学'], members: [0] },
+    { id: 'phase-01', stage: 'PHASE 01', label: '大一基础夯实', theme: '编程基础 + 数据结构算法', coverage: ['大一上', '大一下'], members: [1, 2] },
+    { id: 'phase-02', stage: 'PHASE 02', label: '大二工程化训练', theme: '面向对象 + 软件工程协作', coverage: ['大二上', '大二下'], members: [3, 4] },
+    { id: 'phase-03', stage: 'PHASE 03', label: '大三智能开发', theme: '模型接入 + Agent 创新探索', coverage: ['大三上', '大三下'], members: [5, 6] },
+    { id: 'phase-04', stage: 'PHASE 04', label: '大四毕业出口', theme: '毕设交付 + 多出口收束', coverage: ['大四上', '大四下'], members: [7, 8] },
+  ];
+
+  return groups.map((group) => {
+    const items = group.members.map((index) => semester[index]).filter(Boolean);
+    return {
+      id: group.id,
+      stage: group.stage,
+      label: group.label,
+      theme: group.theme,
+      coverage: group.coverage.join(' / '),
+      courses: takeUnique(items.flatMap((item) => item.courses), 4).join('、'),
+      action: takeUnique(items.flatMap((item) => [item.engineering[0], item.frontier[0]]), 3).join('；'),
+      output: items[items.length - 1]?.output ?? items[0]?.output ?? '阶段交付待确认',
+    };
+  });
+}
+
+function takeUnique(items: Array<string | undefined>, count: number): string[] {
+  return [...new Set(items.map((item) => item?.trim()).filter(Boolean) as string[])].slice(0, count);
+}
+
 function buildFallbackArtifact(review: ReviewItem): TeacherArtifact {
   const rationale = review.rationale as Rationale;
-  const summary = review.reason || '这份资源已进入老师审核队列。';
+  const summary = compactText(review.reason || '已进入审核队列', 24);
   const markdown = `# ${review.title}\n\n> ${summary}\n\n## 审核说明\n${summary}\n`;
 
   return {

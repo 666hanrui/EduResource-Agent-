@@ -1,4 +1,4 @@
-import type { InteractiveClassroomJob, StudentDashboard } from './model';
+import type { InteractiveClassroomJob, StudentDashboard, TrainingStageKey } from './model';
 
 interface Props {
   studentDashboard: StudentDashboard | null;
@@ -6,7 +6,7 @@ interface Props {
   estimatedMastery?: number;
   evaluationFeedback?: string;
   pathFeedback?: string;
-  onOpenTrainingPlan: () => void;
+  onOpenTrainingPlan: (stage: TrainingStageKey | null) => void;
   onOpenClassroom: () => void;
 }
 
@@ -25,6 +25,10 @@ export function ProgressOverview({
   const trainingStages = studentDashboard?.training_plan?.stages ?? [];
   const pathSteps = studentDashboard?.learning_path?.steps ?? [];
   const suggestions = studentDashboard?.next_suggestions ?? [];
+  const currentStage =
+    trainingStages.find((stage) => stage.status === 'in_progress')
+    ?? trainingStages.find((stage) => stage.status === 'needs_review')
+    ?? trainingStages[0];
 
   return (
     <div className="progress-board">
@@ -32,16 +36,19 @@ export function ProgressOverview({
         <div className="student-stage-card__header">
           <div>
             <small>Progress Writeback</small>
-            <h2>阶段验证后的进度回写</h2>
+            <h2>进度回写</h2>
           </div>
-          <p>这个页面专门看“课堂验证之后系统怎么更新画像、培养方案和学习路径”，不再和课堂生成操作混在一起。</p>
         </div>
         <div className="student-stage-card__actions">
-          <button type="button" className="freddie-secondary-button" onClick={onOpenTrainingPlan}>
+          <button
+            type="button"
+            className="freddie-secondary-button"
+            onClick={() => onOpenTrainingPlan((currentStage?.key as TrainingStageKey | undefined) ?? null)}
+          >
             回培养方案页
           </button>
           <button type="button" className="freddie-primary-button" onClick={onOpenClassroom}>
-            再做一轮课堂验证
+            再做一轮
           </button>
         </div>
       </section>
@@ -51,9 +58,9 @@ export function ProgressOverview({
           <div className="student-stage-card__header">
             <div>
               <small>Latest Validation</small>
-              <h3>最近一次阶段验证结果</h3>
+              <h3>最近结果</h3>
             </div>
-            <p>{evaluationFeedback ?? '还没有阶段验证回写。完成一轮课堂测验后，这里会显示最新结果。'}</p>
+            {evaluationFeedback ? <p>{compactText(evaluationFeedback, 28)}</p> : null}
           </div>
 
           <div className="progress-pill-row">
@@ -70,7 +77,7 @@ export function ProgressOverview({
               </article>
               <article>
                 <strong>下一步 Focus</strong>
-                <span>{String(latestDelta.next_focus ?? '等待系统生成下一步建议')}</span>
+                <span>{compactText(String(latestDelta.next_focus ?? '等待下一步'), 18)}</span>
               </article>
               <article>
                 <strong>阶段验证来源</strong>
@@ -87,9 +94,8 @@ export function ProgressOverview({
           <div className="student-stage-card__header">
             <div>
               <small>Training Status</small>
-              <h3>培养方案阶段状态</h3>
+              <h3>阶段状态</h3>
             </div>
-            <p>每次课堂回写后，系统都应该能回答“当前卡在哪个阶段”。</p>
           </div>
 
           <div className="progress-stage-list">
@@ -98,11 +104,11 @@ export function ProgressOverview({
                 <article key={stage.stage_id} className={`progress-stage-item progress-stage-item--${stage.status}`}>
                   <strong>{stage.title}</strong>
                   <span>{stage.status}</span>
-                  <p>{stage.next_action}</p>
+                  <p>{compactText(stage.next_action, 14)}</p>
                 </article>
               ))
             ) : (
-              <p className="student-context-empty">培养方案还未建立。先去培养方案页或互动课堂页推进第一阶段。</p>
+              <p className="student-context-empty">暂无培养方案</p>
             )}
           </div>
         </section>
@@ -112,9 +118,9 @@ export function ProgressOverview({
         <div className="student-stage-card__header">
           <div>
             <small>Path Writeback</small>
-            <h3>学习路径与系统建议</h3>
+            <h3>路径与建议</h3>
           </div>
-          <p>{pathFeedback ?? '最近一次课堂完成后，这里会显示学习路径为什么被更新。'}</p>
+          {pathFeedback ? <p>{compactText(pathFeedback, 28)}</p> : null}
         </div>
 
         <div className="progress-path-grid">
@@ -124,11 +130,11 @@ export function ProgressOverview({
                 <article key={`${step.package_id ?? 'step'}-${index}`} className="progress-step-item">
                   <strong>{step.package_id ?? `步骤 ${index + 1}`}</strong>
                   <span>{step.status ?? 'pending'}</span>
-                  <p>{step.updated_reason ?? '等待课堂验证回写。'}</p>
+                  <p>{compactText(step.updated_reason ?? '待回写', 14)}</p>
                 </article>
               ))
             ) : (
-              <p className="student-context-empty">学习路径步骤会在生成课堂或回写后出现。</p>
+              <p className="student-context-empty">暂无路径</p>
             )}
           </div>
 
@@ -136,16 +142,21 @@ export function ProgressOverview({
             {suggestions.length > 0 ? (
               suggestions.map((item) => (
                 <article key={item}>
-                  <strong>系统建议</strong>
-                  <span>{item}</span>
+                  <strong>建议</strong>
+                  <span>{compactText(item, 16)}</span>
                 </article>
               ))
             ) : (
-              <p className="student-context-empty">系统建议会在课堂和验证数据回写后生成。</p>
+              <p className="student-context-empty">暂无建议</p>
             )}
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }

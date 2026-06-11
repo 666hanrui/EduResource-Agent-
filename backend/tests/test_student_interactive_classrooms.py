@@ -175,4 +175,9 @@ async def test_student_dashboard_returns_profile_path_packages_and_evaluations(t
     assert data["recent_packages"][0]["id"] == created.json()["resource_package_id"]
     assert data["training_plan"]["title"] == "个性化培养方案"
     assert len(data["training_plan"]["stages"]) == 3
+    assert [stage["status"] for stage in data["training_plan"]["stages"]] == [
+        "in_progress",
+        "recommended",
+        "recommended",
+    ]
     assert data["next_suggestions"]

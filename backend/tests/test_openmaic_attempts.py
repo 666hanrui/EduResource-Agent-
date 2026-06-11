@@ -149,6 +149,11 @@ async def test_openmaic_quiz_attempts_update_student_dashboard_profile_and_path(
     assert "哪些条件适合使用 Dijkstra？" in data["profile"]["mistake_points"]
     assert data["recent_evaluations"][0]["id"] == evaluation["id"]
     assert data["training_plan"]["stages"][0]["validation_question"]["target_knowledge_id"] == "graph-shortest-path"
+    assert [stage["status"] for stage in data["training_plan"]["stages"]] == [
+        "needs_review",
+        "recommended",
+        "recommended",
+    ]
 
     path = data["learning_path"]
     assert path["steps"][0]["package_id"] == "pkg_openmaic_001"

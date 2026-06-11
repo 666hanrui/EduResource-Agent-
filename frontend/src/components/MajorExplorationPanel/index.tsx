@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import type {
   CareerDirection,
   CoachResponse,
@@ -36,6 +36,7 @@ import './major-exploration.css';
 
 interface Props {
   studentId: string;
+  buildSignal?: number;
   onUseKnowledge: (item: RecommendedKnowledge) => void;
 }
 
@@ -111,6 +112,8 @@ const INITIAL_STATE: MajorExplorationState = {
   error: null,
 };
 
+const handledExternalBuildSignals = new Set<string>();
+
 function resetWorkspaceDerived(state: MajorExplorationState): MajorExplorationState {
   return {
     ...state,
@@ -178,7 +181,7 @@ function majorExplorationReducer(
   }
 }
 
-export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
+export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowledge }: Props) {
   const [state, dispatch] = useReducer(majorExplorationReducer, INITIAL_STATE);
   const {
     request,
@@ -240,7 +243,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
     return (await res.json()) as T;
   };
 
-  const handleBuild = async () => {
+  const handleBuild = useCallback(async () => {
     dispatch({ type: 'PLAN_STARTED' });
     try {
       const payload: ExplorationRequest = {
@@ -262,7 +265,15 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
     } catch (err) {
       dispatch({ type: 'PLAN_FAILED', error: err instanceof Error ? err.message : String(err) });
     }
-  };
+  }, [educationLevel, foundationLevel, grade, interestText, major, studentId, weeklyHours]);
+
+  useEffect(() => {
+    if (buildSignal <= 0) return;
+    const signalKey = `${studentId}:${buildSignal}`;
+    if (handledExternalBuildSignals.has(signalKey)) return;
+    handledExternalBuildSignals.add(signalKey);
+    void handleBuild();
+  }, [buildSignal, handleBuild, studentId]);
 
   const handleCreateWorkspace = async (direction: CareerDirection) => {
     if (!plan) return;
@@ -405,6 +416,10 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
     }
   };
 
+  const startRecommendedKnowledge = (item: RecommendedKnowledge) => {
+    onUseKnowledge(item);
+  };
+
   return (
     <div className="major-workshop">
       <section className="major-control-card">
@@ -472,7 +487,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
           />
 
           <div className="major-grid-2 major-grid-2--balanced">
-            <Panel title="12 维探索画像" subtitle="把“擅长什么、短板在哪、下一步补什么证据”先说清楚，后面的方向判断才不会飘。">
+            <Panel title="12 维探索画像">
               <div className="major-score-list">
                 {plan.dimension_scores.map((item) => (
                   <div key={item.key} className="major-mini-card">
@@ -484,7 +499,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
               </div>
             </Panel>
 
-            <Panel title="三阶段学习路径" subtitle="把探索节奏拆成短期试水、中期验证和长期沉淀，避免学生一上来就被大计划压住。">
+            <Panel title="三阶段学习路径">
               <div className="major-path-grid">
                 {plan.learning_path.map((phase) => (
                   <div key={phase.phase} className="major-path-card">
@@ -501,7 +516,7 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
 
           <div className="major-grid-2 major-grid-2--balanced">
             {plan.agent_steps.length > 0 && (
-              <Panel title="探索流水线" subtitle="从专业广度、12 维画像到方向匹配和成长报告，所有步骤都留结构化痕迹。" action={<Badge>{plan.agent_steps.length} Agents</Badge>} cream>
+              <Panel title="探索流水线" action={<Badge>{plan.agent_steps.length} Agents</Badge>} cream>
                 <div className="major-agent-grid">
                   {plan.agent_steps.map((step, index) => (
                     <div key={step.id} className="major-agent-step">
@@ -521,13 +536,49 @@ export function MajorExplorationPanel({ studentId, onUseKnowledge }: Props) {
               </Panel>
             )}
 
-            <Panel title="推荐转成互动课堂的知识点" subtitle="这里是探索模块和互动课堂模块的真正接口，而不是另起一套表单世界。">
+            <Panel title="推荐转成互动课堂的知识点">
               <div className="major-card-grid">
                 {plan.recommended_knowledge.map((item) => (
-                  <button type="button" key={item.knowledge_id} onClick={() => onUseKnowledge(item)} className="major-click-card">
+                  <article
+                    key={item.knowledge_id}
+                    className="major-click-card major-click-card--stage"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => startRecommendedKnowledge(item)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      startRecommendedKnowledge(item);
+                    }}
+                  >
+                    <div className="major-click-card__stage-top">
+                      <Badge>{item.stage_title}</Badge>
+                      <ScorePill>{item.suggested_difficulty} 星</ScorePill>
+                    </div>
                     <strong>{item.knowledge_name}</strong>
                     <span>{item.reason}</span>
-                  </button>
+                    <div className="major-click-card__detail">
+                      <small>阶段验证题</small>
+                      <p>{item.validation_prompt}</p>
+                    </div>
+                    <div className="major-click-card__detail">
+                      <small>完成标准</small>
+                      <p>{item.success_criteria}</p>
+                    </div>
+                    <div className="major-click-card__footer">
+                      <Probe>{item.recommended_action}</Probe>
+                      <MajorButton
+                        type="button"
+                        variant="small"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startRecommendedKnowledge(item);
+                        }}
+                      >
+                        去培养方案启动这一阶段
+                      </MajorButton>
+                    </div>
+                  </article>
                 ))}
               </div>
             </Panel>

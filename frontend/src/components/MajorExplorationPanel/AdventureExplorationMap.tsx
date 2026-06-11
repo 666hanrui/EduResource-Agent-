@@ -95,8 +95,8 @@ export function AdventureExplorationMap({
           <h3>学习探索地图</h3>
           <Muted>
             {activeDirection
-              ? `围绕「${activeDirection.title}」生成能力区、证据区和实践区。`
-              : `从 ${plan.major} 的知识图谱、方向匹配和 12 维画像动态生成。`}
+              ? `围绕「${activeDirection.title}」生成`
+              : `按画像生成`}
           </Muted>
         </div>
         <div className="adventure-map-metrics" aria-label="探索地图统计">
@@ -110,12 +110,12 @@ export function AdventureExplorationMap({
         <img className="adventure-map-background" src={MAP_BACKGROUND_SRC} alt="" aria-hidden="true" />
         <div className="adventure-map-title" aria-hidden="true">
           <strong>学习探索地图</strong>
-          <span>按画像、方向、任务和证据实时生成</span>
+          <span>画像 / 方向 / 任务</span>
         </div>
 
         <div className="adventure-map-hub">
           <strong>学生当前位置</strong>
-          <span>头像随任务、资源和画像证据移动</span>
+          <span>随进度移动</span>
         </div>
 
         {currentNode && (
@@ -149,7 +149,7 @@ export function AdventureExplorationMap({
 
         <div className="adventure-map-live-note">
           <strong>实时接入</strong>
-          <span>任务完成、资源状态、画像更新后，这一层会重新计算。</span>
+          <span>状态变更即刷新</span>
         </div>
       </div>
 
@@ -159,7 +159,7 @@ export function AdventureExplorationMap({
             <strong>{currentNode?.title ?? '等待能力区'}</strong>
             <ScorePill>{currentNode ? STATUS_LABELS[currentNode.status] : '待生成'}</ScorePill>
           </RowBetween>
-          <Probe>{currentNode?.reason ?? '生成探索计划后，系统会按画像和方向自动放置地图节点。'}</Probe>
+          <Probe>{compactText(currentNode?.reason ?? '生成后自动放置节点', 22)}</Probe>
         </div>
         <div className="adventure-legend">
           <Chip>当前推荐</Chip>
@@ -169,6 +169,11 @@ export function AdventureExplorationMap({
       </div>
     </section>
   );
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }
 
 function buildAbilityMapNodes(

@@ -479,100 +479,113 @@ def _build_personalized_training_plan(
         fallback_steps=steps[::-1],
     )
 
-    stages = [
-        TrainingStage(
-            stage_id=f"{path.path_id if path else f'plan_{student_id}'}:foundation",
-            key="foundation",
-            title="阶段 1 · 基础定标",
-            horizon="当前 - 2 周",
-            goal="先把最容易卡住的基础概念说清楚，建立第一层掌握度基线。",
-            summary=(
-                next_focus
-                or "围绕基础概念做一次低成本验证，确认最先该补哪块知识。"
+    stage_specs = [
+        {
+            "stage_id": f"{path.path_id if path else f'plan_{student_id}'}:foundation",
+            "key": "foundation",
+            "title": "阶段 1 · 基础定标",
+            "horizon": "当前 - 2 周",
+            "goal": "先把最容易卡住的基础概念说清楚，建立第一层掌握度基线。",
+            "summary": next_focus or "围绕基础概念做一次低成本验证，确认最先该补哪块知识。",
+            "focus_knowledge_ids": foundation_focus,
+            "linked_step_ids": [step.step_id for step in steps[:2]],
+            "evidence_targets": [
+                "完成 1 次基础讲解或概念复述",
+                "记录 1 个当前最不确定的知识点",
+            ],
+            "validation_question": _build_stage_validation_question(
+                stage_key="foundation",
+                focus_knowledge_ids=foundation_focus,
+                next_focus=next_focus,
             ),
-            status=_stage_status(
+            "next_action": f"先验证基础阶段：{_display_focus_label(foundation_focus)}。",
+            "candidate_status": _stage_candidate_status(
+                stage_key="foundation",
                 focus_ids=foundation_focus,
                 active_steps=active_steps,
                 completed_steps=completed_steps,
                 knowledge_mastery=knowledge_mastery,
                 completion_threshold=55,
             ),
-            focus_knowledge_ids=foundation_focus,
-            linked_step_ids=[step.step_id for step in steps[:2]],
-            evidence_targets=[
-                "完成 1 次基础讲解或概念复述",
-                "记录 1 个当前最不确定的知识点",
+        },
+        {
+            "stage_id": f"{path.path_id if path else f'plan_{student_id}'}:practice",
+            "key": "practice",
+            "title": "阶段 2 · 课堂练习",
+            "horizon": "2 - 6 周",
+            "goal": "把当前知识点推进成互动课堂，并用阶段验证题回写真实表现。",
+            "summary": "每推进一个知识点，都要至少完成一次课堂测验，把结果写回学习路径。",
+            "focus_knowledge_ids": practice_focus,
+            "linked_step_ids": [step.step_id for step in active_steps[:3]],
+            "evidence_targets": [
+                "完成 1 节互动课堂",
+                "完成 1 组阶段验证题并回收正确率",
             ],
-            validation_question=_build_stage_validation_question(
-                stage_key="foundation",
-                focus_knowledge_ids=foundation_focus,
+            "validation_question": _build_stage_validation_question(
+                stage_key="practice",
+                focus_knowledge_ids=practice_focus,
                 next_focus=next_focus,
             ),
-            next_action=f"先验证基础阶段：{_display_focus_label(foundation_focus)}。",
-        ),
-        TrainingStage(
-            stage_id=f"{path.path_id if path else f'plan_{student_id}'}:practice",
-            key="practice",
-            title="阶段 2 · 课堂练习",
-            horizon="2 - 6 周",
-            goal="把当前知识点推进成互动课堂，并用阶段验证题回写真实表现。",
-            summary=(
-                "每推进一个知识点，都要至少完成一次课堂测验，"
-                "把结果写回学习路径。"
-            ),
-            status=_stage_status(
+            "next_action": f"把 {_display_focus_label(practice_focus)} 推进成互动课堂并完成测验。",
+            "candidate_status": _stage_candidate_status(
+                stage_key="practice",
                 focus_ids=practice_focus,
                 active_steps=active_steps,
                 completed_steps=completed_steps,
                 knowledge_mastery=knowledge_mastery,
                 completion_threshold=65,
             ),
-            focus_knowledge_ids=practice_focus,
-            linked_step_ids=[step.step_id for step in active_steps[:3]],
-            evidence_targets=[
-                "完成 1 节互动课堂",
-                "完成 1 组阶段验证题并回收正确率",
+        },
+        {
+            "stage_id": f"{path.path_id if path else f'plan_{student_id}'}:advancement",
+            "key": "advancement",
+            "title": "阶段 3 · 进阶迁移",
+            "horizon": "6 周以后",
+            "goal": "把已经通过课堂验证的知识点迁移到更高阶应用或作品任务里。",
+            "summary": "不只停留在答对题，而是把通过验证的知识点继续迁移到项目、讲解或更高难度课堂。",
+            "focus_knowledge_ids": advancement_focus,
+            "linked_step_ids": [step.step_id for step in completed_steps[-3:]],
+            "evidence_targets": [
+                "完成 1 个高阶应用任务或小作品",
+                "对比 1 次前后掌握度变化",
             ],
-            validation_question=_build_stage_validation_question(
-                stage_key="practice",
-                focus_knowledge_ids=practice_focus,
+            "validation_question": _build_stage_validation_question(
+                stage_key="advancement",
+                focus_knowledge_ids=advancement_focus,
                 next_focus=next_focus,
             ),
-            next_action=f"把 {_display_focus_label(practice_focus)} 推进成互动课堂并完成测验。",
-        ),
-        TrainingStage(
-            stage_id=f"{path.path_id if path else f'plan_{student_id}'}:advancement",
-            key="advancement",
-            title="阶段 3 · 进阶迁移",
-            horizon="6 周以后",
-            goal="把已经通过课堂验证的知识点迁移到更高阶应用或作品任务里。",
-            summary=(
-                "不只停留在答对题，而是把通过验证的知识点继续迁移到"
-                "项目、讲解或更高难度课堂。"
-            ),
-            status=_stage_status(
+            "next_action": f"如果 {_display_focus_label(advancement_focus)} 已稳定，就进入更高阶应用验证。",
+            "candidate_status": _stage_candidate_status(
+                stage_key="advancement",
                 focus_ids=advancement_focus,
                 active_steps=[],
                 completed_steps=completed_steps,
                 knowledge_mastery=knowledge_mastery,
                 completion_threshold=80,
             ),
-            focus_knowledge_ids=advancement_focus,
-            linked_step_ids=[step.step_id for step in completed_steps[-3:]],
-            evidence_targets=[
-                "完成 1 个高阶应用任务或小作品",
-                "对比 1 次前后掌握度变化",
-            ],
-            validation_question=_build_stage_validation_question(
-                stage_key="advancement",
-                focus_knowledge_ids=advancement_focus,
-                next_focus=next_focus,
-            ),
-            next_action=(
-                f"如果 {_display_focus_label(advancement_focus)} 已稳定，"
-                "就进入更高阶应用验证。"
-            ),
-        ),
+        },
+    ]
+
+    resolved_statuses = _resolve_training_stage_statuses(
+        [str(spec["candidate_status"]) for spec in stage_specs]
+    )
+
+    stages = [
+        TrainingStage(
+            stage_id=str(spec["stage_id"]),
+            key=str(spec["key"]),
+            title=str(spec["title"]),
+            horizon=str(spec["horizon"]),
+            goal=str(spec["goal"]),
+            summary=str(spec["summary"]),
+            status=resolved_statuses[index],
+            focus_knowledge_ids=list(spec["focus_knowledge_ids"]),
+            linked_step_ids=list(spec["linked_step_ids"]),
+            evidence_targets=list(spec["evidence_targets"]),
+            validation_question=spec["validation_question"],
+            next_action=str(spec["next_action"]),
+        )
+        for index, spec in enumerate(stage_specs)
     ]
 
     if mistake_points:
@@ -619,11 +632,55 @@ def _stage_status(
     if not focus_ids:
         return "recommended"
     focus_set = set(focus_ids)
+    review_steps = [step for step in active_steps if step.status == "adjusted"]
+    if any(step.target_knowledge_id in focus_set for step in review_steps):
+        return "needs_review"
     if any(step.target_knowledge_id in focus_set for step in active_steps):
         return "in_progress"
     if any((knowledge_mastery.get(knowledge_id) or 0) < completion_threshold for knowledge_id in focus_ids):
         return "needs_review" if completed_steps else "recommended"
     return "completed"
+
+
+def _stage_candidate_status(
+    *,
+    stage_key: str,
+    focus_ids: list[str],
+    active_steps: list[LearningPathStep],
+    completed_steps: list[LearningPathStep],
+    knowledge_mastery: dict[str, int],
+    completion_threshold: int,
+) -> str:
+    if stage_key == "advancement" and not completed_steps:
+        return "recommended"
+    return _stage_status(
+        focus_ids=focus_ids,
+        active_steps=active_steps,
+        completed_steps=completed_steps,
+        knowledge_mastery=knowledge_mastery,
+        completion_threshold=completion_threshold,
+    )
+
+
+def _resolve_training_stage_statuses(candidate_statuses: list[str]) -> list[str]:
+    resolved: list[str] = []
+    gate_open = True
+    for index, status in enumerate(candidate_statuses):
+        if status == "completed":
+            resolved.append("completed")
+            continue
+        if not gate_open:
+            resolved.append("recommended")
+            continue
+        if status in {"in_progress", "needs_review"}:
+            resolved.append(status)
+            gate_open = False
+            continue
+        resolved.append("in_progress" if index == 0 else "recommended")
+        gate_open = False
+    if resolved and all(status == "completed" for status in candidate_statuses):
+        return ["completed" for _ in candidate_statuses]
+    return resolved
 
 
 def _build_stage_validation_question(

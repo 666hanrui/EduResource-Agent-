@@ -25,11 +25,10 @@ export function MatchWorkbench({
   return (
     <Panel
       title="方向匹配工作台"
-      subtitle="保留 12 维画像 × 方向要求的分析骨架，但把输出改成“值得探索什么、先验证什么、证据要怎么收”。"
       action={
         activeMatchDirection ? (
           <MajorButton variant="small" onClick={() => onCreateWorkspace(activeMatchDirection)} disabled={workspaceLoading}>
-            {workspaceLoading ? '创建中…' : '收藏并生成路径'}
+            {workspaceLoading ? '创建中…' : '生成路径'}
           </MajorButton>
         ) : undefined
       }
@@ -62,7 +61,7 @@ export function MatchWorkbench({
             </div>
             <div>
               <h4>{activeMatchReport.target_title}</h4>
-              <Muted>{activeMatchReport.narrative.overall_review}</Muted>
+              <Muted>{compactText(activeMatchReport.narrative.overall_review, 22)}</Muted>
               <div className="major-chip-row">
                 {activeMatchReport.strength_dimensions.slice(0, 4).map((item) => (
                   <Chip key={item}>{item}</Chip>
@@ -85,7 +84,7 @@ export function MatchWorkbench({
                   <DualBar label="市场" value={item.market_importance} tone="market" />
                   <DualBar label="个人" value={item.user_readiness} />
                 </div>
-                <Probe>缺口 {item.gap > 0 ? item.gap : 0} · 缺失关键词：{item.missing_keywords.slice(0, 3).join('、') || '暂无'}</Probe>
+                <Probe>缺口 {item.gap > 0 ? item.gap : 0} · {item.missing_keywords.slice(0, 2).join('、') || '暂无'}</Probe>
               </div>
             ))}
           </div>
@@ -94,9 +93,9 @@ export function MatchWorkbench({
             {activeMatchReport.action_advices.map((advice) => (
               <div key={advice.key} className="major-advice-card">
                 <strong>{advice.title}</strong>
-                <Muted>{advice.why_it_matters}</Muted>
-                <Probe>{advice.current_issue}</Probe>
-                <List items={advice.next_actions.slice(0, 2)} />
+                <Muted>{compactText(advice.why_it_matters, 18)}</Muted>
+                <Probe>{compactText(advice.current_issue, 18)}</Probe>
+                <List items={advice.next_actions.slice(0, 1).map((item) => compactText(item, 18))} />
               </div>
             ))}
           </div>
@@ -108,8 +107,8 @@ export function MatchWorkbench({
                   <strong>{card.title}</strong>
                   <ScorePill>{card.match_score}</ScorePill>
                 </RowBetween>
-                <Muted>{card.scenario}</Muted>
-                <Probe>证据任务：{card.proof_task}</Probe>
+                <Muted>{compactText(card.scenario, 18)}</Muted>
+                <Probe>任务：{compactText(card.proof_task, 18)}</Probe>
                 <div className="major-chip-row">
                   {card.requirement_keywords.slice(0, 4).map((item) => (
                     <Chip key={item} tone="soft">{item}</Chip>
@@ -119,7 +118,7 @@ export function MatchWorkbench({
             ))}
           </div>
 
-          <Panel title="候选方向清单" subtitle="这里不直接给“你就适合这个”的结论，而是给出每个方向的第一步验证动作。" cream>
+          <Panel title="候选方向清单" cream>
             <div className="major-list-stack">
               {plan.career_directions.map((direction) => (
                 <div key={direction.id} className="major-mini-card">
@@ -127,17 +126,17 @@ export function MatchWorkbench({
                     <strong>{direction.title}</strong>
                     <ScorePill>{direction.fit_score}</ScorePill>
                   </RowBetween>
-                  <Muted>{direction.why_explore.join(' ')}</Muted>
-                  <Probe>首个验证任务：{tasksById.get(direction.first_probe_task_id) || direction.first_probe_task_id}</Probe>
+                  <Muted>{compactText(direction.why_explore.join(' '), 18)}</Muted>
+                  <Probe>首题：{compactText(tasksById.get(direction.first_probe_task_id) || direction.first_probe_task_id, 18)}</Probe>
                   <div className="major-role-profile">
                     <Badge>{direction.exploration_domain || '探索方向'}</Badge>
                     <small>{direction.requirement_profile.core_skills.slice(0, 4).join('、')}</small>
                   </div>
                   {direction.requirement_profile.evidence_suggestions.length > 0 && (
-                    <Probe>证据建议：{direction.requirement_profile.evidence_suggestions[0]}</Probe>
+                    <Probe>{compactText(direction.requirement_profile.evidence_suggestions[0], 18)}</Probe>
                   )}
                   <MajorButton variant="small" onClick={() => onCreateWorkspace(direction)} disabled={workspaceLoading}>
-                    {workspaceLoading ? '创建中…' : '围绕这个方向开工'}
+                    {workspaceLoading ? '创建中…' : '开工'}
                   </MajorButton>
                 </div>
               ))}
@@ -147,4 +146,9 @@ export function MatchWorkbench({
       </div>
     </Panel>
   );
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }

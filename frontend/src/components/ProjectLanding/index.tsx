@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { AgentSystemsShowcase } from '../AgentSystemsShowcase';
 import './cinematic-resource.css';
 
+export type EntryRole = 'teacher' | 'student';
+
 interface AgentNode {
   id: string;
   name: string;
@@ -39,26 +41,26 @@ const CAPABILITY_ROWS = [
   {
     num: '01',
     title: <>Major-first <em>exploration</em></>,
-    meta: 'Student Onboarding',
-    year: 'No resume required',
+    meta: 'Student',
+    year: 'Explore',
     count: '12 dimensions',
     thumb: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80',
-    href: '#/student',
+    href: '/register/student',
   },
   {
     num: '02',
     title: <>Teacher-grade <em>resource studio</em></>,
-    meta: 'Teacher Console',
-    year: 'Generate / Review / Deploy',
+    meta: 'Teacher',
+    year: 'Generate',
     count: '4 modules',
     thumb: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80',
-    href: '#/teacher',
+    href: '/register/teacher',
   },
   {
     num: '03',
     title: <>Two visible <em>agent systems</em></>,
-    meta: 'Agent Runtime',
-    year: 'Explore + Generate',
+    meta: 'Agents',
+    year: '2 x 7',
     count: '2 x 7 agents',
     thumb: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80',
     href: '#evidence',
@@ -66,8 +68,8 @@ const CAPABILITY_ROWS = [
   {
     num: '04',
     title: <>Rationale and <em>fingerprint</em></>,
-    meta: 'Evidence Layer',
-    year: 'Prompt / Profile / Source',
+    meta: 'Trace',
+    year: 'Evidence',
     count: 'full trace',
     thumb: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80',
     href: '#evidence',
@@ -75,8 +77,8 @@ const CAPABILITY_ROWS = [
   {
     num: '05',
     title: <>Closed-loop <em>intervention</em></>,
-    meta: 'Teaching Loop',
-    year: 'Action → Feedback',
+    meta: 'Loop',
+    year: 'Feedback',
     count: 'live monitor',
     thumb: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
     href: '#cases',
@@ -95,24 +97,24 @@ const INITIAL_NODES: AgentNode[] = [
 
 const PIPELINE_LOGS: Record<string, string[]> = {
   profile: [
-    '[Profile] 读取学生画像与历史错因，确认当前薄弱点集中在链表指针移动。',
-    '[Profile] 锁定偏好：图示驱动更有效，讲解需要更细的步骤拆分。',
+    '[Profile] 读取画像',
+    '[Profile] 锁定偏好',
   ],
   planner: [
-    '[Planner] 拆解为 4 个资源任务：讲解、练习、图解、代码案例。',
-    '[Planner] 先压低初始难度，再逐步抬升挑战，保留教师审核链路。',
+    '[Planner] 拆解任务',
+    '[Planner] 排定顺序',
   ],
-  doc: ['[Document] 讲解主线已展开：先讲节点关系，再讲插入与删除。'],
-  exercise: ['[Exercise] 生成 5 道自适应练习，并附带即时反馈锚点。'],
-  visual: ['[Visual] 补齐链表流向图与步骤动画，等待与讲解内容对齐。'],
-  code: ['[Code] 收敛 Python / Java 双语案例，绑定上游讲解与图解上下文。'],
-  eval: ['[Evaluation] 汇总学习证据，准备把结果回写到学生画像。'],
+  doc: ['[Document] 生成讲解'],
+  exercise: ['[Exercise] 生成题目'],
+  visual: ['[Visual] 生成图解'],
+  code: ['[Code] 生成代码'],
+  eval: ['[Evaluation] 回写评估'],
 };
 
 export function ProjectLanding() {
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [activeStep, setActiveStep] = useState('idle');
-  const [logs, setLogs] = useState<string[]>(['[System] EduResource 工作台已就绪，等待新的学习资源请求。']);
+  const [logs, setLogs] = useState<string[]>(['[System] Ready']);
 
   useCinematicReveal();
 
@@ -120,7 +122,7 @@ export function ProjectLanding() {
     setActiveStep('profile');
     setNodes(INITIAL_NODES.map((node) => node.id === 'profile' ? { ...node, status: 'active' } : node));
     setLogs([
-      '[Main] 收到新的学习请求，开始调度 7 个 Agent。',
+      '[Main] Start',
       ...PIPELINE_LOGS.profile,
     ]);
 
@@ -146,7 +148,7 @@ export function ProjectLanding() {
     window.setTimeout(() => {
       setActiveStep('done');
       setNodes((prev) => prev.map((node) => ({ ...node, status: 'success' })));
-      setLogs((prev) => [...prev, '[Bundle] 资源包收敛完成，教师审核与学生展示均已准备就绪 ✓']);
+      setLogs((prev) => [...prev, '[Bundle] Done']);
     }, 6600);
   };
 
@@ -177,14 +179,14 @@ export function ProjectLanding() {
             <div className="cinematic-byline">
               <em>EduResource Agent</em>
               <span className="cinematic-dot" />
-              <span>Major exploration first</span>
+              <span>Student</span>
               <span className="cinematic-dot" />
-              <span>Teacher-approved generation</span>
+              <span>Teacher</span>
             </div>
             <div className="cinematic-hero__meta">
               <div className="cinematic-meta-cell">
                 <span className="cinematic-meta-label">Entry point</span>
-                <span className="cinematic-meta-value">专业探索，不依赖简历</span>
+                <span className="cinematic-meta-value">专业探索</span>
               </div>
               <div className="cinematic-meta-cell">
                 <span className="cinematic-meta-label">Pipeline</span>
@@ -206,18 +208,14 @@ export function ProjectLanding() {
             <div className="cinematic-section__head cinematic-reveal">
               <div>
                 <span className="cinematic-eyebrow"><span className="num">01</span><span className="bar" />Featured workflow</span>
-                <h2 className="cinematic-section__title">From broad major discovery to <em>teacher-grade resources.</em></h2>
+                <h2 className="cinematic-section__title">Student explore. <em>Teacher generate.</em></h2>
               </div>
-              <div className="cinematic-section__aside">Student first<br />Teacher controlled<br />Agent visible</div>
+              <div className="cinematic-section__aside">Student<br />Teacher<br />Agents</div>
             </div>
 
             <div className="cinematic-spread">
               <aside className="cinematic-spread__copy cinematic-reveal">
-                <p className="cinematic-pull">先看专业方向，再调度资源生成，不让学生一上来就被“简历入口”挡住。</p>
-                <div className="cinematic-body">
-                  <p>学生端负责探索，老师端负责生成与审核，两边都能看见 Agent 在怎么工作。</p>
-                  <p>多 Agent 不再藏在结果后面，而是直接作为产品结构展示。</p>
-                </div>
+                <p className="cinematic-pull">Explore · Generate</p>
                 <div className="cinematic-meta-grid">
                   <div>Profile<strong>12 dimensions</strong></div>
                   <div>Runtime<strong>2 x 7 agents</strong></div>
@@ -242,9 +240,9 @@ export function ProjectLanding() {
             <div className="cinematic-section__head cinematic-reveal">
               <div>
                 <span className="cinematic-eyebrow"><span className="num">02</span><span className="bar" />Index of capabilities</span>
-                <h2 className="cinematic-section__title">A product map the evaluator can <em>scan.</em></h2>
+                <h2 className="cinematic-section__title">Product map.</h2>
               </div>
-              <div className="cinematic-section__aside">Clickable index<br />No dashboard clutter</div>
+              <div className="cinematic-section__aside">Index<br />Scan</div>
             </div>
 
             <div className="cinematic-toc cinematic-reveal-stagger">
@@ -267,9 +265,9 @@ export function ProjectLanding() {
             <div className="cinematic-section__head cinematic-reveal">
               <div>
                 <span className="cinematic-eyebrow"><span className="num">03</span><span className="bar" />Live pipeline</span>
-                <h2 className="cinematic-section__title">Seven agents, one visible <em>production line.</em></h2>
+                <h2 className="cinematic-section__title">Seven agents. <em>One line.</em></h2>
               </div>
-              <div className="cinematic-section__aside">Profile → Planner<br />Parallel generation<br />Evaluation</div>
+              <div className="cinematic-section__aside">Profile<br />Planner<br />Eval</div>
             </div>
 
             <div className="landing-pipeline cinematic-reveal">
@@ -300,9 +298,9 @@ export function ProjectLanding() {
             <div className="cinematic-section__head cinematic-reveal">
               <div>
                 <span className="cinematic-eyebrow"><span className="num">04</span><span className="bar" />Dual systems</span>
-                <h2 className="cinematic-section__title">Two multi-agent systems, both <em>visible.</em></h2>
+                <h2 className="cinematic-section__title">Two visible <em>agent systems.</em></h2>
               </div>
-              <div className="cinematic-section__aside">Student explore<br />Teacher generate<br />Same surface</div>
+              <div className="cinematic-section__aside">Student<br />Teacher<br />Visible</div>
             </div>
             <div className="cinematic-reveal">
               <AgentSystemsShowcase activeSuiteId="generation" />
@@ -324,19 +322,19 @@ export function ProjectLanding() {
                 image="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=900&q=80"
                 date="Case 01"
                 title={<>A freshman finds an <em>AI application</em> direction</>}
-                body="专业探索先铺开知识地图，再让学生从 AI 应用、Web 开发、数据分析等方向中做第一次收敛。"
+                body="专业探索 → AI 应用"
               />
               <CaseCard
                 image="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=900&q=80"
                 date="Case 02"
                 title={<>A teacher generates a <em>low-load</em> bundle</>}
-                body="老师端读取风险队列，一键把学生、知识点和短板证据带入生成参数。"
+                body="风险队列 → 资源生成"
               />
               <CaseCard
                 image="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80"
                 date="Case 03"
                 title={<>The rationale explains <em>why</em> this resource exists</>}
-                body="每张资源卡都能追溯画像、短板、难度、Agent、Prompt 版本和引用依据。"
+                body="资源卡可溯源"
               />
             </div>
           </div>
@@ -350,17 +348,15 @@ export function ProjectLanding() {
               </div>
               <div className="cinematic-section__aside">Homepage<br />Teacher side<br />Student side</div>
             </div>
-            <h2 className="cinematic-contact__lede cinematic-reveal">Choose the workspace and keep the <em>same visual language.</em></h2>
+            <h2 className="cinematic-contact__lede cinematic-reveal">Choose side.</h2>
             <div className="cinematic-contact__rows cinematic-reveal">
               <div className="cinematic-contact__block">
                 <span>Teacher</span>
-                <a href="#/teacher">Open teacher resource studio</a>
-                <p>生成、审核、追踪和干预闭环集中在老师端。</p>
+                <a href="/register/teacher" data-app-route>注册老师</a>
               </div>
               <div className="cinematic-contact__block">
                 <span>Student</span>
-                <a href="#/student">Open student exploration app</a>
-                <p>从专业探索开始，不强迫学生先有简历或明确职业目标。</p>
+                <a href="/register/student" data-app-route>注册学生</a>
               </div>
             </div>
           </div>
@@ -369,7 +365,73 @@ export function ProjectLanding() {
 
       <CinematicFooter />
       <div className="cinematic-rail cinematic-rail--left"><span className="tick" /><span>EduResource · MMXXVI</span></div>
-      <div className="cinematic-rail cinematic-rail--right"><span>Teacher-grade resources</span><span className="tick" /></div>
+      <div className="cinematic-rail cinematic-rail--right"><span>2 x 7 agents</span><span className="tick" /></div>
+    </div>
+  );
+}
+
+export function RoleEntryPage({
+  currentRole,
+  presetRole,
+  onSelect,
+}: {
+  currentRole: EntryRole | null;
+  presetRole?: EntryRole | null;
+  onSelect: (role: EntryRole) => void;
+}) {
+  useCinematicReveal();
+  const highlightedRole = presetRole ?? currentRole ?? 'teacher';
+
+  return (
+    <div className="cinematic-page role-entry-page">
+      <CinematicMasthead active="home" />
+      <main className="role-entry-shell">
+        <section className="role-entry-panel cinematic-reveal in">
+          <div className="cinematic-eyebrow">
+            <span className="num">Entry</span>
+            <span className="bar" />
+            <span>Role register</span>
+          </div>
+
+          <div className="role-entry-copy">
+            <h1 className="role-entry-title">Choose side.</h1>
+            <p className="role-entry-note">
+              老师进老师端，学生进学生端。
+            </p>
+          </div>
+
+          <div className="role-entry-grid">
+            <button
+              type="button"
+              className={highlightedRole === 'teacher' ? 'role-entry-card is-active' : 'role-entry-card'}
+              onClick={() => onSelect('teacher')}
+            >
+              <span>Teacher</span>
+              <strong>老师端</strong>
+              <small>人培 / 教案 / PPT / 大纲</small>
+            </button>
+
+            <button
+              type="button"
+              className={highlightedRole === 'student' ? 'role-entry-card is-active' : 'role-entry-card'}
+              onClick={() => onSelect('student')}
+            >
+              <span>Student</span>
+              <strong>学生端</strong>
+              <small>探索 / 培养 / 课堂 / 进度</small>
+            </button>
+          </div>
+
+          <div className="role-entry-actions">
+            {currentRole ? (
+              <span className="role-entry-badge">当前身份 · {currentRole === 'teacher' ? '老师' : '学生'}</span>
+            ) : (
+              <span className="role-entry-badge">首次进入</span>
+            )}
+            <a className="cinematic-inline-link" href="/landing" data-app-route>浏览主页</a>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
@@ -377,15 +439,16 @@ export function ProjectLanding() {
 export function CinematicMasthead({ active }: { active: 'home' | 'teacher' }) {
   return (
     <header className="cinematic-masthead">
-      <a className="cinematic-brand" href="#/">
+      <a className="cinematic-brand" href="/landing" data-app-route>
         <span className="cinematic-mark">E</span>
         <span>EduResource&nbsp;Agent</span>
       </a>
       <div className="cinematic-masthead__center">Agentic&nbsp;Learning&nbsp;·&nbsp;2026</div>
       <nav className="cinematic-nav" aria-label="Primary">
-        <a href="#/" aria-current={active === 'home' ? 'page' : undefined}>官网</a>
-        <a href="#/teacher" aria-current={active === 'teacher' ? 'page' : undefined}>老师端</a>
-        <a href="#/student">学生端</a>
+        <a href="/landing" data-app-route aria-current={active === 'home' ? 'page' : undefined}>官网</a>
+        <a href="/register" data-app-route>注册</a>
+        <a href="/teacher" data-app-route aria-current={active === 'teacher' ? 'page' : undefined}>老师端</a>
+        <a href="/student/exploration" data-app-route>学生端</a>
       </nav>
     </header>
   );
@@ -412,7 +475,7 @@ export function CinematicFooter() {
           <span>Agentic learning · 2026</span>
         </div>
         <FooterColumn title="Index" links={[['Featured', '#featured'], ['Capabilities', '#works'], ['Pipeline', '#pipeline'], ['Cases', '#cases']]} />
-        <FooterColumn title="Workspace" links={[['Teacher side', '#/teacher'], ['Student side', '#/student'], ['Homepage', '#/']]} />
+        <FooterColumn title="Workspace" links={[['Teacher side', '/teacher'], ['Student side', '/student/exploration'], ['Homepage', '/landing'], ['Register', '/register']]} />
         <FooterColumn title="System" links={[['7-Agent DAG', '#pipeline'], ['Rationale', '#evidence'], ['Closed loop', '#cases']]} />
       </div>
       <div className="cinematic-footer__bottom">
@@ -428,7 +491,14 @@ function FooterColumn({ title, links }: { title: string; links: Array<[string, s
     <div>
       <h4>{title}</h4>
       <ul>
-        {links.map(([label, href]) => <li key={label}><a href={href}>{label}</a></li>)}
+        {links.map(([label, href]) => {
+          const appRouteProps = href.startsWith('/') ? { 'data-app-route': '' } : {};
+          return (
+            <li key={label}>
+              <a href={href} {...appRouteProps}>{label}</a>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

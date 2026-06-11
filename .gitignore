@@ -1,4 +1,13 @@
 .DS_Store
 .DS_Store?
 ._*
-
+__pycache__/
+*.py[cod]
+node_modules/
+dist/
+build/
+.vite/
+.pytest_cache/
+backend/.data/
+backend/app/.data/
+frontend/dist/

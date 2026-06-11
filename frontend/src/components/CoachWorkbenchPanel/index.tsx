@@ -127,20 +127,18 @@ type CoachEventAction =
   | { type: 'NEW_SESSION'; welcomeMessage: CoachMessage };
 
 const QUICK_PROMPTS: Array<{ text: string; skill?: string }> = [
-  { text: '解释一下当前多 Agent 是怎么协作的', skill: '/trace' },
-  { text: '为什么推荐这套学习资源？给我溯源说明', skill: '/report' },
-  { text: '帮我把链表资源生成演示讲清楚', skill: '/learn' },
-  { text: '像 Claude Code 一样展示工作台执行轨迹', skill: '/trace' },
-  { text: '开始生成学习资源，并展示每个 Agent 的职责', skill: '/generate' },
+  { text: '多 Agent 怎么协作', skill: '/trace' },
+  { text: '这套资源依据', skill: '/report' },
+  { text: '链表演示', skill: '/learn' },
+  { text: '执行轨迹', skill: '/trace' },
+  { text: '开始生成', skill: '/generate' },
 ];
 
 function createWelcomeMessage(knowledgeName: string): CoachMessage {
   return {
     id: `welcome_${stableId()}`,
     role: 'assistant',
-    content:
-      `我是 EduResource 的 AI 工作台助手，已保留 feature-agentic 里 Claude Code 式 Coach 的核心体验。\n\n` +
-      `你可以用 slash 技能、附件证据和自然语言来操作系统；每次回答都会带可展开的运行轨迹，显示路由、上下文、工具、记忆和输出阶段。当前知识点是「${knowledgeName}」。`,
+    content: `工作台已就绪。\n当前：${knowledgeName}`,
     status: 'completed',
     activeAgent: 'EduResourceCoach',
   };
@@ -717,10 +715,10 @@ export function CoachWorkbenchPanel({
           <span>当前 Agent</span>
           <strong>{state.activeAgent ?? 'EduResourceCoach'}</strong>
         </div>
-        <div className="coach-session-list">
-          <div className="coach-list-title">{sessionsLoading ? '同步会话中' : '历史会话'}</div>
+          <div className="coach-session-list">
+          <div className="coach-list-title">{sessionsLoading ? '同步中' : '历史'}</div>
           {sessions.length === 0 ? (
-            <div className="coach-empty">还没有保存的工作台会话。</div>
+            <div className="coach-empty">暂无会话</div>
           ) : (
             sessions.map((session) => (
               <div
@@ -752,18 +750,18 @@ export function CoachWorkbenchPanel({
       <div className="coach-main">
         <header className="coach-header">
           <div>
-            <span className="coach-eyebrow">Claude Code Style Coach</span>
-            <h2>可直接操作多 Agent 系统的对话工作台</h2>
+            <span className="coach-eyebrow">Coach</span>
+            <h2>多 Agent 工作台</h2>
           </div>
           <div className="coach-context-card">
-            <strong>上下文</strong>
+            <strong>当前</strong>
             <span>{contextLabel}</span>
             <label>
-              绑定任务 ID
+              任务 ID
               <input
                 value={manualTaskId}
                 onChange={(event) => setManualTaskId(event.target.value)}
-                placeholder="例如 gen_xxxxx"
+                placeholder="gen_xxxxx"
                 disabled={Boolean(activeTaskId)}
               />
             </label>
@@ -840,7 +838,7 @@ export function CoachWorkbenchPanel({
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={onInputKeyDown}
               disabled={isStreaming}
-              placeholder="输入 / 选择技能，或直接说：为什么推荐这套资源？"
+              placeholder="输入消息或 / 命令"
             />
             <div className="coach-input-actions">
               <input ref={fileInputRef} type="file" multiple hidden onChange={(event) => void handleUpload(event)} />
@@ -1202,7 +1200,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/resume',
     label: '画像诊断',
-    description: '从专业、年级、兴趣和学习证据生成 12 维学习画像。',
+    description: '12维画像。',
     agent: 'ProfileAgent',
     classification: 'readonly',
     enabled: true,
@@ -1211,7 +1209,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/match',
     label: '方向匹配',
-    description: '匹配兴趣方向、职业入口和能力缺口。',
+    description: '方向匹配。',
     agent: 'PlannerAgent',
     classification: 'readonly',
     enabled: true,
@@ -1220,7 +1218,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/learn',
     label: '学习路径',
-    description: '生成基础知识图谱、项目练习和阶段目标。',
+    description: '学习路径。',
     agent: 'DocumentAgent',
     classification: 'mutation_safe',
     enabled: true,
@@ -1229,7 +1227,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/generate',
     label: '资源生成',
-    description: '转入 EduResource 全 DAG 资源生成。',
+    description: '生成资源。',
     agent: 'GenerateFlow',
     classification: 'mutation_gated',
     enabled: true,
@@ -1238,7 +1236,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/trace',
     label: '运行追踪',
-    description: '解释 7 个 Agent 的协作过程。',
+    description: '运行轨迹。',
     agent: 'Orchestrator',
     classification: 'readonly',
     enabled: true,
@@ -1247,7 +1245,7 @@ const defaultSkills: CoachSkill[] = [
   {
     name: '/report',
     label: '报告整理',
-    description: '输出成长报告、推荐溯源和闭环评估话术。',
+    description: '结果汇总。',
     agent: 'EvaluationAgent',
     classification: 'readonly',
     enabled: true,

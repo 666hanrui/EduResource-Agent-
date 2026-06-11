@@ -147,6 +147,35 @@ async def test_teacher_package_rejects_wrong_class_and_student(teacher_app) -> N
     assert wrong_teacher.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_teacher_pptx_export_uses_ready_teacher_package(teacher_app, tmp_path, monkeypatch) -> None:
+    app, _ = teacher_app
+    output_path = tmp_path / "seed.pptx"
+    output_path.write_bytes(b"pptx")
+    calls: list[dict] = []
+
+    def fake_build_teacher_pptx(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(path=output_path, filename="seed.pptx")
+
+    monkeypatch.setattr(routes_module, "build_teacher_pptx", fake_build_teacher_pptx)
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/teachers/tch_001/classes/class-ds-boost/teaching-packages/pkg_seed_binary_tree/pptx"
+        )
+
+    assert response.status_code == 200
+    assert response.content == b"pptx"
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+    assert calls[0]["package_id"] == "pkg_seed_binary_tree"
+    assert calls[0]["target_knowledge_name"] == "二叉树遍历"
+    assert calls[0]["results"]["document"]["document"]["title"] == "二叉树遍历补救讲义"
+
+
 async def _wait_for_job(client: httpx.AsyncClient, path: str) -> dict:
     for _ in range(20):
         response = await client.get(path)

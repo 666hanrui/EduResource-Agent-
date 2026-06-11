@@ -1,130 +1,197 @@
 import type { CSSProperties } from 'react';
-import type { GenerateSelectionContext, InteractiveClassroomJob, StudentDashboard, StudentPage } from './model';
+import type { StudentLearningSystem, StudentPage, TrainingStageKey } from './model';
 
 interface Props {
   activePage: StudentPage;
   studentId: string;
-  knowledgeId: string;
-  knowledgeName: string;
-  selectionContext: GenerateSelectionContext | null;
-  studentDashboard: StudentDashboard | null;
-  interactiveJob: InteractiveClassroomJob | null;
-  estimatedMastery?: number;
+  learningSystem: StudentLearningSystem;
   onStudentId: (value: string) => void;
+  onNavigate: (page: StudentPage, stage?: TrainingStageKey | null) => void;
 }
+
+const PAGE_LABELS: Record<StudentPage, string> = {
+  exploration: '画像与广度',
+  'training-plan': '培养方案',
+  classroom: '课堂验证',
+  progress: '回写证据',
+};
 
 export function StudentContextRail({
   activePage,
   studentId,
-  knowledgeId,
-  knowledgeName,
-  selectionContext,
-  studentDashboard,
-  interactiveJob,
-  estimatedMastery,
+  learningSystem,
   onStudentId,
+  onNavigate,
 }: Props) {
-  const pageTitle = {
-    exploration: '专业探索',
-    'training-plan': '培养方案',
-    classroom: '互动课堂',
-    progress: '进度回写',
-  }[activePage];
-  const suggestions = studentDashboard?.next_suggestions?.slice(0, 3) ?? [
-    '先从专业探索里选一个方向，再决定要不要生成互动课堂。',
-    '如果已经有目标知识点，就直接转成互动课堂并完成测验。',
-  ];
-  const masteryEntries = Object.entries(studentDashboard?.profile?.knowledge_mastery ?? {})
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 4);
-  const recentFeedback = studentDashboard?.recent_evaluations[0]?.feedback_markdown;
-
   return (
     <aside className="student-context-rail">
-      <section className="student-context-card student-context-card--hero">
-        <small className="student-context-label">Student Workspace</small>
-        <h2>{pageTitle}</h2>
-        <p>把学生主线拆成探索、培养方案、互动课堂和进度回写四个页面，每一步都更聚焦，也更适合继续扩工程。</p>
-      </section>
-
-      <section className="student-context-card">
-        <small className="student-context-label">当前学生</small>
+      <section className="student-context-card student-context-card--identity student-passport-card">
+        <div className="student-passport-card__mark" aria-hidden="true">学</div>
+        <div className="student-passport-card__body">
+          <small className="student-context-label">Learning Passport</small>
+          <h3>学习护照</h3>
+          <p>当前在「{PAGE_LABELS[activePage]}」，下一步由昔涟和阶段验证题共同驱动。</p>
+        </div>
         <label className="student-context-field">
           <span>STUDENT_ID</span>
-          <input value={studentId} onChange={(e) => onStudentId(e.target.value)} />
+          <input value={studentId} onChange={(event) => onStudentId(event.target.value)} />
         </label>
-        <div className="student-context-pill-row">
-          <span>{knowledgeName}</span>
-          <span>{knowledgeId}</span>
+        <a href="/register" data-app-route className="student-role-link">切换身份</a>
+      </section>
+
+      <section className="student-context-card student-context-card--route-map">
+        <div className="student-context-section-title">
+          <small className="student-context-label">五阶段路线</small>
+          <span>{learningSystem.currentStage.label}</span>
         </div>
-        {selectionContext && (
-          <div className="student-context-note">
-            <strong>选择理由</strong>
-            <span>{selectionContext.reason}</span>
-          </div>
-        )}
+        <div className="student-passport-steps">
+          {learningSystem.stages.map((stage, index) => (
+            <button
+              key={stage.key}
+              type="button"
+              className={stage.key === learningSystem.currentStage.key ? 'student-passport-step student-passport-step--active' : 'student-passport-step'}
+              onClick={() => onNavigate(stage.route, stage.routeStage)}
+            >
+              <span>{index + 1}</span>
+              <strong>{stage.label}</strong>
+              <small>{stage.score}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="student-context-card student-context-card--validation">
+        <small className="student-context-label">当前阶段验证题</small>
+        <h3>{learningSystem.validationQuestion.title}</h3>
+        <p>{learningSystem.validationQuestion.prompt}</p>
+        <div className="student-validation-meta">
+          <span>难度 {learningSystem.validationQuestion.difficulty} 星</span>
+          <span>{learningSystem.validationQuestion.successCriteria}</span>
+        </div>
+        <button
+          type="button"
+          className="student-inline-action"
+          onClick={() => onNavigate(learningSystem.primaryAction.route, learningSystem.primaryAction.routeStage)}
+        >
+          {learningSystem.primaryAction.label}
+        </button>
       </section>
 
       <section className="student-context-card">
-        <small className="student-context-label">下一步</small>
-        <div className="student-context-list">
-          {suggestions.map((item) => (
-            <article key={item}>
-              <strong>继续推进</strong>
-              <span>{item}</span>
+        <div className="student-context-section-title">
+          <small className="student-context-label">体系分数</small>
+          <span>{learningSystem.currentStage.label}</span>
+        </div>
+        <div className="student-context-metrics">
+          {learningSystem.metrics.map((metric) => (
+            <article key={metric.label}>
+              <small>{metric.label}</small>
+              <strong>{metric.value}</strong>
+              <span>{metric.detail}</span>
             </article>
           ))}
         </div>
       </section>
 
+      <section className="student-context-card student-context-card--map">
+        <div className="student-context-section-title">
+          <small className="student-context-label">资源上下级</small>
+          <span>摘要入口</span>
+        </div>
+        <div className="student-resource-clusters">
+          {learningSystem.resourceClusters.map((cluster) => {
+            const leadNode = cluster.nodes[0];
+            const destination = resourceClusterDestination(cluster.key);
+            return (
+              <button
+                key={cluster.key}
+                type="button"
+                className="student-resource-cluster"
+                onClick={() => onNavigate(destination.page, destination.stage)}
+              >
+                <span
+                  className="student-resource-cluster__score"
+                  style={{ '--score': `${cluster.score}%` } as CSSProperties}
+                >
+                  {cluster.score}
+                </span>
+                <span className="student-resource-cluster__body">
+                  <strong>{cluster.title}</strong>
+                  <span>{cluster.description}</span>
+                  {leadNode && <small>{compactText(leadNode.title, 20)} · {cluster.nodes.length} 个节点</small>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="student-context-card">
-        <small className="student-context-label">学习画像</small>
-        {masteryEntries.length > 0 ? (
+        <div className="student-context-section-title">
+          <small className="student-context-label">画像掌握</small>
+          <span>Top nodes</span>
+        </div>
+        {learningSystem.masteryTop.length > 0 ? (
           <div className="student-context-mastery">
-            {masteryEntries.map(([key, value]) => (
-              <div key={key} className="student-context-mastery__item">
+            {learningSystem.masteryTop.map((item) => (
+              <div key={item.id} className="student-context-mastery__item">
                 <div>
-                  <strong>{key}</strong>
-                  <span>{value}% 掌握度</span>
+                  <strong>{item.id}</strong>
+                  <span>{item.value}% 掌握度</span>
                 </div>
-                <div style={{ '--progress': `${Math.max(0, Math.min(100, value))}%` } as CSSProperties} className="student-context-progress" />
+                <div
+                  style={{ '--progress': `${item.value}%` } as CSSProperties}
+                  className="student-context-progress"
+                />
               </div>
             ))}
           </div>
         ) : (
-          <p className="student-context-empty">课堂完成后，这里会显示知识点掌握度和画像回写结果。</p>
+          <p className="student-context-empty">暂无画像回写，先完成探索或课堂验证。</p>
         )}
       </section>
 
-      <section className="student-context-card">
-        <small className="student-context-label">课堂状态</small>
-        {interactiveJob ? (
+      {learningSystem.suggestions.length > 0 && (
+        <section className="student-context-card">
+          <div className="student-context-section-title">
+            <small className="student-context-label">下一步建议</small>
+            <span>{learningSystem.suggestions.length} 条</span>
+          </div>
           <div className="student-context-list">
-            <article>
-              <strong>{interactiveJob.status}</strong>
-              <span>{interactiveJob.message || '互动课堂任务已提交。'}</span>
-            </article>
-            <article>
-              <strong>Resource Package</strong>
-              <span>{interactiveJob.resource_package_id}</span>
-            </article>
-            {estimatedMastery !== undefined && (
-              <article>
-                <strong>最近掌握度</strong>
-                <span>{estimatedMastery}%</span>
-              </article>
-            )}
+            {learningSystem.suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => onNavigate(learningSystem.primaryAction.route, learningSystem.primaryAction.routeStage)}
+              >
+                <strong>Next</strong>
+                <span>{compactText(suggestion, 34)}</span>
+              </button>
+            ))}
           </div>
-        ) : (
-          <p className="student-context-empty">还没有互动课堂任务。先从专业探索选知识点，或手动输入知识点后发起课堂生成。</p>
-        )}
-        {recentFeedback && (
-          <div className="student-context-note">
-            <strong>最近评估反馈</strong>
-            <span>{recentFeedback}</span>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
     </aside>
   );
+}
+
+function resourceClusterDestination(key: string): { page: StudentPage; stage?: TrainingStageKey | null } {
+  switch (key) {
+    case 'interest':
+      return { page: 'training-plan', stage: 'foundation' };
+    case 'depth':
+      return { page: 'training-plan', stage: 'practice' };
+    case 'evidence':
+      return { page: 'progress' };
+    case 'profile':
+    case 'breadth':
+      return { page: 'exploration' };
+    default:
+      return { page: 'training-plan', stage: 'foundation' };
+  }
+}
+
+function compactText(value: string, limit: number): string {
+  const text = value.trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
 }

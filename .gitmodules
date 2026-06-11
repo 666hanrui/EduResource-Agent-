@@ -1,0 +1,3 @@
+[submodule "apps/ppt-master"]
+	path = apps/ppt-master
+	url = https://github.com/hugohe3/ppt-master.git

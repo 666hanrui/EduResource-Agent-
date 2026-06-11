@@ -21,11 +21,11 @@ export type AgentSuite = {
 export const AGENT_SUITES: AgentSuite[] = [
   {
     id: 'exploration',
-    surface: '学生链路',
-    title: '专业探索 7-Agent',
-    summary: '先铺专业广度，再收敛方向、缺口和蜗牛路径。',
-    footer: '学生先看方向，再进入资源生成。',
-    href: '#/student',
+    surface: '学生端',
+    title: '专业探索',
+    summary: '',
+    footer: '',
+    href: '/register/student',
     nodes: [
       { name: 'MajorScopeAgent', label: 'Scope', detail: '专业范围' },
       { name: 'KnowledgeMapAgent', label: 'Map', detail: '知识地图' },
@@ -38,11 +38,11 @@ export const AGENT_SUITES: AgentSuite[] = [
   },
   {
     id: 'generation',
-    surface: '老师链路',
-    title: '资源生成 7-Agent',
-    summary: '围绕画像与知识点，把讲解、题目、图解、代码和评估串成闭环。',
-    footer: '老师发起生成，学生接收课堂与反馈。',
-    href: '#/teacher',
+    surface: '老师端',
+    title: '资源生成',
+    summary: '',
+    footer: '',
+    href: '/register/teacher',
     nodes: [
       { name: 'ProfileAgent', label: 'Profile', detail: '画像证据' },
       { name: 'PlannerAgent', label: 'Planner', detail: '任务拆解' },
@@ -107,7 +107,7 @@ export function AgentSystemsShowcase({
                 <span className="agent-suite-card__count">{suite.nodes.length} agents</span>
               </div>
 
-              <p className="agent-suite-card__summary">{suite.summary}</p>
+              {suite.summary ? <p className="agent-suite-card__summary">{suite.summary}</p> : null}
 
               <div className="agent-suite-card__flow">
                 {suite.nodes.map((node, index) => (
@@ -122,8 +122,8 @@ export function AgentSystemsShowcase({
               </div>
 
               <div className="agent-suite-card__footer">
-                <span>{suite.footer}</span>
-                <a href={suite.href}>打开</a>
+                {suite.footer ? <span>{suite.footer}</span> : null}
+                <a href={suite.href}>进入</a>
               </div>
             </article>
           );

@@ -57,6 +57,14 @@ def test_major_exploration_builds_knowledge_map_and_recommendations() -> None:
     assert {"foundation", "core", "direction", "practice"} <= categories
     assert len(plan.recommended_knowledge) >= 3
     assert all(item.knowledge_id for item in plan.recommended_knowledge)
+    assert all(item.stage_key for item in plan.recommended_knowledge)
+    assert all(item.stage_title for item in plan.recommended_knowledge)
+    assert all(item.validation_prompt for item in plan.recommended_knowledge)
+    assert all(item.success_criteria for item in plan.recommended_knowledge)
+    assert all(item.recommended_action for item in plan.recommended_knowledge)
+    assert plan.recommended_knowledge[0].stage_key == "foundation"
+    assert any(item.stage_key == "practice" for item in plan.recommended_knowledge)
+    assert any(item.stage_key in {"advancement", "evidence"} for item in plan.recommended_knowledge)
 
 
 def test_major_exploration_ranks_interest_related_direction() -> None:

@@ -10,20 +10,20 @@ interface Message {
 }
 
 const QUICK_QUESTIONS = [
-  '单链表插入的指针修改顺序是什么？',
-  '二叉树的前中后序遍历有什么区别？',
-  '系统画像中的8维和12维是什么？'
+  '链表插入',
+  '树遍历',
+  '8维/12维'
 ];
 
 const DANMAKUS_POOL = [
-  '老师讲得太透彻了！',
-  'Live2D 说话动起来了！',
-  '前排打卡支持桃濑老师！',
-  '这推荐精准命中我的盲区！',
-  '二叉树递归遍历听懂了！',
-  '刷完这道题画像掌握度涨了！',
-  'Live2D 跟随鼠标转动绝了',
-  '小灵老师的看板娘太萌了'
+  '讲透了',
+  '动起来了',
+  '前排',
+  '命中盲区',
+  '听懂了',
+  '掌握度+1',
+  '跟随好灵',
+  '小灵在线'
 ];
 
 interface DanmakuItem {
@@ -38,7 +38,7 @@ export function TutorLivePanel() {
     {
       id: 'welcome',
       sender: 'tutor',
-      text: 'Hi domo! 智能助教小灵在此！我已经化身为 Live2D 看板娘了哦！我会根据你的学习画像，为你量身提供辅导解答。有什么想问我的吗？',
+      text: '我是小灵，可直接提问。',
       ts: new Date()
     }
   ]);
@@ -122,7 +122,7 @@ export function TutorLivePanel() {
       setMessages(prev => [...prev, {
         id: Math.random().toString(),
         sender: 'tutor',
-        text: '抱歉，我的网络连接稍微有些延迟。您可以试着提问关于“链表插入”、“二叉树”或“学习画像”相关的话题，我会为您进行本地规则解答。',
+        text: '连接稍慢，换个短问题试试。',
         ts: new Date()
       }]);
     } finally {
@@ -184,11 +184,11 @@ export function TutorLivePanel() {
         {/* Live Stream Overlays */}
         <div style={liveBadgeStyle}>
           <span style={liveDotStyle} />
-          <span>小灵老师的直播间</span>
+          <span>助教直播</span>
         </div>
 
         <div style={heatBadgeStyle}>
-          <span>🔥 在线人气: 15,842</span>
+          <span>🔥 在线 15,842</span>
         </div>
 
         {/* Scrolling Danmaku (弹幕) Overlay */}
@@ -244,7 +244,7 @@ export function TutorLivePanel() {
 
       {/* 3. Recommended Questions */}
       <div style={quickSuggestionsStyle}>
-        <div style={quickSuggestionsTitleStyle}>🔍 点击向小灵提问：</div>
+        <div style={quickSuggestionsTitleStyle}>快捷</div>
         <div style={chipsContainerStyle}>
           {QUICK_QUESTIONS.map((q) => (
             <button 
@@ -267,7 +267,7 @@ export function TutorLivePanel() {
         <input 
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
-          placeholder="向 Live2D 助教提问..."
+          placeholder="直接提问..."
           style={chatInputStyle}
           disabled={loading}
         />
