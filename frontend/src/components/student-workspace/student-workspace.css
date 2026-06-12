@@ -101,6 +101,7 @@
 .training-resource-inspector__head small,
 .classroom-studio__intro small,
 .classroom-studio__section-title small,
+.classroom-learning-card__head small,
 .classroom-runtime-card__head small {
   display: inline-flex;
   width: fit-content;
@@ -128,6 +129,7 @@
 .training-resource-inspector__head h3,
 .classroom-studio__intro h2,
 .classroom-studio__section-title h3,
+.classroom-learning-card__head h3,
 .classroom-runtime-card__head h3 {
   margin: 0;
   color: var(--student-ink);
@@ -150,6 +152,7 @@
 .training-resource-inspector__head p,
 .classroom-studio__intro p,
 .classroom-studio__section-title p,
+.classroom-learning-playlist p,
 .classroom-flow-step p,
 .classroom-runtime-card__head p,
 .classroom-runtime-card__feedback span,
@@ -257,6 +260,203 @@
     radial-gradient(circle at center, var(--student-paper) 0 52%, transparent 53%),
     conic-gradient(var(--student-yellow) 0 var(--score), rgba(255, 255, 255, 0.2) var(--score) 100%);
   box-shadow: 4px 4px 0 rgba(255, 253, 246, 0.24);
+}
+
+.student-shell--exploration {
+  gap: 10px;
+}
+
+.student-shell--exploration .student-system-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 310px);
+  gap: 10px;
+}
+
+.student-shell--exploration .student-system-hero__copy {
+  min-height: 72px;
+  padding: 10px 18px;
+}
+
+.student-shell--exploration .student-system-eyebrow {
+  margin-bottom: 5px;
+  padding: 4px 10px;
+}
+
+.student-shell--exploration .student-system-hero h1 {
+  max-width: 640px;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 0.94;
+}
+
+.student-shell--exploration .student-system-hero__copy p {
+  display: none;
+}
+
+.student-shell--exploration .student-global-entry {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  margin-top: 0;
+}
+
+.student-shell--exploration .student-global-entry a {
+  min-height: 30px;
+  padding: 0 11px;
+  font-size: 11px;
+}
+
+.student-shell--exploration .student-system-focus-card {
+  grid-template-columns: minmax(0, 1fr) 58px;
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
+.student-shell--exploration .student-system-focus-card strong {
+  font-size: 24px;
+}
+
+.student-shell--exploration .student-score-ring {
+  width: 54px;
+  height: 54px;
+}
+
+.student-shell--exploration .student-lifecycle-rail {
+  gap: 8px;
+  padding: 8px;
+}
+
+.student-shell--exploration .student-lifecycle-node {
+  grid-template-columns: 30px minmax(0, 1fr) 42px;
+  min-height: 52px;
+  min-width: 160px;
+  padding: 7px 8px;
+}
+
+.student-shell--exploration .student-lifecycle-node__index {
+  width: 30px;
+  height: 30px;
+}
+
+.student-shell--exploration .student-main-console {
+  display: none;
+}
+
+.student-shell--exploration .student-main-tabs {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.student-shell--exploration .student-main-body {
+  padding-top: 12px;
+}
+
+.student-shell--exploration .major-profile-strip {
+  padding: 10px 12px;
+}
+
+.student-shell--exploration .adventure-map-panel {
+  gap: 10px;
+  padding: 14px;
+}
+
+.student-shell--exploration .adventure-map-panel h3 {
+  margin-top: 4px;
+  font-size: 23px;
+}
+
+.student-shell--exploration .adventure-map-metrics span {
+  min-width: 58px;
+  min-height: 44px;
+}
+
+.student-shell--exploration .adventure-map-stage {
+  min-height: clamp(390px, 52vh, 560px);
+}
+
+.student-shell--classroom {
+  gap: 10px;
+}
+
+.student-shell--classroom .student-system-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 310px);
+  gap: 10px;
+}
+
+.student-shell--classroom .student-system-hero__copy {
+  min-height: 72px;
+  padding: 10px 18px;
+}
+
+.student-shell--classroom .student-system-eyebrow {
+  margin-bottom: 5px;
+  padding: 4px 10px;
+}
+
+.student-shell--classroom .student-system-hero h1 {
+  max-width: 640px;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 0.94;
+}
+
+.student-shell--classroom .student-system-hero__copy p {
+  display: none;
+}
+
+.student-shell--classroom .student-global-entry {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  margin-top: 0;
+}
+
+.student-shell--classroom .student-global-entry a {
+  min-height: 30px;
+  padding: 0 11px;
+  font-size: 11px;
+}
+
+.student-shell--classroom .student-system-focus-card {
+  grid-template-columns: minmax(0, 1fr) 58px;
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
+.student-shell--classroom .student-system-focus-card strong {
+  font-size: 24px;
+}
+
+.student-shell--classroom .student-score-ring {
+  width: 54px;
+  height: 54px;
+}
+
+.student-shell--classroom .student-lifecycle-rail {
+  gap: 8px;
+  padding: 8px;
+}
+
+.student-shell--classroom .student-lifecycle-node {
+  grid-template-columns: 30px minmax(0, 1fr) 42px;
+  min-height: 52px;
+  min-width: 160px;
+  padding: 7px 8px;
+}
+
+.student-shell--classroom .student-lifecycle-node__index {
+  width: 30px;
+  height: 30px;
+}
+
+.student-shell--classroom .student-main-console {
+  display: none;
+}
+
+.student-shell--classroom .student-main-tabs {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.student-shell--classroom .student-main-body {
+  padding-top: 12px;
 }
 
 .student-lifecycle-rail {
@@ -533,6 +733,7 @@
 .student-context-card,
 .student-stage-card,
 .classroom-studio__composer,
+.classroom-learning-card,
 .classroom-studio__flow,
 .classroom-runtime-card,
 .classroom-studio__results,
@@ -999,6 +1200,7 @@
 
 .student-stage-card,
 .classroom-studio__composer,
+.classroom-learning-card,
 .classroom-studio__flow,
 .classroom-runtime-card,
 .classroom-studio__results,
@@ -1011,7 +1213,8 @@
 
 .student-stage-card--system,
 .student-stage-card--hero,
-.classroom-studio__composer {
+.classroom-studio__composer,
+.classroom-learning-card {
   background:
     radial-gradient(circle at top right, rgba(255, 224, 27, 0.46), transparent 38%),
     var(--student-paper);
@@ -1195,6 +1398,7 @@
 
 .training-stage-actions,
 .classroom-studio__actions,
+.classroom-learning-card__actions,
 .classroom-runtime-card__actions,
 .student-stage-card__actions {
   display: flex;
@@ -1258,8 +1462,191 @@
 }
 
 .classroom-studio__section-title,
+.classroom-learning-card__head,
 .classroom-runtime-card__head {
   align-items: flex-start;
+}
+
+.classroom-learning-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.classroom-learning-card {
+  order: -1;
+}
+
+.classroom-learning-card__actions {
+  justify-content: flex-end;
+}
+
+.classroom-learning-card__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 300px);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.classroom-learning-frame {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  border: 2px solid var(--student-ink);
+  border-radius: 20px;
+  background: #11100e;
+  box-shadow: inset 0 0 0 4px rgba(255, 253, 246, 0.08);
+  aspect-ratio: 16 / 9;
+}
+
+.classroom-learning-frame iframe,
+.classroom-learning-lightbox iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #11100e;
+}
+
+.classroom-learning-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 224, 27, 0.24), transparent 26%),
+    linear-gradient(135deg, #191713, #33291f);
+  color: var(--student-paper);
+  text-align: center;
+}
+
+.classroom-learning-placeholder__play {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border: 2px solid var(--student-paper);
+  border-radius: 999px;
+  background: var(--student-yellow);
+  color: var(--student-ink);
+  box-shadow: 4px 4px 0 rgba(255, 253, 246, 0.34);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.classroom-learning-placeholder strong {
+  color: var(--student-paper);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.classroom-learning-placeholder p {
+  margin: 0;
+  max-width: 360px;
+  color: rgba(255, 253, 246, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.classroom-learning-playlist {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 2px solid var(--student-ink);
+  border-radius: 18px;
+  background: var(--student-cream);
+  box-shadow: 3px 3px 0 var(--student-ink);
+}
+
+.classroom-learning-playlist span {
+  color: var(--student-muted);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.classroom-learning-playlist strong {
+  color: var(--student-ink);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.classroom-learning-playlist a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 2px solid var(--student-ink);
+  border-radius: 999px;
+  background: var(--student-yellow);
+  color: var(--student-ink);
+  box-shadow: 3px 3px 0 var(--student-ink);
+  font-size: 12px;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.classroom-learning-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(36, 28, 21, 0.72);
+}
+
+.classroom-learning-lightbox section {
+  width: min(1120px, calc(100vw - 40px));
+  overflow: hidden;
+  border: 3px solid var(--student-ink);
+  border-radius: 24px;
+  background: var(--student-paper);
+  box-shadow: 8px 8px 0 var(--student-ink);
+}
+
+.classroom-learning-lightbox header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 58px;
+  padding: 12px 16px;
+  border-bottom: 3px solid var(--student-ink);
+  background: var(--student-yellow);
+}
+
+.classroom-learning-lightbox strong {
+  color: var(--student-ink);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.classroom-learning-lightbox button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 2px solid var(--student-ink);
+  border-radius: 999px;
+  background: var(--student-paper);
+  color: var(--student-ink);
+  box-shadow: 3px 3px 0 var(--student-ink);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.classroom-learning-lightbox iframe {
+  display: block;
+  height: auto;
+  min-height: min(65vh, 720px);
+  aspect-ratio: 16 / 9;
 }
 
 .classroom-flow-grid {
@@ -1390,6 +1777,9 @@
 }
 
 .student-main-body .major-control-card,
+.student-main-body .major-profile-strip,
+.student-main-body .major-adventure-command,
+.student-main-body .major-map-loading,
 .student-main-body .major-panel,
 .student-main-body .major-hero,
 .student-main-body .major-empty,
@@ -1421,6 +1811,11 @@
   background: var(--student-cream) !important;
 }
 
+.student-main-body .major-profile-strip,
+.student-main-body .major-adventure-command {
+  background: var(--student-paper) !important;
+}
+
 .student-main-body .major-panel,
 .student-main-body .major-hero,
 .student-main-body .major-empty {
@@ -1434,6 +1829,8 @@
 }
 
 .student-main-body .major-hero h2,
+.student-main-body .major-adventure-command h2,
+.student-main-body .major-map-loading h2,
 .student-main-body .major-panel h3,
 .student-main-body .major-panel h4 {
   color: var(--student-ink) !important;
@@ -1442,6 +1839,7 @@
 
 .student-main-body .major-muted,
 .student-main-body .major-probe,
+.student-main-body .major-profile-strip__main span,
 .student-main-body .major-overview-card span,
 .student-main-body .knowledge-atlas-metric span,
 .student-main-body .knowledge-atlas-lane__header p,
@@ -1510,6 +1908,10 @@
 .student-main-body .major-grid-2,
 .student-main-body .major-grid-2--balanced {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.student-main-body .major-adventure-shell {
+  grid-template-columns: minmax(540px, 1.45fr) minmax(280px, 0.55fr);
 }
 
 .student-main-body .major-path-grid,
@@ -1608,6 +2010,7 @@
   .student-system-hero,
   .student-main-console,
   .training-stage-workbench,
+  .classroom-learning-card__body,
   .classroom-studio__fields,
   .classroom-studio__results-grid,
   .progress-grid,
@@ -1698,6 +2101,7 @@
   .training-plan-overview,
   .training-stage-detail-grid,
   .student-context-metrics,
+  .student-main-body .major-adventure-shell,
   .student-main-body .major-grid-2,
   .student-main-body .major-grid-2--balanced,
   .student-main-body .major-path-grid,
@@ -1738,6 +2142,7 @@
   }
 
   .classroom-studio__actions,
+  .classroom-learning-card__actions,
   .classroom-runtime-card__actions,
   .training-stage-actions,
   .student-stage-card__actions {

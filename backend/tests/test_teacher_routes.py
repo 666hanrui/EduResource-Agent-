@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 from types import SimpleNamespace
 
 import httpx
@@ -13,7 +14,7 @@ from app.api.routes import build_router
 from app.schemas.profile import CitedSource, Rationale
 from app.schemas.resource import DocumentBody, DocumentResult, DocumentSection, ExerciseResult, Question
 from app.services.generate_store import SQLiteGenerateStore
-from app.services.teacher_store import SQLiteTeacherStore
+from app.services.teacher_store import SQLiteTeacherStore, StudentNotInClassError
 
 
 class _FakeEventBus:
@@ -145,6 +146,149 @@ async def test_teacher_package_rejects_wrong_class_and_student(teacher_app) -> N
 
     assert wrong_class.status_code == 403
     assert wrong_teacher.status_code == 404
+
+
+def test_teacher_student_snapshots_are_scoped_by_teacher_class_and_student(tmp_path) -> None:
+    store = SQLiteTeacherStore(tmp_path / "teacher_store.sqlite3")
+    now = "2026-06-12T00:00:00+00:00"
+
+    with store._connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO teacher_contexts (
+                teacher_id, display_name, subject, teaching_style_json,
+                resource_preferences_json, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("tch_002", "周老师", "数据结构与算法", "[]", "[]", now, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO class_profiles (
+                class_id, teacher_id, name, students, risk, progress, status,
+                mastery_trend_json, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("class-ds-lab", "tch_002", "数据结构实验班", 24, 4, 82, "正常推进", "[]", now, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO class_profiles (
+                class_id, teacher_id, name, students, risk, progress, status,
+                mastery_trend_json, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("class-ds-empty", "tch_002", "数据结构空白班", 12, 1, 90, "正常推进", "[]", now, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO teacher_student_snapshots (
+                student_id, teacher_id, class_id, focus, mastery, risk,
+                evidence, action, knowledge_id, knowledge_name, profile_json, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "stu_018",
+                "tch_002",
+                "class-ds-lab",
+                "图遍历 / 队列过程",
+                88,
+                "low",
+                "实验记录稳定",
+                "安排挑战任务",
+                "graph-traversal",
+                "图遍历",
+                "{}",
+                now,
+            ),
+        )
+
+    original = store.get_student_snapshot("tch_001", "class-ds-boost", "stu_018")
+    duplicate = store.get_student_snapshot("tch_002", "class-ds-lab", "stu_018")
+
+    assert original.knowledge_id == "binary-tree-traversal"
+    assert duplicate.knowledge_id == "graph-traversal"
+
+    with pytest.raises(StudentNotInClassError):
+        store.get_student_snapshot("tch_001", "class-se-2301", "stu_018")
+    with pytest.raises(StudentNotInClassError):
+        store.get_student_snapshot("tch_002", "class-ds-empty", "stu_018")
+
+
+def test_teacher_student_snapshot_schema_migrates_legacy_global_student_pk(tmp_path) -> None:
+    db_path = tmp_path / "teacher_store.sqlite3"
+    now = "2026-06-12T00:00:00+00:00"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE teacher_student_snapshots (
+                student_id TEXT PRIMARY KEY,
+                teacher_id TEXT NOT NULL,
+                class_id TEXT NOT NULL,
+                focus TEXT NOT NULL,
+                mastery INTEGER NOT NULL,
+                risk TEXT NOT NULL,
+                evidence TEXT NOT NULL,
+                action TEXT NOT NULL,
+                knowledge_id TEXT NOT NULL,
+                knowledge_name TEXT NOT NULL,
+                profile_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO teacher_student_snapshots (
+                student_id, teacher_id, class_id, focus, mastery, risk,
+                evidence, action, knowledge_id, knowledge_name, profile_json, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "stu_legacy",
+                "tch_legacy",
+                "class_legacy",
+                "旧表迁移",
+                60,
+                "medium",
+                "legacy evidence",
+                "legacy action",
+                "legacy-knowledge",
+                "旧知识点",
+                "{}",
+                now,
+            ),
+        )
+
+    store = SQLiteTeacherStore(db_path)
+    with store._connect() as conn:
+        columns = conn.execute("PRAGMA table_info(teacher_student_snapshots)").fetchall()
+        student_id = next(row for row in columns if row["name"] == "student_id")
+        snapshot_pk = next(row for row in columns if row["name"] == "snapshot_pk")
+        legacy_row = conn.execute(
+            """
+            SELECT * FROM teacher_student_snapshots
+            WHERE teacher_id = ? AND class_id = ? AND student_id = ?
+            """,
+            ("tch_legacy", "class_legacy", "stu_legacy"),
+        ).fetchone()
+        backup_table = conn.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'teacher_student_snapshots_global_student_id_backup'
+            """
+        ).fetchone()
+
+    assert snapshot_pk["pk"] == 1
+    assert student_id["pk"] == 0
+    assert legacy_row["knowledge_id"] == "legacy-knowledge"
+    assert backup_table is not None
 
 
 @pytest.mark.asyncio

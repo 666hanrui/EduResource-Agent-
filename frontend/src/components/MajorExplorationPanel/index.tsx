@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type {
   CareerDirection,
   CoachResponse,
@@ -28,6 +28,7 @@ import {
   RowBetween,
   ScorePill,
 } from './FreddiePrimitives';
+import { AdventureExplorationMap } from './AdventureExplorationMap';
 import { KnowledgeAtlas } from './KnowledgeAtlas';
 import { MatchWorkbench } from './MatchWorkbench';
 import { LEVEL_OPTIONS, buildExplorationMetrics } from './model';
@@ -183,6 +184,7 @@ function majorExplorationReducer(
 
 export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowledge }: Props) {
   const [state, dispatch] = useReducer(majorExplorationReducer, INITIAL_STATE);
+  const autoBuildStarted = useRef(false);
   const {
     request,
     plan,
@@ -233,6 +235,11 @@ export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowled
     [activeMatchDirection, plan, workspace],
   );
 
+  const primaryRecommendations = useMemo(
+    () => plan?.recommended_knowledge.slice(0, 4) ?? [],
+    [plan],
+  );
+
   const postJson = async <T,>(url: string, body: unknown, method = 'POST'): Promise<T> => {
     const res = await fetch(url, {
       method,
@@ -266,6 +273,12 @@ export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowled
       dispatch({ type: 'PLAN_FAILED', error: err instanceof Error ? err.message : String(err) });
     }
   }, [educationLevel, foundationLevel, grade, interestText, major, studentId, weeklyHours]);
+
+  useEffect(() => {
+    if (autoBuildStarted.current || plan || loading) return;
+    autoBuildStarted.current = true;
+    void handleBuild();
+  }, [handleBuild, loading, plan]);
 
   useEffect(() => {
     if (buildSignal <= 0) return;
@@ -421,168 +434,232 @@ export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowled
   };
 
   return (
-    <div className="major-workshop">
-      <section className="major-control-card">
-        <Field label="专业">
-          <MajorInput value={major} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'major', value: e.target.value })} />
-        </Field>
-        <Field label="年级">
-          <MajorInput value={grade} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'grade', value: e.target.value })} />
-        </Field>
-        <Field label="学历">
-          <MajorInput value={educationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'educationLevel', value: e.target.value })} />
-        </Field>
-        <Field label="基础">
-          <MajorSelect value={foundationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'foundationLevel', value: e.target.value as ExplorationLevel })}>
-            {LEVEL_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </MajorSelect>
-        </Field>
-        <Field label="每周小时">
-          <MajorInput type="number" min={1} max={60} value={weeklyHours} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'weeklyHours', value: Number(e.target.value) || 1 })} />
-        </Field>
-        <Field label="兴趣关键词" wide>
-          <MajorInput value={interestText} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'interestText', value: e.target.value })} />
-        </Field>
-        <MajorButton variant="primary" onClick={handleBuild} disabled={loading}>{loading ? '生成中…' : '生成探索计划'}</MajorButton>
+    <div className="major-workshop major-workshop--adventure">
+      <section className="major-profile-strip">
+        <div className="major-profile-strip__main">
+          <Badge>Student Map</Badge>
+          <strong>{major} · {grade}</strong>
+          <span>{educationLevel} · {LEVEL_OPTIONS.find((item) => item.value === foundationLevel)?.label ?? foundationLevel} · 每周 {weeklyHours}h</span>
+        </div>
+        <details className="major-profile-drawer">
+          <summary>{loading ? '生成中…' : '调整画像'}</summary>
+          <section className="major-control-card major-control-card--drawer">
+            <Field label="专业">
+              <MajorInput value={major} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'major', value: e.target.value })} />
+            </Field>
+            <Field label="年级">
+              <MajorInput value={grade} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'grade', value: e.target.value })} />
+            </Field>
+            <Field label="学历">
+              <MajorInput value={educationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'educationLevel', value: e.target.value })} />
+            </Field>
+            <Field label="基础">
+              <MajorSelect value={foundationLevel} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'foundationLevel', value: e.target.value as ExplorationLevel })}>
+                {LEVEL_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </MajorSelect>
+            </Field>
+            <Field label="每周小时">
+              <MajorInput type="number" min={1} max={60} value={weeklyHours} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'weeklyHours', value: Number(e.target.value) || 1 })} />
+            </Field>
+            <Field label="兴趣关键词" wide>
+              <MajorInput value={interestText} onChange={(e) => dispatch({ type: 'REQUEST_FIELD', field: 'interestText', value: e.target.value })} />
+            </Field>
+            <MajorButton variant="primary" onClick={handleBuild} disabled={loading}>{loading ? '生成中…' : '刷新地图'}</MajorButton>
+          </section>
+        </details>
       </section>
 
       {error && <ErrorNotice>{error}</ErrorNotice>}
 
       {!plan ? (
-        <EmptyPrompt />
+        loading ? (
+          <section className="major-map-loading">
+            <Badge>Adventure Map</Badge>
+            <h2>正在生成你的探索地图</h2>
+            <Muted>根据专业、阶段、兴趣和画像分数摆放节点。</Muted>
+          </section>
+        ) : (
+          <EmptyPrompt />
+        )
       ) : (
-        <div className="major-content">
-          <section className="major-hero major-hero--stacked">
-            <div className="major-hero-copy">
-              <Eyebrow>Major Exploration</Eyebrow>
-              <h2>{plan.major} 探索工作台</h2>
-              <Muted>{plan.summary}</Muted>
-            </div>
-            <div className="major-overview-grid">
-              {heroMetrics.map((item) => (
-                <article key={item.label} className="major-overview-card">
-                  <small>{item.label}</small>
-                  <strong>{item.value}</strong>
-                  <span>{item.detail}</span>
-                </article>
-              ))}
-            </div>
+        <div className="major-content major-content--adventure-first">
+          <section className="major-adventure-shell">
+            <AdventureExplorationMap
+              plan={plan}
+              workspace={workspace}
+              activeDirection={activeMatchDirection}
+              onUseKnowledge={onUseKnowledge}
+            />
+
+            <aside className="major-adventure-command" aria-label="当前探索任务">
+              <div className="major-adventure-command__head">
+                <Eyebrow>Current Quest</Eyebrow>
+                <h2>{activeMatchDirection?.title ?? `${plan.major} 探索`}</h2>
+                <Muted>{activeMatchReport?.narrative.overall_review ?? plan.summary}</Muted>
+              </div>
+
+              <div className="major-quest-metrics">
+                {heroMetrics.slice(0, 3).map((item) => (
+                  <article key={item.label} className="major-overview-card">
+                    <small>{item.label}</small>
+                    <strong>{item.value}</strong>
+                    <span>{item.detail}</span>
+                  </article>
+                ))}
+              </div>
+
+              <div className="major-quest-actions">
+                {activeMatchDirection && (
+                  <MajorButton
+                    type="button"
+                    variant="primary"
+                    onClick={() => handleCreateWorkspace(activeMatchDirection)}
+                    disabled={workspaceLoading}
+                  >
+                    {workspace ? '重建路线' : workspaceLoading ? '建立中…' : '建立路线'}
+                  </MajorButton>
+                )}
+                {primaryRecommendations[0] && (
+                  <MajorButton type="button" onClick={() => startRecommendedKnowledge(primaryRecommendations[0])}>
+                    开始第一站
+                  </MajorButton>
+                )}
+              </div>
+
+              <div className="major-next-quest-list">
+                {primaryRecommendations.map((item, index) => (
+                  <button key={item.knowledge_id} type="button" onClick={() => startRecommendedKnowledge(item)}>
+                    <span>{index + 1}</span>
+                    <strong>{item.knowledge_name}</strong>
+                    <small>{item.stage_title}</small>
+                  </button>
+                ))}
+              </div>
+            </aside>
           </section>
 
-          <KnowledgeAtlas
-            plan={plan}
-            workspace={workspace}
-            activeDirection={activeMatchDirection}
-            onUseKnowledge={onUseKnowledge}
-          />
+          <details className="major-secondary-drawer">
+            <summary>知识结构与方向匹配</summary>
+            <div className="major-secondary-stack">
+              <KnowledgeAtlas
+                plan={plan}
+                workspace={workspace}
+                activeDirection={activeMatchDirection}
+                onUseKnowledge={onUseKnowledge}
+              />
 
-          <MatchWorkbench
-            plan={plan}
-            activeMatchReport={activeMatchReport}
-            activeMatchDirection={activeMatchDirection}
-            tasksById={tasksById}
-            workspaceLoading={workspaceLoading}
-            onSelectDirection={(directionId) => dispatch({ type: 'SET_ACTIVE_MATCH', directionId })}
-            onCreateWorkspace={handleCreateWorkspace}
-          />
+              <MatchWorkbench
+                plan={plan}
+                activeMatchReport={activeMatchReport}
+                activeMatchDirection={activeMatchDirection}
+                tasksById={tasksById}
+                workspaceLoading={workspaceLoading}
+                onSelectDirection={(directionId) => dispatch({ type: 'SET_ACTIVE_MATCH', directionId })}
+                onCreateWorkspace={handleCreateWorkspace}
+              />
+            </div>
+          </details>
 
-          <div className="major-grid-2 major-grid-2--balanced">
-            <Panel title="12 维探索画像">
-              <div className="major-score-list">
-                {plan.dimension_scores.map((item) => (
-                  <div key={item.key} className="major-mini-card">
-                    <RowBetween><strong>{item.title}</strong><ScorePill>{item.score}</ScorePill></RowBetween>
-                    <ProgressBar value={item.score} />
-                    <Probe>{item.next_probe}</Probe>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="三阶段学习路径">
-              <div className="major-path-grid">
-                {plan.learning_path.map((phase) => (
-                  <div key={phase.phase} className="major-path-card">
-                    <RowBetween><strong>{phase.label}</strong><Badge>{phase.horizon}</Badge></RowBetween>
-                    <Muted>{phase.goal}</Muted>
-                    <ul className="major-list">
-                      {phase.deliverables.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          </div>
-
-          <div className="major-grid-2 major-grid-2--balanced">
-            {plan.agent_steps.length > 0 && (
-              <Panel title="探索流水线" action={<Badge>{plan.agent_steps.length} Agents</Badge>} cream>
-                <div className="major-agent-grid">
-                  {plan.agent_steps.map((step, index) => (
-                    <div key={step.id} className="major-agent-step">
-                      <div className="major-agent-step__top">
-                        <span className="major-step-index">{index + 1}</span>
-                        <strong>{step.agent_name}</strong>
-                        <Badge>{step.status}</Badge>
-                      </div>
-                      <strong>{step.title}</strong>
-                      <Probe>{step.summary}</Probe>
-                      <div className="major-chip-row">
-                        {step.evidence_refs.slice(0, 3).map((item) => <Badge key={item}>{item}</Badge>)}
-                      </div>
+          <details className="major-secondary-drawer">
+            <summary>画像、路径和 Agent 证据</summary>
+            <div className="major-grid-2 major-grid-2--balanced">
+              <Panel title="12 维探索画像">
+                <div className="major-score-list">
+                  {plan.dimension_scores.map((item) => (
+                    <div key={item.key} className="major-mini-card">
+                      <RowBetween><strong>{item.title}</strong><ScorePill>{item.score}</ScorePill></RowBetween>
+                      <ProgressBar value={item.score} />
+                      <Probe>{item.next_probe}</Probe>
                     </div>
                   ))}
                 </div>
               </Panel>
-            )}
 
-            <Panel title="推荐转成互动课堂的知识点">
-              <div className="major-card-grid">
-                {plan.recommended_knowledge.map((item) => (
-                  <article
-                    key={item.knowledge_id}
-                    className="major-click-card major-click-card--stage"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => startRecommendedKnowledge(item)}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'Enter' && event.key !== ' ') return;
-                      event.preventDefault();
-                      startRecommendedKnowledge(item);
-                    }}
-                  >
-                    <div className="major-click-card__stage-top">
-                      <Badge>{item.stage_title}</Badge>
-                      <ScorePill>{item.suggested_difficulty} 星</ScorePill>
+              <Panel title="三阶段学习路径">
+                <div className="major-path-grid">
+                  {plan.learning_path.map((phase) => (
+                    <div key={phase.phase} className="major-path-card">
+                      <RowBetween><strong>{phase.label}</strong><Badge>{phase.horizon}</Badge></RowBetween>
+                      <Muted>{phase.goal}</Muted>
+                      <ul className="major-list">
+                        {phase.deliverables.map((item) => <li key={item}>{item}</li>)}
+                      </ul>
                     </div>
-                    <strong>{item.knowledge_name}</strong>
-                    <span>{item.reason}</span>
-                    <div className="major-click-card__detail">
-                      <small>阶段验证题</small>
-                      <p>{item.validation_prompt}</p>
-                    </div>
-                    <div className="major-click-card__detail">
-                      <small>完成标准</small>
-                      <p>{item.success_criteria}</p>
-                    </div>
-                    <div className="major-click-card__footer">
-                      <Probe>{item.recommended_action}</Probe>
-                      <MajorButton
-                        type="button"
-                        variant="small"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          startRecommendedKnowledge(item);
-                        }}
-                      >
-                        去培养方案启动这一阶段
-                      </MajorButton>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </Panel>
-          </div>
+                  ))}
+                </div>
+              </Panel>
+            </div>
+
+            <div className="major-grid-2 major-grid-2--balanced">
+              {plan.agent_steps.length > 0 && (
+                <Panel title="探索流水线" action={<Badge>{plan.agent_steps.length} Agents</Badge>} cream>
+                  <div className="major-agent-grid">
+                    {plan.agent_steps.map((step, index) => (
+                      <div key={step.id} className="major-agent-step">
+                        <div className="major-agent-step__top">
+                          <span className="major-step-index">{index + 1}</span>
+                          <strong>{step.agent_name}</strong>
+                          <Badge>{step.status}</Badge>
+                        </div>
+                        <strong>{step.title}</strong>
+                        <Probe>{step.summary}</Probe>
+                        <div className="major-chip-row">
+                          {step.evidence_refs.slice(0, 3).map((item) => <Badge key={item}>{item}</Badge>)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )}
+
+              <Panel title="可转入课堂的知识点">
+                <div className="major-card-grid">
+                  {plan.recommended_knowledge.map((item) => (
+                    <article
+                      key={item.knowledge_id}
+                      className="major-click-card major-click-card--stage"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => startRecommendedKnowledge(item)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        startRecommendedKnowledge(item);
+                      }}
+                    >
+                      <div className="major-click-card__stage-top">
+                        <Badge>{item.stage_title}</Badge>
+                        <ScorePill>{item.suggested_difficulty} 星</ScorePill>
+                      </div>
+                      <strong>{item.knowledge_name}</strong>
+                      <span>{item.reason}</span>
+                      <div className="major-click-card__detail">
+                        <small>阶段验证题</small>
+                        <p>{item.validation_prompt}</p>
+                      </div>
+                      <div className="major-click-card__detail">
+                        <small>完成标准</small>
+                        <p>{item.success_criteria}</p>
+                      </div>
+                      <div className="major-click-card__footer">
+                        <Probe>{item.recommended_action}</Probe>
+                        <MajorButton
+                          type="button"
+                          variant="small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            startRecommendedKnowledge(item);
+                          }}
+                        >
+                          去课堂
+                        </MajorButton>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </Panel>
+            </div>
+          </details>
 
           {workspace && (
             <WorkspaceSection

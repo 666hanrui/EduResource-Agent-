@@ -9,106 +9,29 @@ import type {
 } from '../../types/resources';
 import { buildLearningResourceSet } from '../../utils/learningResources';
 import { DEMO_RATIONALE } from './model';
-import type { ReviewItem, TeacherTeachingPackage } from './model';
-
-export const TEACHER_DELIVERABLE_TYPES = ['TalentPlan', 'LessonPlan', 'SlideDeck', 'Syllabus', 'KeyFocus'] as const;
-
-export type TeacherDeliverableType = (typeof TEACHER_DELIVERABLE_TYPES)[number];
-export type TeacherArtifactType = TeacherDeliverableType | 'Document' | 'Exercise' | 'Visual' | 'Code' | 'Video' | 'Reading';
-export type TeacherArtifactLibrary = Partial<Record<TeacherArtifactType, TeacherArtifact>>;
-
-export interface TeacherArtifactLink {
-  title: string;
-  url: string;
-  meta: string;
-}
-
-export interface TeacherArtifactSection {
-  heading: string;
-  body: string;
-}
-
-export interface TalentPlanSemester {
-  id: string;
-  stage: string;
-  label: string;
-  theme: string;
-  target: string;
-  courses: string[];
-  engineering: string[];
-  frontier: string[];
-  project: string;
-  assessment: string;
-  output: string;
-}
-
-export interface TalentPlanLane {
-  title: string;
-  label: string;
-  items: string[];
-}
-
-export interface TalentPlanRadarTopic {
-  date: string;
-  source: string;
-  title: string;
-  signal: string;
-  classroomAction: string;
-  projectMapping: string;
-}
-
-export interface TalentPlanExitPath {
-  title: string;
-  fit: string;
-  milestones: string[];
-  deliverables: string[];
-}
-
-export interface TalentPlanBlueprint {
-  kind: 'talent-plan';
-  direction: string;
-  vision: string;
-  graduationProfile: string[];
-  semesterPlan: TalentPlanSemester[];
-  continuousLanes: TalentPlanLane[];
-  radar: {
-    cadence: string;
-    sourceBuckets: string[];
-    process: string[];
-    topics: TalentPlanRadarTopic[];
-  };
-  innovation: {
-    ladders: string[];
-    arenas: string[];
-    teacherRole: string[];
-  };
-  assessment: {
-    dimensions: string[];
-    checkpoints: string[];
-    portfolio: string[];
-  };
-  exits: TalentPlanExitPath[];
-}
-
-export interface TeacherArtifact {
-  id: string;
-  type: TeacherArtifactType;
-  family: 'deliverable' | 'asset';
-  title: string;
-  label: string;
-  summary: string;
-  agent: string;
-  student: string | null;
-  status: string;
-  reason: string;
-  chips: string[];
-  outline: string[];
-  sections: TeacherArtifactSection[];
-  links: TeacherArtifactLink[];
-  markdown: string;
-  rationale: Rationale;
-  presentation?: TalentPlanBlueprint;
-}
+import type {
+  TalentPlanBlueprint,
+  TeacherArtifact,
+  TeacherArtifactLibrary,
+  TeacherArtifactLink,
+  TeacherArtifactSection,
+} from './artifact-types';
+export { TEACHER_DELIVERABLE_TYPES } from './artifact-types';
+export type {
+  TalentPlanBlueprint,
+  TalentPlanExitPath,
+  TalentPlanLane,
+  TalentPlanRadarTopic,
+  TalentPlanSemester,
+  TeacherArtifact,
+  TeacherArtifactLibrary,
+  TeacherArtifactLink,
+  TeacherArtifactSection,
+  TeacherArtifactType,
+  TeacherDeliverableType,
+} from './artifact-types';
+export { buildTeacherReviewItems, mergeReviewItems } from './artifact-review';
+export { pickLatestTeacherResults } from './teacher-package-results';
 
 interface BuildTeacherArtifactLibraryInput {
   results: GenerateResults | null;
@@ -118,36 +41,6 @@ interface BuildTeacherArtifactLibraryInput {
   goal: string;
   focus?: string;
   risk?: string;
-}
-
-const REVIEW_TYPE_ORDER: TeacherArtifactType[] = [
-  'TalentPlan',
-  'LessonPlan',
-  'SlideDeck',
-  'Syllabus',
-  'KeyFocus',
-  'Document',
-  'Exercise',
-  'Visual',
-  'Code',
-  'Video',
-  'Reading',
-];
-
-export function pickLatestTeacherResults(
-  packages: TeacherTeachingPackage[] | undefined,
-  studentId?: string,
-  knowledgeId?: string,
-): GenerateResults | null {
-  const candidates = (packages ?? []).filter((item) => isGenerateResults(item.results));
-  if (!candidates.length) return null;
-
-  const matched =
-    candidates.find((item) => studentId && item.target_student_id === studentId) ??
-    candidates.find((item) => knowledgeId && item.target_knowledge_id === knowledgeId) ??
-    candidates[0];
-
-  return matched?.results as GenerateResults;
 }
 
 export function buildTeacherArtifactLibrary({
@@ -494,41 +387,6 @@ export function buildTeacherArtifactLibrary({
   }
 
   return library;
-}
-
-export function buildTeacherReviewItems(artifactLibrary: TeacherArtifactLibrary): ReviewItem[] {
-  return orderedArtifacts(artifactLibrary).map((artifact) => ({
-    id: artifact.id,
-    title: artifact.title,
-    type: artifact.type,
-    student: artifact.student,
-    status: artifact.status,
-    agent: artifact.agent,
-    reason: artifact.reason,
-    rationale: artifact.rationale,
-  }));
-}
-
-export function mergeReviewItems(primary: ReviewItem[], derived: ReviewItem[]): ReviewItem[] {
-  const merged = new Map<string, ReviewItem>();
-
-  for (const item of primary) merged.set(item.type, item);
-
-  for (const item of derived) {
-    const current = merged.get(item.type);
-    merged.set(item.type, current ? { ...item, ...current, title: current.title || item.title, reason: current.reason || item.reason } : item);
-  }
-
-  return [...merged.values()].sort((left, right) => reviewRank(left.type) - reviewRank(right.type));
-}
-
-function orderedArtifacts(library: TeacherArtifactLibrary): TeacherArtifact[] {
-  return REVIEW_TYPE_ORDER.flatMap((type) => (library[type] ? [library[type] as TeacherArtifact] : []));
-}
-
-function reviewRank(type: string): number {
-  const index = REVIEW_TYPE_ORDER.indexOf(type as TeacherArtifactType);
-  return index === -1 ? REVIEW_TYPE_ORDER.length + 1 : index;
 }
 
 function createArtifact(
@@ -1159,8 +1017,4 @@ function toReadingLink(reading: SupplementalReadingResource): TeacherArtifactLin
 
 function uniqueStrings(items: string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
-}
-
-function isGenerateResults(value: unknown): value is GenerateResults {
-  return Boolean(value && typeof value === 'object');
 }

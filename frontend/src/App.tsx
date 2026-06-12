@@ -349,7 +349,7 @@ export function App() {
   );
 
   return (
-    <div className="student-shell">
+    <div className={`student-shell student-shell--${activePage}`}>
       <header className="student-system-hero">
         <div className="student-system-hero__copy">
           <span className="student-system-eyebrow">Personalized Learning System</span>

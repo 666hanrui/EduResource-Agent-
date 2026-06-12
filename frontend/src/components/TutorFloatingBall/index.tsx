@@ -45,8 +45,8 @@ type PetMood = 'idle' | 'thinking' | 'guide' | 'running' | 'celebrate';
 const XILIAN_SPRITESHEET_SRC = '/assets/pets/xilian-spritesheet.webp';
 const PET_COLUMNS = 8;
 const PET_ROWS = 9;
-const PET_WIDTH = 150;
-const PET_HEIGHT = 164;
+const PET_WIDTH = 118;
+const PET_HEIGHT = 129;
 const PANEL_WIDTH = 420;
 const PANEL_HEIGHT = 560;
 
@@ -125,7 +125,7 @@ export function TutorFloatingBall({
     const timer = window.setInterval(() => {
       cursor = (cursor + 1) % sequence.length;
       setFrame(sequence[cursor]);
-    }, activeMood === 'idle' ? 520 : 130);
+    }, activeMood === 'idle' ? 210 : 92);
     return () => window.clearInterval(timer);
   }, [activeMood]);
 
@@ -1081,7 +1081,7 @@ const PET_STYLES = `
   height: ${PET_HEIGHT}px;
   background-repeat: no-repeat;
   image-rendering: auto;
-  filter: drop-shadow(7px 9px 0 rgba(36, 28, 21, 0.9)) drop-shadow(0 18px 18px rgba(36, 28, 21, 0.16));
+  filter: drop-shadow(4px 6px 0 rgba(36, 28, 21, 0.78)) drop-shadow(0 12px 14px rgba(36, 28, 21, 0.13));
   animation: xilian-float 3.4s ease-in-out infinite;
 }
 
@@ -1107,6 +1107,17 @@ const PET_STYLES = `
   background: var(--xilian-paper);
   color: var(--xilian-ink);
   box-shadow: 3px 3px 0 var(--xilian-ink);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.xilian-pet-sprite:hover .xilian-pet-nameplate,
+.xilian-pet-sprite:focus-visible .xilian-pet-nameplate,
+.xilian-pet-sprite[aria-expanded="true"] .xilian-pet-nameplate {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .xilian-pet-nameplate strong {
@@ -1126,20 +1137,20 @@ const PET_STYLES = `
 
 .xilian-pet-orbit {
   position: absolute;
-  right: 4px;
-  top: 14px;
+  right: 0;
+  top: 10px;
   z-index: 4;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 2px solid var(--xilian-ink);
   border-radius: 999px;
   background:
     radial-gradient(circle at center, var(--xilian-paper) 0 52%, transparent 53%),
     conic-gradient(var(--xilian-yellow) 0 var(--score), var(--xilian-cream) var(--score) 100%);
   color: var(--xilian-ink);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 950;
   box-shadow: 3px 3px 0 var(--xilian-ink);
 }

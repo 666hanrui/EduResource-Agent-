@@ -89,23 +89,6 @@ export function AdventureExplorationMap({
 
   return (
     <section className="adventure-map-panel">
-      <div className="adventure-map-panel__header">
-        <div>
-          <Badge>Learning Adventure</Badge>
-          <h3>学习探索地图</h3>
-          <Muted>
-            {activeDirection
-              ? `围绕「${activeDirection.title}」生成`
-              : `按画像生成`}
-          </Muted>
-        </div>
-        <div className="adventure-map-metrics" aria-label="探索地图统计">
-          <span><strong>{nodes.length}</strong> 能力区</span>
-          <span><strong>{doneCount}</strong> 完成</span>
-          <span><strong>{challengeCount + changedCount}</strong> 变化</span>
-        </div>
-      </div>
-
       <div className="adventure-map-stage" aria-label="大学生能力探索地图">
         <img className="adventure-map-background" src={MAP_BACKGROUND_SRC} alt="" aria-hidden="true" />
         <div className="adventure-map-title" aria-hidden="true">
@@ -150,6 +133,23 @@ export function AdventureExplorationMap({
         <div className="adventure-map-live-note">
           <strong>实时接入</strong>
           <span>状态变更即刷新</span>
+        </div>
+      </div>
+
+      <div className="adventure-map-panel__header">
+        <div>
+          <Badge>Learning Adventure</Badge>
+          <h3>学习探索地图</h3>
+          <Muted>
+            {activeDirection
+              ? `围绕「${activeDirection.title}」生成`
+              : `按画像生成`}
+          </Muted>
+        </div>
+        <div className="adventure-map-metrics" aria-label="探索地图统计">
+          <span><strong>{nodes.length}</strong> 能力区</span>
+          <span><strong>{doneCount}</strong> 完成</span>
+          <span><strong>{challengeCount + changedCount}</strong> 变化</span>
         </div>
       </div>
 

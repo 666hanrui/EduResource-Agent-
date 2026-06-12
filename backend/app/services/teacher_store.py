@@ -417,7 +417,8 @@ class SQLiteTeacherStore:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS teacher_student_snapshots (
-                    student_id TEXT PRIMARY KEY,
+                    snapshot_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id TEXT NOT NULL,
                     teacher_id TEXT NOT NULL,
                     class_id TEXT NOT NULL,
                     focus TEXT NOT NULL,
@@ -432,9 +433,14 @@ class SQLiteTeacherStore:
                 )
                 """
             )
+            self._migrate_student_snapshots_to_scoped_key(conn)
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_teacher_students_scope"
                 " ON teacher_student_snapshots(teacher_id, class_id)"
+            )
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_teacher_students_unique_scope"
+                " ON teacher_student_snapshots(teacher_id, class_id, student_id)"
             )
             conn.execute(
                 """
@@ -502,6 +508,56 @@ class SQLiteTeacherStore:
                 "CREATE INDEX IF NOT EXISTS idx_teacher_reviews_scope"
                 " ON teacher_review_items(teacher_id, class_id, created_at DESC)"
             )
+
+    def _migrate_student_snapshots_to_scoped_key(self, conn: sqlite3.Connection) -> None:
+        columns = conn.execute("PRAGMA table_info(teacher_student_snapshots)").fetchall()
+        has_global_student_pk = any(row["name"] == "student_id" and row["pk"] for row in columns)
+        if not has_global_student_pk:
+            return
+
+        conn.execute("DROP INDEX IF EXISTS idx_teacher_students_scope")
+        conn.execute("DROP INDEX IF EXISTS idx_teacher_students_unique_scope")
+        backup_table = "teacher_student_snapshots_global_student_id_backup"
+        suffix = 1
+        while conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (backup_table,),
+        ).fetchone():
+            suffix += 1
+            backup_table = f"teacher_student_snapshots_global_student_id_backup_{suffix}"
+
+        conn.execute(f"ALTER TABLE teacher_student_snapshots RENAME TO {backup_table}")
+        conn.execute(
+            """
+            CREATE TABLE teacher_student_snapshots (
+                snapshot_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id TEXT NOT NULL,
+                teacher_id TEXT NOT NULL,
+                class_id TEXT NOT NULL,
+                focus TEXT NOT NULL,
+                mastery INTEGER NOT NULL,
+                risk TEXT NOT NULL,
+                evidence TEXT NOT NULL,
+                action TEXT NOT NULL,
+                knowledge_id TEXT NOT NULL,
+                knowledge_name TEXT NOT NULL,
+                profile_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO teacher_student_snapshots (
+                student_id, teacher_id, class_id, focus, mastery, risk,
+                evidence, action, knowledge_id, knowledge_name, profile_json, updated_at
+            )
+            SELECT
+                student_id, teacher_id, class_id, focus, mastery, risk,
+                evidence, action, knowledge_id, knowledge_name, profile_json, updated_at
+            FROM {backup_table}
+            """
+        )
 
     def _seed_defaults(self) -> None:
         now = _utcnow()
