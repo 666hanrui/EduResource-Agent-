@@ -46,12 +46,18 @@ class MainAgentFlow:
 
     MAX_TOOL_CALLS = 8
 
-    def __init__(self, registry: AgentRegistry, event_bus: EventBus, llm_service: LLMService) -> None:
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        event_bus: EventBus,
+        llm_service: LLMService,
+        openmaic_tools: OpenMAICMainTools | None = None,
+    ) -> None:
         self.registry = registry
         self.event_bus = event_bus
         self.llm = llm_service
         self.generate_flow = GenerateFlow(registry, event_bus)
-        self.openmaic = OpenMAICMainTools()
+        self.openmaic = openmaic_tools or OpenMAICMainTools()
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, task_id: str, req: GenerateRequest) -> GenerateOutputs:
