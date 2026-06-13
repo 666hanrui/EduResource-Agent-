@@ -64,7 +64,7 @@ class Orchestrator:
 
     入口方法：
     - run_generate():      固定 7 步流水线（GenerateFlow）
-    - run_tool_calling():  LLM 动态决策（ToolCallingFlow，对应 MainAgent Supervisor 模式）
+    - run_tool_calling():  MainAgent 统一主控流（OpenMAIC / GenerateFlow fallback）
     - run_plan():          静态 DAG 调度（通用 TaskPlan，适合自定义流程）
     - run_single():        单 Agent 便捷调用
     """
@@ -94,15 +94,11 @@ class Orchestrator:
         *,
         max_tool_calls: int = 12,
     ) -> GenerateOutputs:
-        """LLM 动态决策模式（MainAgent Supervisor）。
+        """MainAgent 统一主控模式。
 
-        与 run_generate() 的区别：
-        - run_generate:     固定 7 步流水线，生成 agent 由代码硬编码（已修复为遵从 Planner）
-        - run_tool_calling: LLM 每轮决定调用哪个工具，支持单轮并行多工具
-
-        需要 llm_service 已在 Orchestrator.__init__ 中注入。
+        MainAgent 决定是否调用 OpenMAIC 互动课堂工具，或降级调用 GenerateFlow。
         """
-        from .langgraph_tool_calling_flow import ToolCallingFlow
+        from .main_agent_flow import MainAgentFlow
 
         if self._llm_service is None:
             logger.warning(
@@ -110,7 +106,7 @@ class Orchestrator:
             )
             return await self.run_generate(task_id, payload)
 
-        flow = ToolCallingFlow(
+        flow = MainAgentFlow(
             registry=self.registry,
             event_bus=self.event_bus,
             llm_service=self._llm_service,
