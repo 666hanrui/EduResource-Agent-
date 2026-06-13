@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import build_router
 from app.api.coach_workbench import build_coach_workbench_router
+from app.api.student_business import build_student_business_router
 from app.core.config import get_settings
 from app.core.context import build_context
 
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
     ctx = build_context()
     app.state.ctx = ctx
     app.include_router(build_router(ctx))
+    app.include_router(build_student_business_router(ctx))
     app.include_router(build_coach_workbench_router(ctx))
     yield
     await ctx.aclose()
