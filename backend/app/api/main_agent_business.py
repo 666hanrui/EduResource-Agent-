@@ -156,6 +156,22 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
         asyncio.create_task(_run())
         return job
 
+    @router.post("/generate/tool-calling", response_model=GenerateResponse)
+    async def generate_tool_calling_external_aware(payload: GenerateRequest) -> GenerateResponse:
+        """Compatibility endpoint for /api/generate/tool-calling with external-aware storage."""
+
+        task_id = new_task_id("tc")
+
+        async def _run() -> None:
+            try:
+                outputs = await ctx.orchestrator.run_tool_calling(task_id, payload)
+                _save_outputs(task_id, outputs, payload)
+            except Exception:
+                logger.exception("MainAgent tool-calling failed task_id=%s", task_id)
+
+        asyncio.create_task(_run())
+        return GenerateResponse(task_id=task_id)
+
     @router.post("/main-agent/generate", response_model=GenerateResponse)
     async def main_agent_generate(payload: GenerateRequest) -> GenerateResponse:
         """Explicit MainAgent generate endpoint with external-aware result storage."""
@@ -169,15 +185,15 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
             raise HTTPException(status_code=502, detail=f"MainAgent generate failed: {exc}") from exc
         return GenerateResponse(task_id=task_id)
 
+    @router.get("/tasks/{task_id}/results")
+    async def get_results_external_aware(task_id: str) -> dict[str, Any]:
+        """Compatibility task result endpoint that preserves MainAgent external data."""
+
+        return _load_results(task_id)
+
     @router.get("/main-agent/tasks/{task_id}/results")
     async def get_main_agent_results(task_id: str) -> dict[str, Any]:
-        if task_id in _RESULT_CACHE:
-            return _RESULT_CACHE[task_id]
-        stored = _GENERATE_STORE.get(task_id)
-        if stored is None:
-            raise HTTPException(status_code=404, detail="main-agent task results not ready")
-        _RESULT_CACHE[task_id] = stored
-        return stored
+        return _load_results(task_id)
 
     return router
 
@@ -224,6 +240,16 @@ def _save_outputs(task_id: str, outputs: GenerateOutputs, request: GenerateReque
 def _save_serialized_outputs(task_id: str, outputs: dict[str, Any]) -> None:
     _RESULT_CACHE[task_id] = outputs
     _GENERATE_STORE.save(task_id, outputs)
+
+
+def _load_results(task_id: str) -> dict[str, Any]:
+    if task_id in _RESULT_CACHE:
+        return _RESULT_CACHE[task_id]
+    stored = _GENERATE_STORE.get(task_id)
+    if stored is None:
+        raise HTTPException(status_code=404, detail="task results not ready")
+    _RESULT_CACHE[task_id] = stored
+    return stored
 
 
 def _serialize_outputs(outputs: GenerateOutputs, request: GenerateRequest | None = None) -> dict[str, Any]:
