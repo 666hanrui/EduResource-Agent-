@@ -292,6 +292,37 @@ def test_teacher_student_snapshot_schema_migrates_legacy_global_student_pk(tmp_p
 
 
 @pytest.mark.asyncio
+async def test_teacher_pptx_status_returns_diagnostics(teacher_app, monkeypatch) -> None:
+    app, _ = teacher_app
+    monkeypatch.setattr(
+        routes_module,
+        "check_ppt_master_status",
+        lambda: {
+            "ok": False,
+            "ppt_master_root": "/missing/ppt-master",
+            "ppt_master_root_exists": False,
+            "exporter": "/missing/ppt-master/skills/ppt-master/scripts/svg_to_pptx.py",
+            "exporter_exists": False,
+            "python": None,
+            "python_ok": False,
+            "python_pptx_available": False,
+            "export_root": "/tmp/ppt_master",
+            "export_root_writable": True,
+            "errors": ["PPT Master exporter not found"],
+        },
+    )
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/teachers/export/pptx/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert data["errors"] == ["PPT Master exporter not found"]
+
+
+@pytest.mark.asyncio
 async def test_teacher_pptx_export_uses_ready_teacher_package(teacher_app, tmp_path, monkeypatch) -> None:
     app, _ = teacher_app
     output_path = tmp_path / "seed.pptx"
@@ -318,6 +349,32 @@ async def test_teacher_pptx_export_uses_ready_teacher_package(teacher_app, tmp_p
     assert calls[0]["package_id"] == "pkg_seed_binary_tree"
     assert calls[0]["target_knowledge_name"] == "二叉树遍历"
     assert calls[0]["results"]["document"]["document"]["title"] == "二叉树遍历补救讲义"
+
+
+@pytest.mark.asyncio
+async def test_teacher_lesson_markdown_export_uses_ready_teacher_package(teacher_app, tmp_path, monkeypatch) -> None:
+    app, _ = teacher_app
+    output_path = tmp_path / "seed-lesson-plan.md"
+    output_path.write_text("# 二叉树遍历补救讲义\n", encoding="utf-8")
+    calls: list[dict] = []
+
+    def fake_build_teacher_lesson_markdown(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(path=output_path, filename="seed-lesson-plan.md")
+
+    monkeypatch.setattr(routes_module, "build_teacher_lesson_markdown", fake_build_teacher_lesson_markdown)
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/teachers/tch_001/classes/class-ds-boost/teaching-packages/pkg_seed_binary_tree/lesson-plan.md"
+        )
+
+    assert response.status_code == 200
+    assert response.text == "# 二叉树遍历补救讲义\n"
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert calls[0]["package_id"] == "pkg_seed_binary_tree"
+    assert calls[0]["teaching_goal"] == "帮助高风险学生理解递归栈与遍历顺序"
 
 
 async def _wait_for_job(client: httpx.AsyncClient, path: str) -> dict:
