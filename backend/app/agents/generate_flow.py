@@ -1,22 +1,12 @@
 """
-GenerateFlow —— 演示主链路（固定流水线版本）。
+GenerateFlow —— 教学资源生成主流程。
 
-把 7 个 Agent 串成一次完整资源生成调度：
-
-    ProfileAgent
-        │
-        ▼
-    PlannerAgent          ← 决定要调哪些生成 Agent（动态！）
-        │
-        ├──► DocumentAgent ┐
-        ├──► ExerciseAgent │  (并行，仅当 Planner 输出中包含时才调)
-        └──► VisualAgent   ┘
-              │
-              ▼
-        CodeAgent           (依赖 Document，Planner 指定才调)
-              │
-              ▼
-        EvaluationAgent     (拿 Exercise 题目当模拟答题，给出闭环反馈)
+职责：
+1. 调 ProfileAgent 获取或更新学习画像
+2. 调 PlannerAgent 生成知识拆解与任务规划
+3. 按 PlannerAgent.tasks 动态并行调用 Document / Exercise / Visual / Code 等 Agent
+4. 调 EvaluationAgent 形成一次学习闭环
+5. 汇总 outputs，供 API 写入缓存/SQLite 并给前端展示
 
 设计要点：
 - 并行生成 Agent 由 PlannerAgent.tasks 动态决定，不再硬编码
@@ -24,7 +14,7 @@ GenerateFlow —— 演示主链路（固定流水线版本）。
 - 共用同一个 task_id：AgentTracePanel 一次订阅全程亮 7 行
 - 失败兜底已在每个 Agent 内部实现，本层只编排
 
-若需 LLM 动态决策调度顺序，请使用 ToolCallingFlow（langgraph_tool_calling_flow.py）。
+若需 LLM 动态决策调度顺序，请使用 MainAgentFlow。
 """
 
 from __future__ import annotations
@@ -76,10 +66,9 @@ class GenerateSelectionContext(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    """演示态主入口请求。
+    """资源生成入口请求。
 
-    student_id 仅作为日志关联，不参与 Agent 计算。
-    conversation 给 ProfileAgent 用；为空时走兜底画像。
+    main_agent_args 用于 MainAgent 专属工具参数，不参与传统 GenerateFlow 计算。
     """
 
     student_id: str = Field(default="stu_001")
@@ -90,6 +79,7 @@ class GenerateRequest(BaseModel):
     selection_context: GenerateSelectionContext | None = None
     exercise_count: int = Field(default=5, ge=1, le=10)
     languages: list[str] = Field(default_factory=lambda: ["python", "java"])
+    main_agent_args: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass
@@ -108,7 +98,7 @@ class GenerateOutputs:
 
 
 class GenerateFlow:
-    """把 7 个 Agent 串起来跑一次完整的资源生成。"""
+    """把多个 Agent 串起来跑一次完整的资源生成。"""
 
     def __init__(self, registry: AgentRegistry, event_bus: EventBus) -> None:
         self.registry = registry
@@ -118,11 +108,11 @@ class GenerateFlow:
         return self.registry.get(name)
 
     async def run(self, task_id: str, req: GenerateRequest) -> GenerateOutputs:
-        outputs = GenerateOutputs()
         started_at = time.time()
+        outputs = GenerateOutputs()
 
         try:
-            # 1) ProfileAgent
+            # 1. Profile
             profile_agent: ProfileAgent = self._agent("ProfileAgent")
             profile_input = ProfileAgentInput(
                 session_id=task_id,
@@ -135,147 +125,137 @@ class GenerateFlow:
             profile_result = await profile_agent.run(task_id, profile_input)
             outputs.profile = profile_result.profile
 
-            # 2) PlannerAgent
+            # 2. Planner
             planner_agent: PlannerAgent = self._agent("PlannerAgent")
-            planner_input = PlannerAgentInput(
-                profile=profile_result.profile,
-                target_knowledge=TargetKnowledge(
-                    id=req.knowledge_id,
-                    name=req.knowledge_name,
+            planner_result = await planner_agent.run(
+                task_id,
+                PlannerAgentInput(
+                    profile=outputs.profile,
+                    target_knowledge=TargetKnowledge(
+                        id=req.knowledge_id,
+                        name=req.knowledge_name,
+                    ),
                 ),
             )
-            plan = await planner_agent.run(task_id, planner_input)
-            outputs.plan = plan
+            outputs.plan = planner_result
 
-            kb = plan.knowledge_breakdown
-            profile_summary = ProfileSummary(
-                weakness=profile_result.profile.weakness,
-                preference=list(profile_result.profile.preference),
-            )
+            planned_agents = {task.agent for task in planner_result.tasks}
+            logger.info("GenerateFlow planner selected agents: %s", sorted(planned_agents))
 
-            # 3) 并行三件套——由 Planner.tasks 动态决定调哪几个，每个读自己的 params
-            parallel_tasks = []
-            planned_agents = {t.agent for t in plan.tasks if not t.depends_on}
+            # 3. Dynamic resource generation from PlannerAgent.tasks.
+            resource_coros: list[Any] = []
+            resource_names: list[str] = []
 
             if "DocumentAgent" in planned_agents:
-                doc_agent: DocumentAgent = self._agent("DocumentAgent")
-                doc_params = _apply_selection_context(
-                    _pick_params_for_agent(plan, "DocumentAgent", req.knowledge_name),
-                    req.selection_context,
-                )
-                parallel_tasks.append(
-                    asyncio.create_task(
-                        doc_agent.run(
-                            task_id,
-                            DocumentAgentInput(
-                                knowledge_breakdown=kb,
-                                params=doc_params,
-                                profile_summary=profile_summary,
+                document_agent: DocumentAgent = self._agent("DocumentAgent")
+                resource_names.append("DocumentAgent")
+                resource_coros.append(
+                    document_agent.run(
+                        task_id,
+                        DocumentAgentInput(
+                            knowledge_breakdown=planner_result.knowledge_breakdown,
+                            params=_apply_selection_context(
+                                _pick_params_for_agent(planner_result, "DocumentAgent", req.knowledge_name),
+                                req.selection_context,
                             ),
-                        )
+                            profile_summary=_make_profile_summary(outputs),
+                        ),
                     )
                 )
 
             if "ExerciseAgent" in planned_agents:
-                ex_agent: ExerciseAgent = self._agent("ExerciseAgent")
-                ex_params = _apply_selection_context(
-                    _pick_params_for_agent(plan, "ExerciseAgent", req.knowledge_name),
-                    req.selection_context,
-                )
-                parallel_tasks.append(
-                    asyncio.create_task(
-                        ex_agent.run(
-                            task_id,
-                            ExerciseAgentInput(
-                                knowledge_breakdown=kb,
-                                params=ex_params,
-                                profile_summary=profile_summary,
-                                count=req.exercise_count,
+                exercise_agent: ExerciseAgent = self._agent("ExerciseAgent")
+                resource_names.append("ExerciseAgent")
+                resource_coros.append(
+                    exercise_agent.run(
+                        task_id,
+                        ExerciseAgentInput(
+                            knowledge_breakdown=planner_result.knowledge_breakdown,
+                            params=_apply_selection_context(
+                                _pick_params_for_agent(planner_result, "ExerciseAgent", req.knowledge_name),
+                                req.selection_context,
                             ),
-                        )
+                            profile_summary=_make_profile_summary(outputs),
+                            count=req.exercise_count,
+                        ),
                     )
                 )
 
             if "VisualAgent" in planned_agents:
-                vis_agent: VisualAgent = self._agent("VisualAgent")
-                vis_params = _apply_selection_context(
-                    _pick_params_for_agent(plan, "VisualAgent", req.knowledge_name),
-                    req.selection_context,
-                )
-                parallel_tasks.append(
-                    asyncio.create_task(
-                        vis_agent.run(
-                            task_id,
-                            VisualAgentInput(
-                                knowledge_breakdown=kb,
-                                params=vis_params,
-                                profile_summary=profile_summary,
+                visual_agent: VisualAgent = self._agent("VisualAgent")
+                resource_names.append("VisualAgent")
+                resource_coros.append(
+                    visual_agent.run(
+                        task_id,
+                        VisualAgentInput(
+                            knowledge_breakdown=planner_result.knowledge_breakdown,
+                            params=_apply_selection_context(
+                                _pick_params_for_agent(planner_result, "VisualAgent", req.knowledge_name),
+                                req.selection_context,
                             ),
-                        )
+                            profile_summary=_make_profile_summary(outputs),
+                        ),
                     )
                 )
 
-            # 并行执行，结果按加入顺序对应
-            results = await asyncio.gather(*parallel_tasks, return_exceptions=True) if parallel_tasks else []
-            result_iter = iter(results)
-            if "DocumentAgent" in planned_agents:
-                outputs.document = _maybe_assign(outputs.errors, "DocumentAgent", next(result_iter))
-            if "ExerciseAgent" in planned_agents:
-                outputs.exercise = _maybe_assign(outputs.errors, "ExerciseAgent", next(result_iter))
-            if "VisualAgent" in planned_agents:
-                outputs.visual = _maybe_assign(outputs.errors, "VisualAgent", next(result_iter))
+            if resource_coros:
+                resource_results = await asyncio.gather(*resource_coros, return_exceptions=True)
+                for name, result in zip(resource_names, resource_results):
+                    if isinstance(result, Exception):
+                        outputs.errors[name] = str(result)
+                        continue
+                    if name == "DocumentAgent":
+                        outputs.document = result
+                    elif name == "ExerciseAgent":
+                        outputs.exercise = result
+                    elif name == "VisualAgent":
+                        outputs.visual = result
 
-            # 4) CodeAgent —— 依赖 Document（已跑完，才可以串）；Planner 指定才调
-            planned_with_deps = {t.agent for t in plan.tasks if t.depends_on}
-            if "CodeAgent" in planned_with_deps and outputs.document is not None:
+            # 4. Code depends on document; still optional via Planner.
+            if "CodeAgent" in planned_agents:
                 code_agent: CodeAgent = self._agent("CodeAgent")
-                code_langs = [
-                    lang for lang in req.languages if lang in ("python", "java")
-                ] or ["python", "java"]
-                code_params = _apply_selection_context(
-                    _pick_params_for_agent(plan, "CodeAgent", req.knowledge_name),
-                    req.selection_context,
-                )
                 try:
+                    code_langs = [lang for lang in req.languages if lang in ("python", "java")]
+                    if not code_langs:
+                        code_langs = ["python", "java"]
                     outputs.code = await code_agent.run(
                         task_id,
                         CodeAgentInput(
-                            knowledge_breakdown=kb,
-                            params=code_params,
-                            profile_summary=profile_summary,
+                            knowledge_breakdown=planner_result.knowledge_breakdown,
+                            params=_apply_selection_context(
+                                _pick_params_for_agent(planner_result, "CodeAgent", req.knowledge_name),
+                                req.selection_context,
+                            ),
+                            profile_summary=_make_profile_summary(outputs),
                             languages=code_langs,  # type: ignore[arg-type]
                         ),
                     )
                 except Exception as exc:
-                    logger.exception("CodeAgent 失败 task_id=%s", task_id)
                     outputs.errors["CodeAgent"] = str(exc)
-            elif "CodeAgent" in planned_with_deps and outputs.document is None:
-                logger.warning("CodeAgent 跳过：DocumentAgent 失败，无法生成代码 task_id=%s", task_id)
-                outputs.errors["CodeAgent"] = "DocumentAgent 失败，跳过代码生成"
 
-            # 5) EvaluationAgent —— 拿 Exercise 输出当"模拟答题"，闭环反馈画像
-            evaluation_agent: EvaluationAgent = self._agent("EvaluationAgent")
-            mock_answers = _make_mock_answers(outputs.exercise)
+            # 5. Evaluation closes the loop using current exercise if any.
+            eval_agent: EvaluationAgent = self._agent("EvaluationAgent")
             try:
-                outputs.evaluation = await evaluation_agent.run(
+                mock_answers = _make_mock_answers(outputs.exercise)
+                outputs.evaluation = await eval_agent.run(
                     task_id,
                     EvaluationAgentInput(
                         session_id=task_id,
                         knowledge_id=req.knowledge_id,
-                        profile=profile_result.profile,
+                        profile=outputs.profile,
                         answers=mock_answers,
                     ),
                 )
             except Exception as exc:
-                logger.exception("EvaluationAgent 失败 task_id=%s", task_id)
                 outputs.errors["EvaluationAgent"] = str(exc)
 
             await self._emit_summary(task_id, started_at, "ok" if not outputs.errors else "partial", outputs.errors)
             return outputs
 
         except Exception as exc:
-            logger.exception("GenerateFlow 顶层失败 task_id=%s", task_id)
-            await self._emit_summary(task_id, started_at, "error", {"top": str(exc)})
+            logger.exception("GenerateFlow failed task_id=%s", task_id)
+            outputs.errors["GenerateFlow"] = str(exc)
+            await self._emit_summary(task_id, started_at, "error", outputs.errors)
             raise
 
     async def _emit_summary(
@@ -300,23 +280,34 @@ class GenerateFlow:
         )
 
 
-# ─────────────────────────────── 辅助 ───────────────────────────────
+# ─────────────────────────────── 辅助函数 ───────────────────────────────
 
 
-def _selection_context_turns(
-    context: GenerateSelectionContext | None,
-) -> list[ConversationTurn]:
-    if context is None:
-        return []
-    if context.source == "teacher_console":
-        return []
+def _make_profile_summary(outputs: GenerateOutputs) -> ProfileSummary:
+    if outputs.profile is None:
+        return ProfileSummary(weakness=[], preference=[])
+    return ProfileSummary(
+        weakness=outputs.profile.weakness,
+        preference=list(outputs.profile.preference),
+    )
 
-    parts = [f"本次资源生成来自 {context.source}"]
-    if context.reason.strip():
-        parts.append(f"选择理由：{context.reason.strip()}")
-    if context.suggested_difficulty is not None:
-        parts.append(f"建议难度 {context.suggested_difficulty}")
-    return [ConversationTurn(role="student", text="；".join(parts))]
+
+def _pick_params(plan: PlannerOutput, fallback_focus: str) -> ResourceTaskParams:
+    """Backwards-compatible params picker used by older call sites."""
+    return _pick_params_for_agent(plan, "DocumentAgent", fallback_focus)
+
+
+def _pick_params_for_agent(
+    plan: PlannerOutput,
+    agent_name: str,
+    fallback_focus: str,
+) -> ResourceTaskParams:
+    for task in plan.tasks:
+        if task.agent == agent_name:
+            return task.params
+    if plan.tasks:
+        return plan.tasks[0].params
+    return ResourceTaskParams(focus=fallback_focus, reason="planner 未给出 task")
 
 
 def _apply_selection_context(
@@ -325,66 +316,33 @@ def _apply_selection_context(
 ) -> ResourceTaskParams:
     if context is None:
         return params
-
     updates: dict[str, Any] = {}
     if context.suggested_difficulty is not None:
         updates["difficulty"] = context.suggested_difficulty
     if context.reason.strip():
-        reason = context.reason.strip()
-        updates["reason"] = (
-            f"{params.reason}；上游选择理由：{reason}"
-            if params.reason
-            else f"上游选择理由：{reason}"
-        )
-    return params.model_copy(update=updates)
+        updates["reason"] = f"{params.reason}；上游选择理由：{context.reason.strip()}"
+    return params.model_copy(update=updates) if updates else params
 
 
-def _pick_params(plan: PlannerOutput, fallback_focus: str) -> ResourceTaskParams:
-    """从 PlannerOutput.tasks 里挑一份通用 params（兜底用）。
-
-    优先 DocumentAgent 的，其次第一个；再次给个默认值。
-    新代码应优先使用 _pick_params_for_agent() 取各 agent 专属 params。
-    """
-    for t in plan.tasks:
-        if t.agent == "DocumentAgent":
-            return t.params
-    if plan.tasks:
-        return plan.tasks[0].params
-    return ResourceTaskParams(focus=fallback_focus, reason="planner 未给出 task")
-
-
-def _pick_params_for_agent(
-    plan: PlannerOutput, agent_name: str, fallback_focus: str
-) -> ResourceTaskParams:
-    """从 PlannerOutput.tasks 中取指定 Agent 的专属 params。
-
-    Planner 为每个 Agent 定制了 difficulty/focus/style_hint，应优先使用。
-    若 Planner 未包含该 Agent，则退回到通用 params。
-    """
-    for t in plan.tasks:
-        if t.agent == agent_name:
-            return t.params
-    return _pick_params(plan, fallback_focus)
-
-
-def _maybe_assign(errors: dict[str, str], name: str, value: Any):
-    if isinstance(value, Exception):
-        logger.exception("%s 失败：%s", name, value)
-        errors[name] = str(value)
-        return None
-    return value
+def _selection_context_turns(
+    context: GenerateSelectionContext | None,
+) -> list[ConversationTurn]:
+    if context is None:
+        return []
+    parts = [f"本次资源生成来自 {context.source}"]
+    if context.reason.strip():
+        parts.append(f"选择理由：{context.reason.strip()}")
+    if context.suggested_difficulty is not None:
+        parts.append(f"建议难度 {context.suggested_difficulty}")
+    return [ConversationTurn(role="student", text="；".join(parts))]
 
 
 def _make_mock_answers(exercise: ExerciseResult | None) -> list[AnswerRecord]:
-    """演示态：把 Exercise 题目转成"假装答题"记录。
-
-    规则：偶数 index 答对、奇数答错，足以触发滑动公式 + tag 统计。
-    """
     if exercise is None:
         return []
     answers: list[AnswerRecord] = []
-    for i, q in enumerate(exercise.questions):
-        is_correct = i % 2 == 0
+    for index, q in enumerate(exercise.questions):
+        is_correct = index % 2 == 0
         answers.append(
             AnswerRecord(
                 qid=q.qid,
