@@ -27,8 +27,11 @@ from app.core.context import build_context
 async def lifespan(app: FastAPI):
     ctx = build_context()
     app.state.ctx = ctx
-    app.include_router(build_router(ctx))
+    # Student business routes are mounted first so the compatibility
+    # POST /api/exploration/plan persists profile/path/session data before
+    # the legacy exploration route can match the same path.
     app.include_router(build_student_business_router(ctx))
+    app.include_router(build_router(ctx))
     app.include_router(build_coach_workbench_router(ctx))
     yield
     await ctx.aclose()
