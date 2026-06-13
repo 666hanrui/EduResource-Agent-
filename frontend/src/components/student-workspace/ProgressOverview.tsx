@@ -1,4 +1,5 @@
-import type { InteractiveClassroomJob, StudentDashboard, TrainingStageKey } from './model';
+import { useState } from 'react';
+import type { InteractiveClassroomJob, StudentDashboard, StudentGrowthReport, TrainingStageKey } from './model';
 
 interface Props {
   studentDashboard: StudentDashboard | null;
@@ -19,6 +20,9 @@ export function ProgressOverview({
   onOpenTrainingPlan,
   onOpenClassroom,
 }: Props) {
+  const [report, setReport] = useState<StudentGrowthReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const latestEvaluation = studentDashboard?.recent_evaluations?.[0];
   const latestDelta = (latestEvaluation?.mastery_delta_json ?? {}) as Record<string, unknown>;
   const stageValidation = (latestDelta.stage_validation ?? {}) as Record<string, unknown>;
@@ -29,6 +33,25 @@ export function ProgressOverview({
     trainingStages.find((stage) => stage.status === 'in_progress')
     ?? trainingStages.find((stage) => stage.status === 'needs_review')
     ?? trainingStages[0];
+  const studentId = studentDashboard?.profile?.student_id ?? interactiveJob?.student_id ?? 'stu_001';
+
+  const handleCreateReport = async () => {
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, report_type: 'student_growth' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      setReport((await res.json()) as StudentGrowthReport);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   return (
     <div className="progress-board">
@@ -46,6 +69,9 @@ export function ProgressOverview({
             onClick={() => onOpenTrainingPlan((currentStage?.key as TrainingStageKey | undefined) ?? null)}
           >
             回培养方案页
+          </button>
+          <button type="button" className="freddie-secondary-button" onClick={handleCreateReport} disabled={reportLoading}>
+            {reportLoading ? '生成报告中…' : '生成成长报告'}
           </button>
           <button type="button" className="freddie-primary-button" onClick={onOpenClassroom}>
             再做一轮
@@ -127,8 +153,8 @@ export function ProgressOverview({
           <div className="progress-step-list">
             {pathSteps.length > 0 ? (
               pathSteps.slice(0, 6).map((step, index) => (
-                <article key={`${step.package_id ?? 'step'}-${index}`} className="progress-step-item">
-                  <strong>{step.package_id ?? `步骤 ${index + 1}`}</strong>
+                <article key={step.step_id ?? `${step.package_id ?? 'step'}-${index}`} className="progress-step-item">
+                  <strong>{step.title ?? step.target_knowledge_id ?? step.package_id ?? `步骤 ${index + 1}`}</strong>
                   <span>{step.status ?? 'pending'}</span>
                   <p>{compactText(step.updated_reason ?? '待回写', 14)}</p>
                 </article>
@@ -151,6 +177,23 @@ export function ProgressOverview({
             )}
           </div>
         </div>
+      </section>
+
+      <section className="student-stage-card">
+        <div className="student-stage-card__header">
+          <div>
+            <small>Student Growth Report</small>
+            <h3>真实成长报告</h3>
+            <p>报告由后端读取画像、学习路径、资源包和评估记录生成，并真实落库。</p>
+          </div>
+          {report && <p>{report.id}</p>}
+        </div>
+        {reportError && <p className="student-context-empty">报告生成失败：{reportError}</p>}
+        {report ? (
+          <pre className="student-report-markdown">{report.content_markdown}</pre>
+        ) : (
+          <p className="student-context-empty">点击“生成成长报告”后，这里会展示后端落库报告。</p>
+        )}
       </section>
     </div>
   );
