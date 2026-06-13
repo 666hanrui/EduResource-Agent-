@@ -25,6 +25,13 @@ type StudentActionOverrides = StudentPetActionDraft & {
   selectionContext?: GenerateSelectionContext | null;
 };
 
+type LearningPathStepPatch = {
+  status?: 'pending' | 'in_progress' | 'done' | 'adjusted';
+  evidence?: string;
+  mastery_after?: number;
+  updated_reason?: string;
+};
+
 const DEFAULT_STUDENT_HASH = '#/student/exploration';
 
 export function App() {
@@ -217,6 +224,25 @@ export function App() {
   const handleBuildExplorationPlan = async () => {
     navigateTo('exploration');
     setExplorationBuildSignal((value) => value + 1);
+  };
+
+  const handleExplorationPersisted = () => {
+    setPetCompletionMessage('专业探索已写入画像和学习路径。');
+    setPetCompletionSignal((value) => value + 1);
+    void refreshStudentDashboard(studentId);
+  };
+
+  const handleUpdateLearningPathStep = async (stepId: string, payload: LearningPathStepPatch) => {
+    const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/learning-path/steps/${encodeURIComponent(stepId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const updatedPath = await res.json();
+    setStudentDashboard((current) => current ? { ...current, learning_path: updatedPath } : current);
+    setPetCompletionMessage('学习路径步骤已写回。');
+    setPetCompletionSignal((value) => value + 1);
   };
 
   const prepareStudentAction = (draft: StudentPetActionDraft = {}): StudentActionOverrides => {
@@ -452,6 +478,7 @@ export function App() {
                 studentId={studentId}
                 buildSignal={explorationBuildSignal}
                 onUseKnowledge={handleUseKnowledge}
+                onExplorationPersisted={handleExplorationPersisted}
               />
             )}
 
@@ -465,6 +492,7 @@ export function App() {
                 learningSystem={learningSystem}
                 onOpenClassroom={handleOpenTrainingStage}
                 onOpenStage={(stage) => navigateTo('training-plan', { stage })}
+                onUpdateStep={handleUpdateLearningPathStep}
               />
             )}
 
