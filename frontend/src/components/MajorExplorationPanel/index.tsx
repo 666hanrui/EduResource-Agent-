@@ -12,6 +12,7 @@ import type {
   WorkspaceResource,
   WorkspaceTask,
 } from '../../types/exploration';
+import { createStudentExplorationSession } from '../../api/studentExploration';
 import {
   Badge,
   EmptyPrompt,
@@ -39,6 +40,7 @@ interface Props {
   studentId: string;
   buildSignal?: number;
   onUseKnowledge: (item: RecommendedKnowledge) => void;
+  onExplorationPersisted?: () => void;
 }
 
 interface RequestDraft {
@@ -182,7 +184,7 @@ function majorExplorationReducer(
   }
 }
 
-export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowledge }: Props) {
+export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowledge, onExplorationPersisted }: Props) {
   const [state, dispatch] = useReducer(majorExplorationReducer, INITIAL_STATE);
   const autoBuildStarted = useRef(false);
   const {
@@ -262,17 +264,13 @@ export function MajorExplorationPanel({ studentId, buildSignal = 0, onUseKnowled
         interests: interestText.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
         weekly_hours: weeklyHours,
       };
-      const res = await fetch('/api/exploration/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      dispatch({ type: 'PLAN_SUCCEEDED', plan: (await res.json()) as ExplorationPlan });
+      const next = await createStudentExplorationSession(studentId, payload);
+      dispatch({ type: 'PLAN_SUCCEEDED', plan: next.plan });
+      onExplorationPersisted?.();
     } catch (err) {
       dispatch({ type: 'PLAN_FAILED', error: err instanceof Error ? err.message : String(err) });
     }
-  }, [educationLevel, foundationLevel, grade, interestText, major, studentId, weeklyHours]);
+  }, [educationLevel, foundationLevel, grade, interestText, major, onExplorationPersisted, studentId, weeklyHours]);
 
   useEffect(() => {
     if (autoBuildStarted.current || plan || loading) return;
