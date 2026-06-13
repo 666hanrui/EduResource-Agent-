@@ -31,6 +31,8 @@ const CURRICULUM_RESOURCE_MODULES: Array<{ type: TeacherArtifactType; label: str
   { type: 'KeyFocus', label: '重难点', role: '讲法提醒' },
 ];
 
+type ExportState = 'idle' | 'exporting' | 'done' | 'error';
+
 export function OverviewDesk({
   metrics,
   classes,
@@ -196,8 +198,10 @@ export function TalentSystemDesk({
   selectedType,
   canExportPptx,
   pptExportState,
+  lessonMarkdownExportState,
   onSelectedType,
   onExportPptx,
+  onExportLessonMarkdown,
 }: {
   activeClass: ClassProfile;
   activeStudent: Student;
@@ -206,9 +210,11 @@ export function TalentSystemDesk({
   reviews: ReviewItem[];
   selectedType: TeacherArtifactType;
   canExportPptx: boolean;
-  pptExportState: 'idle' | 'exporting' | 'done' | 'error';
+  pptExportState: ExportState;
+  lessonMarkdownExportState: ExportState;
   onSelectedType: (type: TeacherArtifactType) => void;
   onExportPptx: () => void;
+  onExportLessonMarkdown: () => void;
 }) {
   const planArtifact = artifactLibrary.TalentPlan;
   const blueprint = planArtifact?.presentation;
@@ -226,6 +232,7 @@ export function TalentSystemDesk({
     : 'TalentPlan';
   const activeArtifact = artifactLibrary[activeType] ?? planArtifact;
   const activeReview = reviews.find((item) => item.type === activeType);
+  const showMarkdownExport = activeType === 'LessonPlan' || activeType === 'SlideDeck';
 
   useEffect(() => {
     if (!defaultSemesterId || semesters.some((semester) => semester.id === selectedSemesterId)) return;
@@ -368,7 +375,12 @@ export function TalentSystemDesk({
               <div className="teacher-system-actions">
                 {activeType === 'SlideDeck' && (
                   <button type="button" disabled={!canExportPptx || pptExportState === 'exporting'} onClick={onExportPptx}>
-                    {pptExportState === 'exporting' ? '导出中' : pptExportState === 'done' ? '已导出' : '导出 PPTX'}
+                    {pptExportState === 'exporting' ? '导出中' : pptExportState === 'done' ? '已导出' : pptExportState === 'error' ? 'PPTX失败' : '导出 PPTX'}
+                  </button>
+                )}
+                {showMarkdownExport && (
+                  <button type="button" disabled={!canExportPptx || lessonMarkdownExportState === 'exporting'} onClick={onExportLessonMarkdown}>
+                    {lessonMarkdownExportState === 'exporting' ? '导出中' : lessonMarkdownExportState === 'done' ? '已导出教案' : '导出 Markdown'}
                   </button>
                 )}
                 <strong>{activeArtifact.status}</strong>
