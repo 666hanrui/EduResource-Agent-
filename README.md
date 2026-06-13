@@ -57,14 +57,16 @@
 | 能力 | 说明 |
 |------|------|
 | 固定流水线生成 | `POST /api/generate`，稳定演示用，由 GenerateFlow 编排 |
-| Tool Calling 动态调度 | `POST /api/generate/tool-calling`，MainAgent Supervisor 动态决定工具调用 |
+| Tool Calling 动态调度 | `POST /api/generate/tool-calling`，MainAgent Supervisor 动态决定工具调用；仅作为增强展示，不替代主演示链路 |
 | SSE 事件流 | `GET /api/tasks/{task_id}/events`，前端实时展示 Agent 状态 |
 | 生成结果持久化 | `GET /api/tasks/{task_id}/results`，SQLite 缓存与恢复 |
-| 学生互动课堂 | `POST /api/students/{student_id}/interactive-classrooms`，对接 OpenMAIC 互动课堂生成 |
+| 学生互动课堂 | `POST /api/students/{student_id}/interactive-classrooms`，对接 OpenMAIC 互动课堂生成，支持 `EDU_OPENMAIC_FALLBACK=1` 本地降级演示 |
 | 学生仪表盘 | `GET /api/students/{student_id}/dashboard`，学习路径、评估和画像状态 |
 | 教师仪表盘 | `GET /api/teachers/{teacher_id}/dashboard`，班级、风险队列、审核项和教学包 |
-| 教师教学包 | `POST /api/teachers/{teacher_id}/classes/{class_id}/teaching-packages`，教师业务边界下触发资源生成 |
-| PPT 导出 | `GET /api/teachers/{teacher_id}/classes/{class_id}/teaching-packages/{package_id}/pptx` |
+| 教师教学包 | `POST /api/teachers/{teacher_id}/classes/{class_id}/teaching-packages`，教师业务边界下触发资源生成，是老师端正式演示主链路 |
+| PPT 导出 | `GET /api/teachers/{teacher_id}/classes/{class_id}/teaching-packages/{package_id}/pptx`；环境不完整时可走 `.md` 教案降级导出 |
+| PPT 环境诊断 | `GET /api/teachers/export/pptx/status`，检查 PPT Master、python-pptx 与导出目录 |
+| Markdown 教案导出 | `GET /api/teachers/{teacher_id}/classes/{class_id}/teaching-packages/{package_id}/lesson-plan.md`，不依赖 PPT Master |
 | 数字人动作协议 | `GET /api/digital-human/actions` 与 `GET /api/digital-human/knowledge-shortcuts` |
 
 ## 代码导航
@@ -78,8 +80,8 @@
 | `backend/app/agents/event_bus.py` | SSE NDJSON 事件总线 |
 | `backend/app/services/student_learning_store.py` | 学生画像、学习路径、课堂验证和证据回写存储 |
 | `backend/app/services/teacher_store.py` | 老师端班级、学生快照、教学包、审核队列 SQLite 存储 |
-| `backend/app/services/openmaic_client.py` | OpenMAIC 互动课堂生成客户端 |
-| `backend/app/services/ppt_master_service.py` | 老师端教学包 PPTX 导出 |
+| `backend/app/services/openmaic_client.py` | OpenMAIC 互动课堂生成客户端与本地 fallback 构造器 |
+| `backend/app/services/ppt_master_service.py` | 老师端教学包 PPTX 导出、环境诊断与 Markdown 教案降级导出 |
 | `backend/app/schemas/student.py` | 学生端资源包、课堂任务、仪表盘 Schema |
 | `backend/app/schemas/teacher.py` | 老师端上下文、班级、教学包、审核项 Schema |
 | `frontend/src/main.tsx` | 角色入口与路由分发：学生端、老师端、首页、注册入口 |
@@ -88,6 +90,7 @@
 | `frontend/src/components/AgentSystemsShowcase/` | 双套 Agent 系统展示 |
 | `frontend/src/components/AgentFlowViz/` | Agent DAG 与 SSE 可视化组件 |
 | `frontend/src/components/TutorFloatingBall/` | Live2D 数字人助教与前端操作入口 |
+| `docs/14-toolcalling-demo-boundary.md` | ToolCallingFlow 演示边界说明 |
 
 ## 技术栈
 
@@ -96,7 +99,7 @@
 - 大模型：讯飞星火 X2 / 4.0 Turbo（主）
 - 课堂生成：OpenMAIC 互动课堂接口
 - 事件流：SSE NDJSON
-- 导出：PPTX 教学包生成
+- 导出：PPTX 教学包生成 + Markdown 教案降级导出
 - 本地资源：Live2D Cubism 运行时与 Haru 模型
 
 ## 当前进度
@@ -105,10 +108,11 @@
 - [x] 老师端教学资源工作台：班级洞察、生成、审核、干预
 - [x] ProfileAgent / PlannerAgent / DocumentAgent / ExerciseAgent / CodeAgent / VisualAgent / EvaluationAgent
 - [x] GenerateFlow 固定流水线
-- [x] ToolCallingFlow 动态调度入口
+- [x] ToolCallingFlow 动态调度入口与演示边界文档
 - [x] SSE Agent 运行事件流与可视化
-- [x] 学生端 OpenMAIC 互动课堂生成链路
+- [x] 学生端 OpenMAIC 互动课堂生成链路与本地 fallback
 - [x] 老师端 SQLite 业务边界与教学包生成链路
+- [x] PPTX 环境诊断与 Markdown 教案降级导出
 - [x] 资源溯源 RationalePanel
 - [x] 数字人操作协议与 Live2D 助教
 - [ ] 老师端前端完全接入教师业务接口后的细节联调
