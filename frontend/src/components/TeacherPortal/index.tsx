@@ -39,6 +39,8 @@ import {
 const DEFAULT_TEACHER_ID = 'tch_001';
 const DEFAULT_CLASS_ID = 'class-se-2301';
 
+type ExportState = 'idle' | 'exporting' | 'done' | 'error';
+
 const NAV_ITEMS: Array<{ key: TabKey; label: string }> = [
   { key: 'overview', label: '总览' },
   { key: 'review', label: '体系' },
@@ -62,7 +64,8 @@ export function TeacherPortal() {
   const [teachingPackageClassId, setTeachingPackageClassId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [runState, setRunState] = useState<RunState>('idle');
-  const [pptExportState, setPptExportState] = useState<'idle' | 'exporting' | 'done' | 'error'>('idle');
+  const [pptExportState, setPptExportState] = useState<ExportState>('idle');
+  const [lessonMarkdownExportState, setLessonMarkdownExportState] = useState<ExportState>('idle');
   const [results, setResults] = useState<GenerateResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
@@ -109,6 +112,8 @@ export function TeacherPortal() {
       setResults(null);
       setTeachingPackageId(null);
       setTeachingPackageClassId(null);
+      setPptExportState('idle');
+      setLessonMarkdownExportState('idle');
     }
   }, [classId, dashboard, dashboardStudents, studentId]);
 
@@ -165,6 +170,8 @@ export function TeacherPortal() {
     setResults(null);
     setTeachingPackageId(null);
     setTeachingPackageClassId(null);
+    setPptExportState('idle');
+    setLessonMarkdownExportState('idle');
   };
 
   const chooseStudent = (student: Student) => {
@@ -198,6 +205,7 @@ export function TeacherPortal() {
     setTeachingPackageId(null);
     setTeachingPackageClassId(null);
     setPptExportState('idle');
+    setLessonMarkdownExportState('idle');
     setActive('generator');
     revealWorkbench();
   };
@@ -255,6 +263,7 @@ export function TeacherPortal() {
     setTeachingPackageId(null);
     setTeachingPackageClassId(null);
     setPptExportState('idle');
+    setLessonMarkdownExportState('idle');
     setRunState('submitting');
     try {
       const response = await fetch(`/api/teachers/${teacherId}/classes/${targetClassId}/teaching-packages`, {
@@ -283,27 +292,49 @@ export function TeacherPortal() {
     }
   };
 
+  const downloadPackageFile = async (url: string, fallbackFilename: string) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filenameFromDisposition(response.headers.get('Content-Disposition')) ?? fallbackFilename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
   const exportPptx = async () => {
     if (!activePackageId) return;
     setPptExportState('exporting');
     setError(null);
     try {
-      const response = await fetch(
+      await downloadPackageFile(
         `/api/teachers/${teacherId}/classes/${activePackageClassId}/teaching-packages/${activePackageId}/pptx`,
+        `${activePackageId}.pptx`,
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filenameFromDisposition(response.headers.get('Content-Disposition')) ?? `${activePackageId}.pptx`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
       setPptExportState('done');
     } catch (err) {
       setPptExportState('error');
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`${detail}。PPTX 环境不可用时，可改用 Markdown 教案导出。`);
+    }
+  };
+
+  const exportLessonMarkdown = async () => {
+    if (!activePackageId) return;
+    setLessonMarkdownExportState('exporting');
+    setError(null);
+    try {
+      await downloadPackageFile(
+        `/api/teachers/${teacherId}/classes/${activePackageClassId}/teaching-packages/${activePackageId}/lesson-plan.md`,
+        `${activePackageId}-lesson-plan.md`,
+      );
+      setLessonMarkdownExportState('done');
+    } catch (err) {
+      setLessonMarkdownExportState('error');
       setError(err instanceof Error ? err.message : String(err));
     }
   };
@@ -401,8 +432,10 @@ export function TeacherPortal() {
                   selectedType={selectedReviewType}
                   canExportPptx={Boolean(activePackageId)}
                   pptExportState={pptExportState}
+                  lessonMarkdownExportState={lessonMarkdownExportState}
                   onSelectedType={setSelectedReviewType}
                   onExportPptx={exportPptx}
+                  onExportLessonMarkdown={exportLessonMarkdown}
                 />
               )}
 
