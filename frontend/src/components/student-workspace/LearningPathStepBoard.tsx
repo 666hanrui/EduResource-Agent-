@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { StudentDashboard } from './model';
+import './learning-path-step-board.css';
 
 type LearningPathStep = NonNullable<StudentDashboard['learning_path']>['steps'][number];
 
