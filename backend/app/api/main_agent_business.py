@@ -43,6 +43,7 @@ class GenerateResponse(BaseModel):
 
 
 def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
+    _bind_context_stores(ctx)
     router = APIRouter(prefix="/api")
 
     @router.post(
@@ -196,6 +197,22 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
         return _load_results(task_id)
 
     return router
+
+
+def _bind_context_stores(ctx: AppContext) -> None:
+    """Prefer AppContext-owned stores, while keeping tests able to monkeypatch globals."""
+
+    global _GENERATE_STORE, _RESULT_CACHE, _LEARNING_STORE, _TEACHER_STORE
+    generate_store = getattr(ctx, "generate_store", None)
+    learning_store = getattr(ctx, "student_learning_store", None)
+    teacher_store = getattr(ctx, "teacher_store", None)
+    if generate_store is not None:
+        _GENERATE_STORE = generate_store
+        _RESULT_CACHE = _GENERATE_STORE.load_all()
+    if learning_store is not None:
+        _LEARNING_STORE = learning_store
+    if teacher_store is not None:
+        _TEACHER_STORE = teacher_store
 
 
 def _classroom_payload_to_generate_request(student_id: str, payload: InteractiveClassroomCreateRequest) -> GenerateRequest:
