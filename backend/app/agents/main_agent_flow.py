@@ -55,6 +55,7 @@ class MainAgentFlow:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, task_id: str, req: GenerateRequest) -> GenerateOutputs:
+        started_at = time.time()
         state: ToolCallingState = {
             "task_id": task_id,
             "req": req,
@@ -62,30 +63,39 @@ class MainAgentFlow:
             "history": [],
             "iterations": 0,
             "max_tool_calls": self.MAX_TOOL_CALLS,
-            "started_at": time.time(),
+            "started_at": started_at,
             "finished": False,
         }
         await self._event(task_id, "main.start", {"tools": ["openmaic", "generate_flow"]})
-        while not state.get("finished") and state.get("iterations", 0) < self.MAX_TOOL_CALLS:
-            state["iterations"] = int(state.get("iterations", 0)) + 1
-            decision = await self._decide(state)
-            decision = self._normalize(state, decision)
-            await self._event(task_id, "main.decision", decision.model_dump())
-            if decision.action == "finish":
-                state["finished"] = True
-                break
-            for tool_name in decision.tool_names:
-                await self._run_tool(state, tool_name, _tool_args(decision.args, tool_name))
-        await self._event(
-            task_id,
-            "main.done",
-            {
-                "iterations": state.get("iterations", 0),
-                "errors": state["outputs"].errors,
-                "external_keys": list(_external(state["outputs"]).keys()),
-            },
-        )
-        return state["outputs"]
+        try:
+            while not state.get("finished") and state.get("iterations", 0) < self.MAX_TOOL_CALLS:
+                state["iterations"] = int(state.get("iterations", 0)) + 1
+                decision = await self._decide(state)
+                decision = self._normalize(state, decision)
+                await self._event(task_id, "main.decision", decision.model_dump())
+                if decision.action == "finish":
+                    state["finished"] = True
+                    break
+                for tool_name in decision.tool_names:
+                    await self._run_tool(state, tool_name, _tool_args(decision.args, tool_name))
+
+            status = "ok" if not state["outputs"].errors else "partial"
+            await self._event(
+                task_id,
+                "main.done",
+                {
+                    "status": status,
+                    "iterations": state.get("iterations", 0),
+                    "errors": state["outputs"].errors,
+                    "external_keys": list(_external(state["outputs"]).keys()),
+                    "elapsed_ms": int((time.time() - started_at) * 1000),
+                },
+            )
+            await self._summary(task_id, started_at, status, state["outputs"].errors)
+            return state["outputs"]
+        except Exception as exc:
+            await self._summary(task_id, started_at, "error", {"MainAgent": str(exc)})
+            raise
 
     async def _decide(self, state: ToolCallingState) -> MainAgentDecision:
         try:
@@ -183,6 +193,27 @@ class MainAgentFlow:
                 agent="MainAgent",
                 ts=time.time(),
                 payload={"event": name, **payload},
+            )
+        )
+
+    async def _summary(
+        self,
+        task_id: str,
+        started_at: float,
+        status: str,
+        errors: dict[str, str] | dict[str, Any] | None = None,
+    ) -> None:
+        await self.event_bus.publish(
+            AgentEvent(
+                type=EventType.TASK_SUMMARY,
+                task_id=task_id,
+                agent="MainAgent",
+                ts=time.time(),
+                payload={
+                    "status": status,
+                    "elapsed_ms": int((time.time() - started_at) * 1000),
+                    "error": "; ".join(f"{k}:{v}" for k, v in (errors or {}).items()) or None,
+                },
             )
         )
 
