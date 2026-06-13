@@ -28,16 +28,30 @@ const STATUS_LABELS: Record<string, string> = {
 export function LearningPathStepBoard({ studentDashboard, onUpdateStep }: Props) {
   const [updatingStepId, setUpdatingStepId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshHint, setRefreshHint] = useState('');
   const path = studentDashboard?.learning_path;
   const steps = path?.steps ?? [];
   const adjustmentHistory = path?.adjustment_history ?? [];
+  const studentId = studentDashboard?.profile?.student_id ?? 'stu_001';
 
   const updateStep = async (step: LearningPathStep, status: StepStatus) => {
-    if (!onUpdateStep || !step.step_id) return;
+    if (!step.step_id) return;
     setError(null);
+    setRefreshHint('');
     setUpdatingStepId(step.step_id);
     try {
-      await onUpdateStep(step.step_id, buildStepPatch(step, status));
+      const patch = buildStepPatch(step, status);
+      if (onUpdateStep) {
+        await onUpdateStep(step.step_id, patch);
+      } else {
+        const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/learning-path/steps/${encodeURIComponent(step.step_id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        setRefreshHint('路径已写回。刷新 dashboard 后可看到最新状态。');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -57,6 +71,7 @@ export function LearningPathStepBoard({ studentDashboard, onUpdateStep }: Props)
       </div>
 
       {error && <p className="student-context-empty">路径更新失败：{error}</p>}
+      {refreshHint && <p className="student-context-empty">{refreshHint}</p>}
 
       <div className="training-path-step-grid">
         {steps.length > 0 ? (
