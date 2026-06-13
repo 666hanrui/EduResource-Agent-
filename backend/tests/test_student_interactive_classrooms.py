@@ -113,6 +113,7 @@ async def test_student_interactive_classroom_creation_starts_openmaic_with_conte
 async def test_student_interactive_classroom_uses_local_fallback_when_openmaic_fails(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("EDU_OPENMAIC_FALLBACK", "1")
     app = _app(tmp_path, FailingOpenMAICClient())
+    package_store: SQLiteResourcePackageStore = app.state.package_store
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -141,6 +142,11 @@ async def test_student_interactive_classroom_uses_local_fallback_when_openmaic_f
     assert imported["package"]["target_knowledge_id"] == "binary-tree-traversal"
     assert len(imported["package"]["items"]) >= 4
     assert imported["exercise_set"] is not None
+
+    index_rows = package_store.list_package_index(owner_id="stu_001", owner_role="student")
+    assert index_rows[0]["package_id"] == package_id
+    assert index_rows[0]["target_knowledge_id"] == "binary-tree-traversal"
+    assert index_rows[0]["status"] == "ready"
 
 
 @pytest.mark.asyncio
