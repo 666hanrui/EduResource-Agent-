@@ -1,23 +1,27 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.student_business import build_student_business_router
-from app.core.context import build_context
+from app.core.context import AppContext
 from app.services.resource_package_store import SQLiteResourcePackageStore
 from app.services.student_business import SQLiteStudentBusinessStore
 from app.services.student_learning_store import SQLiteStudentLearningStore
 
 
 def _client(tmp_path: Path) -> TestClient:
-    ctx = build_context()
     app = FastAPI()
     learning_store = SQLiteStudentLearningStore(tmp_path / "student_learning.sqlite3")
     package_store = SQLiteResourcePackageStore(tmp_path / "resource_packages.sqlite3")
     business_store = SQLiteStudentBusinessStore(tmp_path / "student_business.sqlite3")
+    # The student business router does not call ctx today; pass a light object so
+    # tests do not require LLM/API settings just to exercise persistence routes.
+    ctx = cast(AppContext, SimpleNamespace())
     app.include_router(
         build_student_business_router(
             ctx,
