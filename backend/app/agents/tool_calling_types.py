@@ -19,6 +19,9 @@ ToolName = Literal[
     "evaluate_learning",
     # Whole-flow fallback tool
     "run_generate_flow",
+    # Teacher-side tools
+    "create_teacher_package",
+    "export_teacher_pptx",
     # OpenMAIC interactive-classroom tools
     "create_interactive_classroom",
     "poll_interactive_classroom",
