@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import build_router
 from app.api.coach_workbench import build_coach_workbench_router
+from app.api.main_agent_business import build_main_agent_business_router
 from app.api.student_business import build_student_business_router
 from app.core.config import get_settings
 from app.core.context import build_context
@@ -31,6 +32,9 @@ async def lifespan(app: FastAPI):
     # POST /api/exploration/plan persists profile/path/session data before
     # the legacy exploration route can match the same path.
     app.include_router(build_student_business_router(ctx))
+    # MainAgent business routes are mounted before legacy routes so compatible
+    # paths such as /api/students/{id}/interactive-classrooms enter MainAgent.
+    app.include_router(build_main_agent_business_router(ctx))
     app.include_router(build_router(ctx))
     app.include_router(build_coach_workbench_router(ctx))
     yield
