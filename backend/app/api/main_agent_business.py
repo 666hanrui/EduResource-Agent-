@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Literal
+from typing import Any, Awaitable, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -129,32 +129,30 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
             ),
             exercise_count=payload.exercise_count,
             languages=payload.languages,
+            main_agent_args={
+                "create_teacher_package": {
+                    "teacher_id": teacher_id,
+                    "class_id": class_id,
+                    "job_id": job_id,
+                    "teaching_package_id": teaching_package_id,
+                    "generate_task_id": generate_task_id,
+                }
+            },
         )
 
         async def _run() -> None:
-            try:
-                outputs = await ctx.orchestrator.run_tool_calling(generate_task_id, generate_payload, max_tool_calls=8)
-                serialized = _serialize_outputs(outputs, generate_payload)
-                _save_serialized_outputs(generate_task_id, serialized)
-                _TEACHER_STORE.complete_job(
+            outputs = await ctx.orchestrator.run_tool_calling(generate_task_id, generate_payload, max_tool_calls=8)
+            serialized = _serialize_outputs(outputs, generate_payload)
+            _save_serialized_outputs(generate_task_id, serialized)
+            if outputs.errors:
+                _TEACHER_STORE.fail_job(
                     teacher_id=teacher_id,
                     class_id=class_id,
                     job_id=job_id,
-                    results=serialized,
+                    message=f"MainAgent 教师教学包生成失败：{outputs.errors}",
                 )
-            except Exception as exc:
-                logger.exception("MainAgent teacher package failed job_id=%s", job_id)
-                try:
-                    _TEACHER_STORE.fail_job(
-                        teacher_id=teacher_id,
-                        class_id=class_id,
-                        job_id=job_id,
-                        message=f"MainAgent 教师教学包生成失败：{exc}",
-                    )
-                except Exception:
-                    logger.exception("Teacher package fail_job also failed job_id=%s", job_id)
 
-        asyncio.create_task(_run())
+        _spawn_background(ctx, generate_task_id, "teacher_package_main_agent", _run())
         return job
 
     @router.post("/generate/tool-calling", response_model=GenerateResponse)
@@ -164,13 +162,10 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
         task_id = new_task_id("tc")
 
         async def _run() -> None:
-            try:
-                outputs = await ctx.orchestrator.run_tool_calling(task_id, payload)
-                _save_outputs(task_id, outputs, payload)
-            except Exception:
-                logger.exception("MainAgent tool-calling failed task_id=%s", task_id)
+            outputs = await ctx.orchestrator.run_tool_calling(task_id, payload)
+            _save_outputs(task_id, outputs, payload)
 
-        asyncio.create_task(_run())
+        _spawn_background(ctx, task_id, "main_agent_tool_calling", _run())
         return GenerateResponse(task_id=task_id)
 
     @router.post("/main-agent/generate", response_model=GenerateResponse)
@@ -197,6 +192,14 @@ def build_main_agent_business_router(ctx: AppContext) -> APIRouter:
         return _load_results(task_id)
 
     return router
+
+
+def _spawn_background(ctx: AppContext, task_id: str, name: str, coro: Awaitable[None]) -> None:
+    manager = getattr(ctx, "task_manager", None)
+    if manager is not None:
+        manager.spawn(task_id, name, coro)
+    else:
+        asyncio.create_task(coro)
 
 
 def _bind_context_stores(ctx: AppContext) -> None:
