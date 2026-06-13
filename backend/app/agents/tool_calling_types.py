@@ -1,4 +1,4 @@
-"""Shared types for LangGraph tool-calling orchestration."""
+"""Shared types for MainAgent tool-calling orchestration."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from .generate_flow import GenerateOutputs, GenerateRequest
 
 ToolName = Literal[
+    # Core resource-generation sub-agent tools
     "extract_profile",
     "plan_learning",
     "generate_document",
@@ -16,30 +17,39 @@ ToolName = Literal[
     "generate_visual",
     "generate_code",
     "evaluate_learning",
+    # Whole-flow fallback tool
+    "run_generate_flow",
+    # OpenMAIC interactive-classroom tools
+    "create_interactive_classroom",
+    "poll_interactive_classroom",
+    "import_classroom_package",
+    "load_resource_package",
+    "import_exercise_attempts",
+    "refresh_student_dashboard",
+    # Kept only for backwards compatibility with older prompt outputs.
     "finish",
 ]
 
 
 class MainAgentDecision(BaseModel):
-    """MainAgent 决策：单轮可并行调用多个工具。
+    """MainAgent decision: call one or more tools, or finish.
 
-    向后兼容保留 tool_name（单工具），新代码请使用 tool_names。
+    `tool_name` is kept for old single-tool outputs. New prompts should use
+    `tool_names`; `finish` should be expressed through action="finish".
     """
 
     action: Literal["call_tool", "finish"]
-    # 单工具（旧接口，兼容保留）
     tool_name: ToolName | None = None
-    # 多工具并行（新接口，优先使用）
     tool_names: list[ToolName] = Field(
         default_factory=list,
-        description="本轮并行调用的工具列表；finish 时为空",
+        description="Tools to run in this round. Multiple tools may run in parallel.",
     )
     reason: str = ""
     args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolCallRecord(BaseModel):
-    """单次工具调用的记录，写入 ToolCallingState.history。"""
+    """One executed tool call recorded in ToolCallingState.history."""
 
     tool_name: str
     status: Literal["ok", "error"]
@@ -50,12 +60,11 @@ class ToolCallRecord(BaseModel):
 
 
 class ToolCallingState(TypedDict, total=False):
-    """MainAgent 决策循环共享状态。"""
+    """Shared state for the MainAgent decision loop."""
 
     task_id: str
     req: GenerateRequest
     outputs: GenerateOutputs
-    # history 改为 ToolCallRecord 列表（强类型，方便 summary 构建）
     history: list[ToolCallRecord]
     decision: MainAgentDecision | None
     iterations: int
