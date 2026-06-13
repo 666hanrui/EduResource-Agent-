@@ -25,6 +25,7 @@ from ..services.openmaic_main_tools import OpenMAICMainTools
 from ..services.resource_package_store import SQLiteResourcePackageStore
 from ..services.student_learning_store import SQLiteStudentLearningStore
 from ..services.task_manager import TaskManager
+from ..services.teacher_main_tools import TeacherMainTools
 from ..services.teacher_store import SQLiteTeacherStore
 from .config import Settings, get_settings
 
@@ -42,6 +43,7 @@ class AppContext:
     teacher_store: SQLiteTeacherStore
     openmaic_client: OpenMAICClient
     openmaic_tools: OpenMAICMainTools
+    teacher_tools: TeacherMainTools
     task_manager: TaskManager
 
     async def aclose(self) -> None:
@@ -73,6 +75,7 @@ def build_context(settings: Settings | None = None) -> AppContext:
         learning_store=student_learning_store,
         client=openmaic_client,
     )
+    teacher_tools = TeacherMainTools(teacher_store=teacher_store)
 
     registry = AgentRegistry()
     registry.register(ProfileAgent(event_bus, llm))
@@ -88,6 +91,7 @@ def build_context(settings: Settings | None = None) -> AppContext:
         event_bus,
         llm_service=llm,
         openmaic_tools=openmaic_tools,
+        teacher_tools=teacher_tools,
     )
 
     return AppContext(
@@ -102,5 +106,6 @@ def build_context(settings: Settings | None = None) -> AppContext:
         teacher_store=teacher_store,
         openmaic_client=openmaic_client,
         openmaic_tools=openmaic_tools,
+        teacher_tools=teacher_tools,
         task_manager=task_manager,
     )
