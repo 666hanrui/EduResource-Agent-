@@ -24,6 +24,57 @@ class PPTMasterExport:
     filename: str
 
 
+def check_ppt_master_status() -> dict[str, Any]:
+    """Return a non-throwing diagnostic snapshot for PPT Master exports."""
+
+    errors: list[str] = []
+    ppt_master_root = _ppt_master_root()
+    exporter = ppt_master_root / "skills" / "ppt-master" / "scripts" / "svg_to_pptx.py"
+    export_root = _export_root()
+
+    ppt_master_root_exists = ppt_master_root.exists()
+    exporter_exists = exporter.is_file()
+    export_root_writable = False
+    python_ok = False
+    python_pptx_available = False
+    python_executable: str | None = None
+
+    if not ppt_master_root_exists:
+        errors.append(f"PPT Master root not found: {ppt_master_root}")
+    if not exporter_exists:
+        errors.append(f"PPT Master exporter not found: {exporter}")
+
+    try:
+        export_root.mkdir(parents=True, exist_ok=True)
+        probe = export_root / ".write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        export_root_writable = True
+    except Exception as exc:  # pragma: no cover - platform dependent
+        errors.append(f"PPT export root is not writable: {export_root} ({exc})")
+
+    try:
+        python_executable = _ppt_master_python()
+        python_ok = True
+        python_pptx_available = True
+    except PPTMasterExportError as exc:
+        errors.append(str(exc))
+
+    return {
+        "ok": not errors,
+        "ppt_master_root": str(ppt_master_root),
+        "ppt_master_root_exists": ppt_master_root_exists,
+        "exporter": str(exporter),
+        "exporter_exists": exporter_exists,
+        "python": python_executable,
+        "python_ok": python_ok,
+        "python_pptx_available": python_pptx_available,
+        "export_root": str(export_root),
+        "export_root_writable": export_root_writable,
+        "errors": errors,
+    }
+
+
 def build_teacher_pptx(
     *,
     package_id: str,
@@ -115,6 +166,60 @@ def build_teacher_pptx(
         raise PPTMasterExportError(detail or "PPT Master export failed")
 
     return PPTMasterExport(path=output_path, filename=f"{safe_package_id}.pptx")
+
+
+def build_teacher_lesson_markdown(
+    *,
+    package_id: str,
+    title: str,
+    target_knowledge_name: str,
+    teaching_goal: str,
+    target_student_id: str | None,
+    results: dict[str, Any],
+) -> PPTMasterExport:
+    """Build a stable Markdown lesson plan fallback for a teacher package."""
+
+    export_root = _export_root()
+    safe_package_id = _safe_slug(package_id)
+    project_dir = export_root / safe_package_id
+    exports_dir = project_dir / "exports"
+    exports_dir.mkdir(parents=True, exist_ok=True)
+    output_path = exports_dir / f"{safe_package_id}-lesson-plan.md"
+
+    slides = _build_slides(
+        title=title,
+        target_knowledge_name=target_knowledge_name,
+        teaching_goal=teaching_goal,
+        target_student_id=target_student_id,
+        results=results,
+    )
+    lines = [
+        f"# {title}",
+        "",
+        f"- 知识点：{target_knowledge_name}",
+        f"- 教学目标：{teaching_goal}",
+        f"- 目标学生：{target_student_id or '班级'}",
+        f"- 来源教学包：{package_id}",
+        "",
+    ]
+    for index, slide in enumerate(slides, start=1):
+        lines.extend(
+            [
+                f"## {index}. {slide['title']}",
+                "",
+                f"> {slide['subtitle']}",
+                "",
+            ]
+        )
+        body = slide.get("body") or []
+        if body:
+            lines.extend(f"- {item}" for item in body)
+            lines.append("")
+        notes = str(slide.get("notes") or "").strip()
+        if notes:
+            lines.extend(["### 讲解备注", "", notes, ""])
+    output_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    return PPTMasterExport(path=output_path, filename=output_path.name)
 
 
 def _ppt_master_root() -> Path:
@@ -333,204 +438,66 @@ def _render_slide_svg(
     page = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">',
         f'<rect x="0" y="0" width="1280" height="720" fill="{bg}"/>',
-        f'<circle cx="1090" cy="70" r="260" fill="{glow}" opacity="{0.16 if dark else 0.11}"/>',
-        f'<circle cx="170" cy="640" r="210" fill="{ink}" opacity="{0.05 if dark else 0.035}"/>',
-        f'<line x1="64" y1="80" x2="1216" y2="80" stroke="{rule}" stroke-width="1"/>',
-        f'<line x1="64" y1="640" x2="1216" y2="640" stroke="{rule}" stroke-width="1"/>',
-        f'<text x="64" y="55" fill="{muted}" font-size="18" font-family="Georgia, serif" letter-spacing="3">{_esc(kicker)}</text>',
-        f'<text x="1138" y="55" fill="{muted}" font-size="16" font-family="Georgia, serif">{index:02d}/{total:02d}</text>',
-        '<g id="title-block">',
-        _text_block(title_lines, 76, 170, 64 if len(title_lines) == 1 else 54, ink, "Georgia, serif", 1.05),
-        _text_block(subtitle_lines, 80, 315, 24, muted, "Arial, sans-serif", 1.35),
-        "</g>",
-        _chips_svg(chips, 82, 392, ink, bg, rule, dark),
+        f'<circle cx="1100" cy="-120" r="360" fill="{glow}" opacity="0.20"/>',
+        f'<text x="72" y="78" font-family="Arial" font-size="20" letter-spacing="4" fill="{muted}">{_xml(kicker.upper())}</text>',
+        f'<line x1="72" y1="104" x2="1208" y2="104" stroke="{rule}" stroke-width="2"/>',
     ]
+    y = 178
+    for line in title_lines:
+        page.append(f'<text x="72" y="{y}" font-family="Arial" font-weight="700" font-size="58" fill="{ink}">{_xml(line)}</text>')
+        y += 66
+    y += 10
+    for line in subtitle_lines:
+        page.append(f'<text x="72" y="{y}" font-family="Arial" font-size="28" fill="{muted}">{_xml(line)}</text>')
+        y += 38
 
-    if layout == "steps":
-        page.append(_steps_svg(body, ink, muted, rule, dark))
-    elif layout == "orbit":
-        page.append(_orbit_svg(body, ink, muted, rule, dark))
-    elif layout == "code":
-        page.append(_code_svg(body, ink, muted, rule, dark))
+    chip_x = 72
+    for chip in chips[:4]:
+        chip_text = _compact(str(chip), 12)
+        width = 28 + len(chip_text) * 14
+        page.append(f'<rect x="{chip_x}" y="500" width="{width}" height="42" rx="21" fill="none" stroke="{rule}" stroke-width="2"/>')
+        page.append(f'<text x="{chip_x + 16}" y="527" font-family="Arial" font-size="18" fill="{ink}">{_xml(chip_text)}</text>')
+        chip_x += width + 12
+
+    if layout == "code":
+        page.append(f'<rect x="690" y="180" width="500" height="360" rx="18" fill="rgba(0,0,0,0.24)" stroke="{rule}"/>')
+        y2 = 224
+        for line in body[:8]:
+            page.append(f'<text x="720" y="{y2}" font-family="Courier New" font-size="18" fill="{ink}">{_xml(_compact(line, 42))}</text>')
+            y2 += 36
     else:
-        page.append(_cards_svg(body, ink, muted, rule, dark))
-
+        y2 = 585
+        for line in body[:4]:
+            page.append(f'<text x="72" y="{y2}" font-family="Arial" font-size="24" fill="{ink}">• {_xml(_compact(line, 54))}</text>')
+            y2 += 34
+    page.append(f'<text x="1120" y="672" font-family="Arial" font-size="20" fill="{muted}">{index:02d}/{total:02d}</text>')
     page.append("</svg>")
     return "\n".join(page)
 
 
-def _chips_svg(chips: list[str], x: int, y: int, ink: str, bg: str, rule: str, dark: bool) -> str:
-    parts: list[str] = ['<g id="chips">']
-    cursor = x
-    for chip in chips:
-        width = min(190, max(70, _text_width(chip, 8) + 34))
-        parts.append(
-            f'<rect x="{cursor}" y="{y}" width="{width}" height="34" rx="17" fill="{ink if dark else bg}" '
-            f'opacity="{0.92 if dark else 1}" stroke="{rule}" stroke-width="1"/>'
-        )
-        parts.append(
-            f'<text x="{cursor + 17}" y="{y + 22}" fill="{bg if dark else ink}" '
-            f'font-size="14" font-family="Arial, sans-serif">{_esc(_compact(chip, 16))}</text>'
-        )
-        cursor += width + 10
-    parts.append("</g>")
-    return "\n".join(parts)
-
-
-def _cards_svg(body: list[str], ink: str, muted: str, rule: str, dark: bool) -> str:
-    parts = ['<g id="content-cards">']
-    for index, line in enumerate(body[:4]):
-        x = 80 + (index % 2) * 560
-        y = 470 + (index // 2) * 74
-        parts.append(
-            f'<rect x="{x}" y="{y}" width="520" height="56" fill="{ink}" opacity="{0.08 if dark else 0.04}" '
-            f'stroke="{rule}" stroke-width="1"/>'
-        )
-        parts.append(
-            f'<text x="{x + 18}" y="{y + 35}" fill="{muted if index % 2 else ink}" '
-            f'font-size="22" font-family="Arial, sans-serif">{_esc(_compact(line, 28))}</text>'
-        )
-    parts.append("</g>")
-    return "\n".join(parts)
-
-
-def _steps_svg(body: list[str], ink: str, muted: str, rule: str, dark: bool) -> str:
-    parts = ['<g id="step-ladder">']
-    for index, line in enumerate(body[:4]):
-        x = 110 + index * 270
-        y = 476
-        parts.append(f'<line x1="{x + 58}" y1="{y - 28}" x2="{x + 58}" y2="{y + 98}" stroke="{rule}" stroke-width="1"/>')
-        parts.append(f'<circle cx="{x + 58}" cy="{y}" r="42" fill="{ink}" opacity="{0.9 if not dark else 0.18}"/>')
-        parts.append(
-            f'<text x="{x + 43}" y="{y + 10}" fill="{"#f2eee4" if not dark else ink}" '
-            f'font-size="28" font-family="Georgia, serif">{index + 1}</text>'
-        )
-        parts.append(
-            f'<text x="{x}" y="{y + 88}" fill="{muted}" font-size="20" font-family="Arial, sans-serif">'
-            f'{_esc(_compact(line, 16))}</text>'
-        )
-    parts.append("</g>")
-    return "\n".join(parts)
-
-
-def _orbit_svg(body: list[str], ink: str, muted: str, rule: str, dark: bool) -> str:
-    labels = (body + ["观察", "讲解", "检测"])[:3]
-    positions = [(830, 476), (1034, 520), (920, 600)]
-    parts = [
-        '<g id="visual-orbit">',
-        f'<circle cx="940" cy="536" r="132" fill="{ink}" opacity="{0.08 if dark else 0.04}" stroke="{rule}" stroke-width="1"/>',
-        f'<circle cx="940" cy="536" r="56" fill="{ink}" opacity="{0.88 if not dark else 0.18}"/>',
-        f'<text x="905" y="546" fill="{"#f2eee4" if not dark else ink}" font-size="22" font-family="Georgia, serif">VIS</text>',
-    ]
-    for index, label in enumerate(labels):
-        x, y = positions[index]
-        parts.append(f'<circle cx="{x}" cy="{y}" r="46" fill="{ink}" opacity="{0.1 if dark else 0.06}" stroke="{rule}" stroke-width="1"/>')
-        parts.append(
-            f'<text x="{x - 54}" y="{y + 74}" fill="{muted}" font-size="18" font-family="Arial, sans-serif">'
-            f'{_esc(_compact(label, 18))}</text>'
-        )
-    parts.append("</g>")
-    return "\n".join(parts)
-
-
-def _code_svg(body: list[str], ink: str, muted: str, rule: str, dark: bool) -> str:
-    parts = [
-        '<g id="code-frame">',
-        f'<rect x="700" y="420" width="500" height="180" rx="18" fill="{ink}" opacity="{0.9 if not dark else 0.12}" stroke="{rule}" stroke-width="1"/>',
-    ]
-    code_fill = "#f2eee4" if not dark else ink
-    for index, line in enumerate(body[:6]):
-        parts.append(
-            f'<text x="730" y="{462 + index * 24}" fill="{code_fill if index == 0 else muted}" '
-            f'font-size="18" font-family="Menlo, Consolas, monospace">{_esc(_compact(line, 42))}</text>'
-        )
-    parts.append("</g>")
-    return "\n".join(parts)
-
-
-def _text_block(lines: list[str], x: int, y: int, size: int, fill: str, font: str, line_height: float) -> str:
-    parts: list[str] = []
-    for index, line in enumerate(lines):
-        parts.append(
-            f'<text x="{x}" y="{y + round(index * size * line_height)}" fill="{fill}" '
-            f'font-size="{size}" font-family="{font}">{_esc(line)}</text>'
-        )
-    return "\n".join(parts)
+def _collect_weakness(results: dict[str, Any], fallback: str) -> list[str]:
+    profile = _as_dict(results.get("profile"))
+    weakness = [str(item) for item in _as_list(profile.get("weakness")) if item]
+    if weakness:
+        return weakness[:4]
+    document = _as_dict(results.get("document"))
+    rationale = _as_dict(document.get("rationale"))
+    return [str(item) for item in _as_list(rationale.get("addressed_weakness")) if item][:4] or [fallback]
 
 
 def _section_lines(section: dict[str, Any], fallback: list[str]) -> list[str]:
+    lines = [str(item) for item in _as_list(section.get("bullets")) if item]
+    if lines:
+        return lines[:4]
     text = str(section.get("body_md") or section.get("body") or "")
-    lines = [_compact(line, 32) for line in _wrap(text, 34, 4)]
-    return lines or [_compact(line, 32) for line in fallback if line]
+    if text:
+        return [_compact(line.strip("# -*"), 38) for line in text.splitlines() if line.strip()][:4]
+    return fallback[:4]
 
 
 def _code_lines(code: str) -> list[str]:
     lines = [line.rstrip() for line in code.splitlines() if line.strip()]
-    return lines[:6] or ["// demo", "step_1()", "step_2()", "check()"]
-
-
-def _collect_weakness(results: dict[str, Any], teaching_goal: str) -> list[str]:
-    values: list[str] = []
-    for key in ["document", "exercise", "visual", "code"]:
-        rationale = _as_dict(_as_dict(results.get(key)).get("rationale"))
-        values.extend(str(item) for item in _as_list(rationale.get("addressed_weakness")))
-        values.extend(str(item) for item in _as_list(rationale.get("matched_profile")))
-    profile = _as_dict(results.get("profile"))
-    values.extend(str(item) for item in _as_list(profile.get("weakness")))
-    if teaching_goal:
-        values.append(teaching_goal)
-    seen: set[str] = set()
-    unique: list[str] = []
-    for value in values:
-        compacted = _compact(value, 40)
-        if compacted and compacted not in seen:
-            seen.add(compacted)
-            unique.append(compacted)
-    return unique[:5]
-
-
-def _wrap(value: str, max_units: int, max_lines: int) -> list[str]:
-    text = re.sub(r"\s+", " ", value.strip())
-    if not text:
-        return []
-    lines: list[str] = []
-    current = ""
-    units = 0
-    for char in text:
-        char_units = 2 if ord(char) > 127 else 1
-        if current and units + char_units > max_units:
-            lines.append(current)
-            current = char
-            units = char_units
-            if len(lines) >= max_lines:
-                break
-        else:
-            current += char
-            units += char_units
-    if current and len(lines) < max_lines:
-        lines.append(current)
-    return lines[:max_lines]
-
-
-def _compact(value: str, max_units: int) -> str:
-    wrapped = _wrap(value, max_units, 1)
-    if not wrapped:
-        return ""
-    text = wrapped[0]
-    return f"{text}..." if _text_width(value, 1) > max_units else text
-
-
-def _text_width(value: str, latin_unit: int) -> int:
-    return sum(latin_unit * (2 if ord(char) > 127 else 1) for char in value)
-
-
-def _safe_slug(value: str) -> str:
-    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", value).strip("-")
-    return safe or "deck"
-
-
-def _esc(value: str) -> str:
-    return html.escape(value, quote=True)
+    return lines[:8] or ["# 课堂代码示例", "def demo():", "    return 'ready'"]
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -539,3 +506,25 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def _compact(value: str, max_len: int) -> str:
+    value = " ".join(str(value).split())
+    if len(value) <= max_len:
+        return value
+    return value[: max_len - 1] + "…"
+
+
+def _wrap(value: str, max_len: int, max_lines: int) -> list[str]:
+    value = _compact(value, max_len * max_lines)
+    chunks = [value[i : i + max_len] for i in range(0, len(value), max_len)] or [""]
+    return chunks[:max_lines]
+
+
+def _safe_slug(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-").lower()
+    return slug or "deck"
+
+
+def _xml(value: str) -> str:
+    return html.escape(str(value), quote=True)
