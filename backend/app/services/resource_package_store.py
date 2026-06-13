@@ -44,6 +44,31 @@ class SQLiteResourcePackageStore:
                 """,
                 (package.id, now, package_payload),
             )
+            conn.execute(
+                """
+                INSERT INTO package_index (
+                    package_id, owner_id, owner_role, target_knowledge_id,
+                    package_type, status, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(package_id) DO UPDATE SET
+                    owner_id = excluded.owner_id,
+                    owner_role = excluded.owner_role,
+                    target_knowledge_id = excluded.target_knowledge_id,
+                    package_type = excluded.package_type,
+                    status = excluded.status,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    package.id,
+                    package.owner_id,
+                    package.owner_role,
+                    package.target_knowledge_id,
+                    package.package_type,
+                    package.status,
+                    now,
+                ),
+            )
             if exercise_set is not None:
                 conn.execute(
                     """
@@ -94,6 +119,31 @@ class SQLiteResourcePackageStore:
         if owner_role is not None:
             packages = [package for package in packages if package.owner_role == owner_role]
         return packages[:limit]
+
+    def list_package_index(
+        self,
+        *,
+        owner_id: str | None = None,
+        owner_role: str | None = None,
+        target_knowledge_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        query = "SELECT * FROM package_index WHERE 1 = 1"
+        params: list[str | int] = []
+        if owner_id is not None:
+            query += " AND owner_id = ?"
+            params.append(owner_id)
+        if owner_role is not None:
+            query += " AND owner_role = ?"
+            params.append(owner_role)
+        if target_knowledge_id is not None:
+            query += " AND target_knowledge_id = ?"
+            params.append(target_knowledge_id)
+        query += " ORDER BY updated_at DESC, package_id DESC LIMIT ?"
+        params.append(limit)
+        with self._connect() as conn:
+            rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
 
     def save_attempts_and_evaluation(
         self,
@@ -199,6 +249,25 @@ class SQLiteResourcePackageStore:
                     payload TEXT NOT NULL
                 )
                 """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS package_index (
+                    package_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    owner_role TEXT NOT NULL,
+                    target_knowledge_id TEXT NOT NULL,
+                    package_type TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_package_index_owner ON package_index(owner_id, owner_role, updated_at DESC)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_package_index_knowledge ON package_index(target_knowledge_id, updated_at DESC)"
             )
             conn.execute(
                 """
