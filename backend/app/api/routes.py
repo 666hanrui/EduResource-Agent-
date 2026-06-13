@@ -84,7 +84,12 @@ from ..services.openmaic_client import (
     openmaic_fallback_enabled,
 )
 from ..services.openmaic_import import import_openmaic_classroom, load_openmaic_import
-from ..services.ppt_master_service import PPTMasterExportError, build_teacher_pptx
+from ..services.ppt_master_service import (
+    PPTMasterExportError,
+    build_teacher_lesson_markdown,
+    build_teacher_pptx,
+    check_ppt_master_status,
+)
 from ..services.resource_package_store import SQLiteResourcePackageStore
 from ..services.student_learning_store import SQLiteStudentLearningStore
 from ..services.supplemental_resources import build_supplemental_resources
@@ -405,6 +410,10 @@ def build_router(
     async def teacher_industry_data_summary(program: str = "software-engineering") -> dict:
         return await asyncio.to_thread(build_teacher_industry_summary, program)
 
+    @router.get("/teachers/export/pptx/status")
+    async def teacher_pptx_export_status() -> dict:
+        return await asyncio.to_thread(check_ppt_master_status)
+
     @router.post("/teachers/{teacher_id}/classes/{class_id}/teaching-packages", response_model=TeacherGenerationJob)
     async def create_teacher_teaching_package(teacher_id: str, class_id: str, payload: TeacherTeachingPackageCreateRequest) -> TeacherGenerationJob:
         job_id = new_task_id("tjob")
@@ -455,6 +464,17 @@ def build_router(
         except PPTMasterExportError as exc:
             raise HTTPException(status_code=502, detail=f"PPT Master export failed: {exc}") from exc
         return FileResponse(exported.path, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation", filename=exported.filename)
+
+    @router.get("/teachers/{teacher_id}/classes/{class_id}/teaching-packages/{package_id}/lesson-plan.md")
+    async def export_teacher_lesson_markdown(teacher_id: str, class_id: str, package_id: str) -> FileResponse:
+        try:
+            package = _TEACHER_STORE.get_package(teacher_id, class_id, package_id)
+        except (TeacherNotFoundError, ClassNotFoundError, StudentNotInClassError, TeacherJobNotFoundError) as exc:
+            raise _teacher_store_http_error(exc) from exc
+        if package.status != "ready" or not isinstance(package.results, dict):
+            raise HTTPException(status_code=409, detail="teaching package is not ready")
+        exported = await asyncio.to_thread(build_teacher_lesson_markdown, package_id=package.id, title=package.title, target_knowledge_name=package.target_knowledge_name, teaching_goal=package.teaching_goal, target_student_id=package.target_student_id, results=package.results)
+        return FileResponse(exported.path, media_type="text/markdown; charset=utf-8", filename=exported.filename)
 
     @router.post("/generate", response_model=GenerateResponse)
     async def generate(payload: GenerateRequest) -> GenerateResponse:
