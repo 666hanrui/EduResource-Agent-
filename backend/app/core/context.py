@@ -24,6 +24,7 @@ from ..services.openmaic_client import OpenMAICClient
 from ..services.openmaic_main_tools import OpenMAICMainTools
 from ..services.resource_package_store import SQLiteResourcePackageStore
 from ..services.student_learning_store import SQLiteStudentLearningStore
+from ..services.task_manager import TaskManager
 from ..services.teacher_store import SQLiteTeacherStore
 from .config import Settings, get_settings
 
@@ -41,8 +42,10 @@ class AppContext:
     teacher_store: SQLiteTeacherStore
     openmaic_client: OpenMAICClient
     openmaic_tools: OpenMAICMainTools
+    task_manager: TaskManager
 
     async def aclose(self) -> None:
+        await self.task_manager.shutdown()
         await self.llm.aclose()
 
 
@@ -50,6 +53,7 @@ def build_context(settings: Settings | None = None) -> AppContext:
     s = settings or get_settings()
 
     event_bus = EventBus()
+    task_manager = TaskManager()
     llm = LLMService(
         LLMConfig(
             base_url=s.spark_base_url,
@@ -98,4 +102,5 @@ def build_context(settings: Settings | None = None) -> AppContext:
         teacher_store=teacher_store,
         openmaic_client=openmaic_client,
         openmaic_tools=openmaic_tools,
+        task_manager=task_manager,
     )
