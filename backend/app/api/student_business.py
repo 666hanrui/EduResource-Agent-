@@ -7,6 +7,10 @@ OpenMAIC classroom routes untouched:
 - persisted exploration sessions
 - learning path read/step update
 - student growth reports
+
+The router also exposes a compatibility implementation of POST /api/exploration/plan.
+When mounted before the legacy router, the old frontend call keeps returning an
+ExplorationPlan but now also writes profile/path/session data to storage.
 """
 
 from __future__ import annotations
@@ -80,6 +84,7 @@ def build_student_business_router(
     async def student_business_health() -> StudentBusinessHealth:
         return StudentBusinessHealth(
             routes=[
+                "POST /exploration/plan",
                 "GET /students/{student_id}/profile",
                 "PATCH /students/{student_id}/profile",
                 "GET /students/{student_id}/profile/history",
@@ -91,6 +96,24 @@ def build_student_business_router(
                 "GET /students/{student_id}/reports/{report_id}",
             ]
         )
+
+    @router.post("/exploration/plan", response_model=ExplorationPlan)
+    async def build_and_persist_legacy_exploration_plan(payload: ExplorationRequest) -> ExplorationPlan:
+        """Compatibility endpoint for the existing frontend.
+
+        The old endpoint only returned an ExplorationPlan. This version keeps that
+        response shape but also persists the exploration output into student
+        profile, profile history, learning path, and ExplorationSession.
+        """
+
+        plan = build_major_exploration_plan(payload)
+        persist_exploration_plan(
+            payload=payload,
+            plan=plan,
+            learning_store=learning_store,
+            business_store=business_store,
+        )
+        return plan
 
     @router.get("/students/{student_id}/profile", response_model=StudentProfile)
     async def get_student_profile(student_id: str) -> StudentProfile:
@@ -162,10 +185,9 @@ def build_student_business_router(
 
     @router.post("/students/{student_id}/reports", response_model=Report)
     async def create_student_report(student_id: str, payload: ReportCreateRequest) -> Report:
-        normalized_type = payload.report_type
         return build_and_save_student_report(
             student_id=student_id,
-            report_type=normalized_type,
+            report_type=payload.report_type,
             learning_store=learning_store,
             package_store=package_store,
             business_store=business_store,
