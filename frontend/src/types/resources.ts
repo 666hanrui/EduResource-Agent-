@@ -129,6 +129,26 @@ export interface SupplementalResourcesResult {
   rationale: Rationale;
 }
 
+export interface OpenMAICClassroomExternal {
+  job_id?: string;
+  openmaic_job_id?: string;
+  student_id?: string;
+  resource_package_id?: string;
+  status?: string;
+  package_url?: string;
+  classroom_url?: string | null;
+  message?: string;
+}
+
+export interface GenerateExternalResults {
+  openmaic_classroom?: OpenMAICClassroomExternal;
+  openmaic_import?: unknown;
+  openmaic_attempts?: unknown;
+  student_dashboard?: unknown;
+  resource_package?: unknown;
+  [key: string]: unknown;
+}
+
 export interface GenerateResults {
   profile: unknown | null;
   plan: unknown | null;
@@ -138,5 +158,6 @@ export interface GenerateResults {
   code: CodeResult | null;
   evaluation: EvaluationResult | null;
   supplemental?: SupplementalResourcesResult | null;
+  external?: GenerateExternalResults;
   errors: Record<string, string>;
 }
