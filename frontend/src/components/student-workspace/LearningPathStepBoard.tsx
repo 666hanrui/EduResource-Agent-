@@ -6,17 +6,16 @@ type LearningPathStep = NonNullable<StudentDashboard['learning_path']>['steps'][
 
 type StepStatus = 'pending' | 'in_progress' | 'done' | 'adjusted';
 
+type StepPatch = {
+  status?: StepStatus;
+  evidence?: string;
+  mastery_after?: number;
+  updated_reason?: string;
+};
+
 interface Props {
   studentDashboard: StudentDashboard | null;
-  onUpdateStep?: (
-    stepId: string,
-    payload: {
-      status?: StepStatus;
-      evidence?: string;
-      mastery_after?: number;
-      updated_reason?: string;
-    },
-  ) => Promise<void>;
+  onUpdateStep?: (stepId: string, payload: StepPatch) => Promise<void>;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -30,8 +29,12 @@ export function LearningPathStepBoard({ studentDashboard, onUpdateStep }: Props)
   const [updatingStepId, setUpdatingStepId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshHint, setRefreshHint] = useState('');
+  const [localPatches, setLocalPatches] = useState<Record<string, Partial<LearningPathStep>>>({});
   const path = studentDashboard?.learning_path;
-  const steps = path?.steps ?? [];
+  const steps = (path?.steps ?? []).map((step) => {
+    const patch = step.step_id ? localPatches[step.step_id] : undefined;
+    return patch ? { ...step, ...patch } : step;
+  });
   const adjustmentHistory = path?.adjustment_history ?? [];
   const studentId = studentDashboard?.profile?.student_id ?? 'stu_001';
 
@@ -51,8 +54,17 @@ export function LearningPathStepBoard({ studentDashboard, onUpdateStep }: Props)
           body: JSON.stringify(patch),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        setRefreshHint('路径已写回。刷新 dashboard 后可看到最新状态。');
       }
+      setLocalPatches((current) => ({
+        ...current,
+        [step.step_id as string]: {
+          status: patch.status,
+          evidence: patch.evidence,
+          mastery_after: patch.mastery_after,
+          updated_reason: patch.updated_reason,
+        },
+      }));
+      setRefreshHint('路径已写回并完成本地更新。刷新 dashboard 后可看到后端最新 adjustment_history。');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -124,7 +136,7 @@ export function LearningPathStepBoard({ studentDashboard, onUpdateStep }: Props)
   );
 }
 
-function buildStepPatch(step: LearningPathStep, status: StepStatus) {
+function buildStepPatch(step: LearningPathStep, status: StepStatus): StepPatch {
   if (status === 'done') {
     return {
       status,
