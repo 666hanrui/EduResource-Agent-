@@ -1,7 +1,9 @@
 """Unified MainAgent flow.
 
 The supervisor can choose OpenMAIC interactive-classroom tools, teacher package
-lifecycle tools, or classic GenerateFlow fallback.
+lifecycle tools, or classic GenerateFlow fallback. When LangGraph is installed,
+the decision/execution loop runs as a StateGraph; otherwise it falls back to the
+same deterministic in-process loop.
 """
 
 from __future__ import annotations
@@ -12,6 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+try:  # pragma: no cover - covered when langgraph is installed in integration env
+    from langgraph.graph import END, START, StateGraph
+except Exception:  # pragma: no cover - keeps local/unit envs usable without langgraph
+    END = START = None  # type: ignore[assignment]
+    StateGraph = None  # type: ignore[assignment]
 
 from ..services.llm_service import LLMService
 from ..services.openmaic_main_tools import OpenMAICMainTools
@@ -61,6 +69,7 @@ class MainAgentFlow:
         self.openmaic = openmaic_tools or OpenMAICMainTools()
         self.teacher = teacher_tools or TeacherMainTools()
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
+        self._graph = self._build_graph()
 
     async def run(self, task_id: str, req: GenerateRequest) -> GenerateOutputs:
         started_at = time.time()
@@ -74,36 +83,92 @@ class MainAgentFlow:
             "started_at": started_at,
             "finished": False,
         }
-        await self._event(task_id, "main.start", {"tools": ["openmaic", "teacher", "generate_flow"]})
+        await self._event(task_id, "main.start", {"tools": ["openmaic", "teacher", "generate_flow"], "runtime": "langgraph" if self._graph else "loop"})
         try:
-            while not state.get("finished") and state.get("iterations", 0) < self.MAX_TOOL_CALLS:
-                state["iterations"] = int(state.get("iterations", 0)) + 1
-                decision = await self._decide(state)
-                decision = self._normalize(state, decision)
-                await self._event(task_id, "main.decision", decision.model_dump())
-                if decision.action == "finish":
-                    state["finished"] = True
-                    break
-                for tool_name in decision.tool_names:
-                    await self._run_tool(state, tool_name, _merged_tool_args(state["req"], decision.args, tool_name))
+            if self._graph is not None:
+                final_state = await self._graph.ainvoke(
+                    state,
+                    config={"recursion_limit": self.MAX_TOOL_CALLS * 3 + 8},
+                )
+                outputs: GenerateOutputs = final_state.get("outputs", state["outputs"])
+                iterations = int(final_state.get("iterations", 0))
+            else:
+                final_state = await self._run_loop(state)
+                outputs = final_state["outputs"]
+                iterations = int(final_state.get("iterations", 0))
 
-            status = "ok" if not state["outputs"].errors else "partial"
+            status = "ok" if not outputs.errors else "partial"
             await self._event(
                 task_id,
                 "main.done",
                 {
                     "status": status,
-                    "iterations": state.get("iterations", 0),
-                    "errors": state["outputs"].errors,
-                    "external_keys": list(_external(state["outputs"]).keys()),
+                    "iterations": iterations,
+                    "errors": outputs.errors,
+                    "external_keys": list(_external(outputs).keys()),
                     "elapsed_ms": int((time.time() - started_at) * 1000),
                 },
             )
-            await self._summary(task_id, started_at, status, state["outputs"].errors)
-            return state["outputs"]
+            await self._summary(task_id, started_at, status, outputs.errors)
+            return outputs
         except Exception as exc:
             await self._summary(task_id, started_at, "error", {"MainAgent": str(exc)})
             raise
+
+    def _build_graph(self):
+        if StateGraph is None or START is None or END is None:
+            return None
+        graph = StateGraph(ToolCallingState)
+        graph.add_node("decide", self._decide_node)
+        graph.add_node("execute", self._execute_node)
+        graph.add_edge(START, "decide")
+        graph.add_conditional_edges(
+            "decide",
+            self._route_after_decide,
+            {"execute": "execute", "finish": END},
+        )
+        graph.add_edge("execute", "decide")
+        return graph.compile()
+
+    async def _run_loop(self, state: ToolCallingState) -> ToolCallingState:
+        while not state.get("finished") and state.get("iterations", 0) < self.MAX_TOOL_CALLS:
+            decision_update = await self._decide_node(state)
+            state.update(decision_update)
+            if self._route_after_decide(state) == "finish":
+                break
+            execute_update = await self._execute_node(state)
+            state.update(execute_update)
+        return state
+
+    async def _decide_node(self, state: ToolCallingState) -> dict[str, Any]:
+        iterations = int(state.get("iterations", 0)) + 1
+        if iterations > int(state.get("max_tool_calls", self.MAX_TOOL_CALLS)):
+            decision = MainAgentDecision(action="finish", tool_names=[], reason="max_tool_calls reached")
+            finished = True
+        else:
+            decision = await self._decide(state)
+            decision = self._normalize(state, decision)
+            finished = decision.action == "finish"
+        await self._event(
+            state["task_id"],
+            "main.decision",
+            {"iteration": iterations, **decision.model_dump()},
+        )
+        return {"iterations": iterations, "decision": decision, "finished": finished}
+
+    def _route_after_decide(self, state: ToolCallingState) -> str:
+        decision = state.get("decision")
+        if state.get("finished") or not decision or decision.action == "finish" or not decision.tool_names:
+            return "finish"
+        return "execute"
+
+    async def _execute_node(self, state: ToolCallingState) -> dict[str, Any]:
+        decision = state.get("decision")
+        if not decision or decision.action != "call_tool":
+            return {"finished": True}
+        for tool_name in decision.tool_names:
+            await self._run_tool(state, tool_name, _merged_tool_args(state["req"], decision.args, tool_name))
+        return {"outputs": state["outputs"], "history": state.get("history", []), "decision": None}
 
     async def _decide(self, state: ToolCallingState) -> MainAgentDecision:
         try:
