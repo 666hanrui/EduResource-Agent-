@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { StudentLearningSystem, StudentPage, TrainingStageKey } from './model';
 
 interface Props {
@@ -7,6 +7,15 @@ interface Props {
   learningSystem: StudentLearningSystem;
   onStudentId: (value: string) => void;
   onNavigate: (page: StudentPage, stage?: TrainingStageKey | null) => void;
+}
+
+interface ProfileHistoryItem {
+  history_id: string;
+  source_type: 'extract' | 'manual' | 'evaluation' | 'exploration';
+  source_id?: string | null;
+  note?: string;
+  delta_json?: Record<string, unknown>;
+  created_at: string;
 }
 
 const PAGE_LABELS: Record<StudentPage, string> = {
@@ -23,6 +32,28 @@ export function StudentContextRail({
   onStudentId,
   onNavigate,
 }: Props) {
+  const [history, setHistory] = useState<ProfileHistoryItem[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let aborted = false;
+    const loadHistory = async () => {
+      setHistoryError(null);
+      try {
+        const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/profile/history?limit=5`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as ProfileHistoryItem[];
+        if (!aborted) setHistory(data);
+      } catch (err) {
+        if (!aborted) setHistoryError(err instanceof Error ? err.message : String(err));
+      }
+    };
+    void loadHistory();
+    return () => {
+      aborted = true;
+    };
+  }, [studentId]);
+
   return (
     <aside className="student-context-rail">
       <section className="student-context-card student-context-card--identity student-passport-card">
@@ -90,6 +121,26 @@ export function StudentContextRail({
               <span>{metric.detail}</span>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="student-context-card">
+        <div className="student-context-section-title">
+          <small className="student-context-label">画像历史</small>
+          <span>{history.length} 条</span>
+        </div>
+        <div className="student-context-list">
+          {history.length > 0 ? (
+            history.map((item) => (
+              <article key={item.history_id}>
+                <strong>{historySourceLabel(item.source_type)}</strong>
+                <span>{compactText(item.note || item.source_id || item.history_id, 34)}</span>
+                <small>{formatTime(item.created_at)}</small>
+              </article>
+            ))
+          ) : (
+            <p className="student-context-empty">{historyError ? `画像历史读取失败：${historyError}` : '暂无画像历史，先完成探索或课堂验证。'}</p>
+          )}
         </div>
       </section>
 
@@ -189,6 +240,19 @@ function resourceClusterDestination(key: string): { page: StudentPage; stage?: T
     default:
       return { page: 'training-plan', stage: 'foundation' };
   }
+}
+
+function historySourceLabel(source: ProfileHistoryItem['source_type']): string {
+  if (source === 'exploration') return '专业探索';
+  if (source === 'evaluation') return '课堂评估';
+  if (source === 'extract') return '画像抽取';
+  return '手动更新';
+}
+
+function formatTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
 
 function compactText(value: string, limit: number): string {
