@@ -23,6 +23,15 @@ from .tool_calling_types import ToolCallRecord, ToolCallingState, ToolName
 
 logger = logging.getLogger(__name__)
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "main_agent_v1.md"
+_LEGACY_AGENT_TOOLS = {
+    "extract_profile",
+    "plan_learning",
+    "generate_document",
+    "generate_exercise",
+    "generate_visual",
+    "generate_code",
+    "evaluate_learning",
+}
 
 
 class MainAgentDecision(BaseModel):
@@ -103,12 +112,14 @@ class MainAgentFlow:
         completed = {item.tool_name for item in history if item.status == "ok"}
         failed = {item.tool_name for item in history if item.status == "error"}
         tools: list[ToolName] = []
-        for tool_name in decision.tool_names:
+        for raw_tool_name in decision.tool_names:
+            tool_name: ToolName = "run_generate_flow" if raw_tool_name in _LEGACY_AGENT_TOOLS else raw_tool_name
             if tool_name == "finish" or tool_name in completed:
                 continue
             if tool_name in failed and tool_name != "run_generate_flow":
                 continue
-            tools.append(tool_name)
+            if tool_name not in tools:
+                tools.append(tool_name)
         return MainAgentDecision(
             action="call_tool" if tools else "finish",
             tool_names=tools,
@@ -139,7 +150,7 @@ class MainAgentFlow:
                 result = await self.openmaic.import_exercise_attempts(outputs=outputs, args=args)
             elif tool_name == "refresh_student_dashboard":
                 result = await self.openmaic.refresh_student_dashboard(req=req, outputs=outputs, args=args)
-            elif tool_name == "run_generate_flow":
+            elif tool_name == "run_generate_flow" or tool_name in _LEGACY_AGENT_TOOLS:
                 result = await self._run_generate_flow(task_id, req, outputs)
             else:
                 raise ValueError(f"unsupported MainAgent tool: {tool_name}")
