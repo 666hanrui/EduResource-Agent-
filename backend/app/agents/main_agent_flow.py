@@ -1,8 +1,7 @@
 """Unified MainAgent flow.
 
-The supervisor can choose the classic resource-generation fallback or OpenMAIC
-interactive-classroom tools. This file is intentionally kept separate from the
-old ToolCallingFlow so the new system path is easy to switch and rollback.
+The supervisor can choose OpenMAIC interactive-classroom tools, teacher package
+lifecycle tools, or classic GenerateFlow fallback.
 """
 
 from __future__ import annotations
@@ -16,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from ..services.llm_service import LLMService
 from ..services.openmaic_main_tools import OpenMAICMainTools
+from ..services.teacher_main_tools import TeacherMainTools
 from .event_bus import AgentEvent, EventBus, EventType
 from .generate_flow import GenerateFlow, GenerateOutputs, GenerateRequest
 from .registry import AgentRegistry
@@ -42,7 +42,7 @@ class MainAgentDecision(BaseModel):
 
 
 class MainAgentFlow:
-    """MainAgent as a tool caller over OpenMAIC + GenerateFlow."""
+    """MainAgent as a tool caller over OpenMAIC + Teacher tools + GenerateFlow."""
 
     MAX_TOOL_CALLS = 8
 
@@ -52,12 +52,14 @@ class MainAgentFlow:
         event_bus: EventBus,
         llm_service: LLMService,
         openmaic_tools: OpenMAICMainTools | None = None,
+        teacher_tools: TeacherMainTools | None = None,
     ) -> None:
         self.registry = registry
         self.event_bus = event_bus
         self.llm = llm_service
         self.generate_flow = GenerateFlow(registry, event_bus)
         self.openmaic = openmaic_tools or OpenMAICMainTools()
+        self.teacher = teacher_tools or TeacherMainTools()
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, task_id: str, req: GenerateRequest) -> GenerateOutputs:
@@ -72,7 +74,7 @@ class MainAgentFlow:
             "started_at": started_at,
             "finished": False,
         }
-        await self._event(task_id, "main.start", {"tools": ["openmaic", "generate_flow"]})
+        await self._event(task_id, "main.start", {"tools": ["openmaic", "teacher", "generate_flow"]})
         try:
             while not state.get("finished") and state.get("iterations", 0) < self.MAX_TOOL_CALLS:
                 state["iterations"] = int(state.get("iterations", 0)) + 1
@@ -83,7 +85,7 @@ class MainAgentFlow:
                     state["finished"] = True
                     break
                 for tool_name in decision.tool_names:
-                    await self._run_tool(state, tool_name, _tool_args(decision.args, tool_name))
+                    await self._run_tool(state, tool_name, _merged_tool_args(state["req"], decision.args, tool_name))
 
             status = "ok" if not state["outputs"].errors else "partial"
             await self._event(
@@ -166,6 +168,11 @@ class MainAgentFlow:
                 result = await self.openmaic.import_exercise_attempts(outputs=outputs, args=args)
             elif tool_name == "refresh_student_dashboard":
                 result = await self.openmaic.refresh_student_dashboard(req=req, outputs=outputs, args=args)
+            elif tool_name == "create_teacher_package":
+                await self._run_generate_flow(task_id, req, outputs)
+                result = await self.teacher.create_teacher_package(req=req, outputs=outputs, args=args)
+            elif tool_name == "export_teacher_pptx":
+                result = await self.teacher.export_teacher_pptx(outputs=outputs, args=args)
             elif tool_name == "run_generate_flow" or tool_name in _LEGACY_AGENT_TOOLS:
                 result = await self._run_generate_flow(task_id, req, outputs)
             else:
@@ -231,6 +238,10 @@ def _rule_decision(state: ToolCallingState) -> MainAgentDecision:
     completed = {item.tool_name for item in history if item.status == "ok"}
     failed = {item.tool_name for item in history if item.status == "error"}
     external = _external(outputs)
+    if _prefers_teacher(req):
+        if "create_teacher_package" not in completed and "create_teacher_package" not in failed:
+            return MainAgentDecision(action="call_tool", tool_names=["create_teacher_package"], reason="teacher package requested")
+        return MainAgentDecision(action="finish", reason="teacher package path done")
     if _prefers_openmaic(req):
         if "create_interactive_classroom" not in completed and "create_interactive_classroom" not in failed:
             return MainAgentDecision(action="call_tool", tool_names=["create_interactive_classroom"], reason="interactive classroom requested")
@@ -245,6 +256,10 @@ def _rule_decision(state: ToolCallingState) -> MainAgentDecision:
     if "run_generate_flow" not in completed and "run_generate_flow" not in failed:
         return MainAgentDecision(action="call_tool", tool_names=["run_generate_flow"], reason="lightweight resource fallback")
     return MainAgentDecision(action="finish", reason="done")
+
+
+def _prefers_teacher(req: GenerateRequest) -> bool:
+    return bool(req.selection_context and req.selection_context.source == "teacher_console")
 
 
 def _prefers_openmaic(req: GenerateRequest) -> bool:
@@ -268,6 +283,7 @@ def _snapshot(state: ToolCallingState) -> str:
             "knowledge_id": state["req"].knowledge_id,
             "knowledge_name": state["req"].knowledge_name,
             "selection_context": state["req"].selection_context.model_dump(mode="json") if state["req"].selection_context else None,
+            "main_agent_args": state["req"].main_agent_args,
         },
         "iterations": state.get("iterations", 0),
         "completed_tools": [item.tool_name for item in history if item.status == "ok"],
@@ -300,9 +316,18 @@ def _external(outputs: GenerateOutputs) -> dict[str, Any]:
     return value
 
 
-def _tool_args(args: dict[str, Any], tool_name: str) -> dict[str, Any]:
-    specific = args.get(tool_name) if isinstance(args, dict) else None
-    return specific if isinstance(specific, dict) else (args if isinstance(args, dict) else {})
+def _merged_tool_args(req: GenerateRequest, decision_args: dict[str, Any], tool_name: str) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    request_specific = req.main_agent_args.get(tool_name)
+    if isinstance(request_specific, dict):
+        merged.update(request_specific)
+    if isinstance(decision_args, dict):
+        decision_specific = decision_args.get(tool_name)
+        if isinstance(decision_specific, dict):
+            merged.update(decision_specific)
+        else:
+            merged.update({k: v for k, v in decision_args.items() if k not in req.main_agent_args})
+    return merged
 
 
 def _brief(value: Any) -> str:
