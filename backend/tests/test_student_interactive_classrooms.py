@@ -32,7 +32,17 @@ class FakeOpenMAICClient:
         return self.jobs[job_id]
 
 
-def _app(tmp_path, fake_openmaic: FakeOpenMAICClient) -> FastAPI:
+class FailingOpenMAICClient:
+    async def start_classroom_generation(self, payload: dict) -> dict:
+        del payload
+        raise RuntimeError("OpenMAIC offline")
+
+    async def get_classroom_job(self, job_id: str) -> dict:
+        del job_id
+        raise RuntimeError("OpenMAIC offline")
+
+
+def _app(tmp_path, fake_openmaic) -> FastAPI:
     package_store = SQLiteResourcePackageStore(tmp_path / "resource_packages.sqlite3")
     learning_store = SQLiteStudentLearningStore(tmp_path / "student_learning.sqlite3")
     app = FastAPI()
@@ -97,6 +107,59 @@ async def test_student_interactive_classroom_creation_starts_openmaic_with_conte
         },
         "resourcePreferences": [],
     }
+
+
+@pytest.mark.asyncio
+async def test_student_interactive_classroom_uses_local_fallback_when_openmaic_fails(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("EDU_OPENMAIC_FALLBACK", "1")
+    app = _app(tmp_path, FailingOpenMAICClient())
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post(
+            "/api/students/stu_001/interactive-classrooms",
+            json={
+                "target_knowledge_id": "binary-tree-traversal",
+                "target_knowledge_name": "二叉树遍历",
+                "learning_goal": "理解递归栈并完成课堂测验",
+                "difficulty": 2,
+            },
+        )
+        package_id = created.json()["resource_package_id"]
+        package = await client.get(f"/api/resource-packages/{package_id}")
+
+    assert created.status_code == 200
+    data = created.json()
+    assert data["status"] == "succeeded"
+    assert data["openmaic_job_id"].startswith("fallback_")
+    assert data["classroom_url"] == f"/api/resource-packages/{package_id}"
+    assert "local fallback classroom" in data["message"]
+
+    assert package.status_code == 200
+    imported = package.json()
+    assert imported["package"]["status"] == "ready"
+    assert imported["package"]["target_knowledge_id"] == "binary-tree-traversal"
+    assert len(imported["package"]["items"]) >= 4
+    assert imported["exercise_set"] is not None
+
+
+@pytest.mark.asyncio
+async def test_student_interactive_classroom_returns_502_when_fallback_disabled(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("EDU_OPENMAIC_FALLBACK", raising=False)
+    app = _app(tmp_path, FailingOpenMAICClient())
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students/stu_001/interactive-classrooms",
+            json={
+                "target_knowledge_id": "binary-tree-traversal",
+                "target_knowledge_name": "二叉树遍历",
+            },
+        )
+
+    assert response.status_code == 502
+    assert "OpenMAIC generation failed" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
