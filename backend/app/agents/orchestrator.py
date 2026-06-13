@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from ..services.openmaic_main_tools import OpenMAICMainTools
 from .base import AgentRuntime, BaseAgent, AgentState, new_task_id
 from .event_bus import AgentEvent, EventBus, EventType
 from .generate_flow import GenerateFlow, GenerateOutputs, GenerateRequest
@@ -69,10 +70,17 @@ class Orchestrator:
     - run_single():        单 Agent 便捷调用
     """
 
-    def __init__(self, registry: AgentRegistry, event_bus: EventBus, llm_service: Any = None) -> None:
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        event_bus: EventBus,
+        llm_service: Any = None,
+        openmaic_tools: OpenMAICMainTools | None = None,
+    ) -> None:
         self.registry = registry
         self.event_bus = event_bus
         self._llm_service = llm_service
+        self._openmaic_tools = openmaic_tools
         self._generate_flow = GenerateFlow(registry, event_bus)
 
     async def run_generate(
@@ -110,6 +118,7 @@ class Orchestrator:
             registry=self.registry,
             event_bus=self.event_bus,
             llm_service=self._llm_service,
+            openmaic_tools=self._openmaic_tools,
         )
         flow.MAX_TOOL_CALLS = max_tool_calls
         try:
